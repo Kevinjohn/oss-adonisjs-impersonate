@@ -283,6 +283,16 @@ The default policy blocks unsafe methods but cannot prove a GET handler has no s
 8. How should logout-all map to account security epoch changes, and should applications provide a dedicated invalidation hook?
 9. What is the smallest useful control-record retention/deletion interface while keeping retention policy with the host application?
 
+## v1 scope addendum (19 October 2026)
+
+[DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md) is the accepted v1 development contract and answers the nine review questions above. The settled boundaries and document-review decisions are unchanged. The following items from the scope and requirements sections are deferred or cut for v1:
+
+- **v1.1:** opaque access-token transport (FR-25 adapter clause, PRD boundary 10 coverage question). v1 covers the native session guard only; token guards stay raw actor guards.
+- **v1.2:** the optional Account Kit adapter, the proposed account-access inspection operation and managed-route blocking (FR-24, AC-15 adapter clause). Core keeps the native `securityStamp`/`inspectAccount` contract; Account Kit implements it later in its own repository.
+- **Out:** JWT adapter; JSON:API error negotiation; package `@adonisjs/i18n` lookup (stable codes with English messages, host localises); the 4x2x2 consumer matrix (v1 is one native-session consumer on SQLite and PostgreSQL at floor and latest).
+- **Simplified in the SPEC, requirement unchanged:** FR-09 coverage is a `masquerade:routes` release-gate report with `sensitive()`/`allowMutation()` markers, not a boot-time registry; FR-14 context token is an owner-bound `revision.nonce` value with `report`/`enforce` modes, not a MAC; FR-21/FR-22 stamps are stored as sha256 hashes, not sealed; FR-30 is satisfied by emit-and-forget observers with caught rejections; the outcome-unknown case maps to 503 `E_MASQUERADE_UNAVAILABLE` with GET status as recovery.
+- **Resolved proposals:** 15-minute default and 60-minute maximum, host may only narrow; reason normalisation order fixed in the SPEC; credential revocation denies that credential while an advanced security stamp clears mode; one row per namespace, actor and incarnation; retention is `{ days }` or host-managed with a prune command and a documented erasure recipe.
+
 ## Dependencies and handoff
 
 The technical design in [SPEC-impersonation.md](SPEC-impersonation.md) should map these requirements to package boundaries, identity resolution, actor/effective-principal contracts, transport adapters, revisioned mode storage, endpoints, context-token handling, and verification scenarios. Any proposal that changes a settled boundary should be called out for product review. Proposed defaults and review-sensitive transport/revocation choices should be resolved before implementation. This PRD and the companion design are review artifacts, not implementation authorization.
