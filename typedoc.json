@@ -1,0 +1,14 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["index.ts", "auth/main.ts", "http/main.ts", "native/main.ts", "testing/main.ts"],
+  "out": "docs/api",
+  "plugin": ["typedoc-plugin-markdown"],
+  "entryFileName": "index",
+  "readme": "none",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "hidePageHeader": true,
+  "githubPages": false,
+  "gitRevision": "main",
+  "treatWarningsAsErrors": true
+}

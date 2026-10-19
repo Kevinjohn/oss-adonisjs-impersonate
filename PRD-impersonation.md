@@ -85,17 +85,17 @@ Success means an application can explicitly configure the package, deny masquera
 
 Durations, storage and credential policies below remain review proposals. The reason rule is a settled review decision; other proposals must not be presented as approved requirements.
 
-| Decision | Rule / proposal | Review status |
-|---|---|---|
-| Initial duration | 15 minutes | Confirm support workflow fit. |
-| Maximum duration | 60 minutes | Confirm whether per-app configuration may reduce, but never exceed, this maximum. |
-| Duration behavior | Fixed expiry; requests do not extend it | Prevent activity from silently extending account-level mode. |
-| Start reason | Required; trim, then require 1–500 Unicode code points and at most 2,000 UTF-8 bytes | Settled in document review. Reject whitespace-only input and instruct operators to redact sensitive details. |
-| Mode storage | One current row per authority namespace and actor account, with idle/active state and revision; SQL subpath proposed via Lucid for SQLite/PostgreSQL | Unlike the prior browser-session proposal, this is one row per actor account, not one per session/device. Confirm migration ownership, cleanup, and DB requirements. |
-| Per-credential revocation | A revoked credential denies that credential; mode may remain for other valid actor credentials | Review whether only an account-wide epoch revocation ends the global mode. |
-| Account-wide revocation | A changed actor security epoch ends mode; invalid actor cannot continue | Define the app callback/stamp used to recognize global revocation. |
-| Target validity | Application validates account-wide target eligibility/current account state; global invalidity clears mode, while request-local denial does not | Confirm whether target security stamp must be checked on every request for the desired guarantee. |
-| Actor transport adapters | Native session and existing opaque native bearer credentials are proposed v1 coverage; no new masquerade token is minted | Confirm coverage. JWT-specific adapter is deferred for v1 unless required. |
+| Decision                  | Rule / proposal                                                                                                                                      | Review status                                                                                                                                                        |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Initial duration          | 15 minutes                                                                                                                                           | Confirm support workflow fit.                                                                                                                                        |
+| Maximum duration          | 60 minutes                                                                                                                                           | Confirm whether per-app configuration may reduce, but never exceed, this maximum.                                                                                    |
+| Duration behavior         | Fixed expiry; requests do not extend it                                                                                                              | Prevent activity from silently extending account-level mode.                                                                                                         |
+| Start reason              | Required; trim, then require 1–500 Unicode code points and at most 2,000 UTF-8 bytes                                                                 | Settled in document review. Reject whitespace-only input and instruct operators to redact sensitive details.                                                         |
+| Mode storage              | One current row per authority namespace and actor account, with idle/active state and revision; SQL subpath proposed via Lucid for SQLite/PostgreSQL | Unlike the prior browser-session proposal, this is one row per actor account, not one per session/device. Confirm migration ownership, cleanup, and DB requirements. |
+| Per-credential revocation | A revoked credential denies that credential; mode may remain for other valid actor credentials                                                       | Review whether only an account-wide epoch revocation ends the global mode.                                                                                           |
+| Account-wide revocation   | A changed actor security epoch ends mode; invalid actor cannot continue                                                                              | Define the app callback/stamp used to recognize global revocation.                                                                                                   |
+| Target validity           | Application validates account-wide target eligibility/current account state; global invalidity clears mode, while request-local denial does not      | Confirm whether target security stamp must be checked on every request for the desired guarantee.                                                                    |
+| Actor transport adapters  | Native session and existing opaque native bearer credentials are proposed v1 coverage; no new masquerade token is minted                             | Confirm coverage. JWT-specific adapter is deferred for v1 unless required.                                                                                           |
 
 The exact native access-validation contract, target security-stamp policy, and supported transport matrix belong in technical review. This PRD does not assume native Auth alone detects account-wide revocation.
 
@@ -131,24 +131,24 @@ The exact native access-validation contract, target security-stamp policy, and s
 
 ## Authorization and request policy
 
-| Situation | Required behavior |
-|---|---|
-| No explicit start authorization callback | Deny start and leave mode unchanged. |
-| Callback denies or errors | Deny start and leave mode unchanged. |
-| Mode already active for actor | Deny nested start; do not replace target or extend expiry. |
-| Native actor credential invalid | Deny through native authentication; do not treat target as the authenticated actor. |
+| Situation                                                                   | Required behavior                                                                                                                                      |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| No explicit start authorization callback                                    | Deny start and leave mode unchanged.                                                                                                                   |
+| Callback denies or errors                                                   | Deny start and leave mode unchanged.                                                                                                                   |
+| Mode already active for actor                                               | Deny nested start; do not replace target or extend expiry.                                                                                             |
+| Native actor credential invalid                                             | Deny through native authentication; do not treat target as the authenticated actor.                                                                    |
 | Current actor credential revoked but another actor credential remains valid | Proposed policy: valid credential may continue the same account-level mode; review whether the app must distinguish credential and account revocation. |
-| Actor account security epoch revoked/changed | Clear mode and deny target authority. |
-| Target globally invalid or account-wide target eligibility lost | Clear mode, reject the triggering business request as context changed, and do not fall through to an actor action. |
-| Request-local tenant or route access denied | Reject this request without clearing mode or falling through to actor behavior. |
-| Request is a safe method | Resolve target as effective principal if mode is valid; still apply ordinary target authorization. Safe method does not guarantee no side effects. |
-| Request is unsafe and route has no mutation opt-in | Deny while mode is active. |
-| Request is unsafe and route opts into ordinary mutation | Permit only if target authorization and current mode context pass and the action is not sensitive. |
-| Unsafe request has stale context token/version | Reject with HTTP 409 context changed; do not run the business action. |
-| Unsafe request has no context token/version | Reject with HTTP 428 context required; do not run the business action. |
-| Sensitive credential, identity, recovery, security, or billing mutation | Deny even if the route otherwise allows mutation. |
-| Request reaches a route outside mode enforcement | This is a launch-blocking coverage defect. |
-| Mode changes after request admission | The already-admitted request may finish; later requests use the new revision. Applications must handle downstream/asynchronous work. |
+| Actor account security epoch revoked/changed                                | Clear mode and deny target authority.                                                                                                                  |
+| Target globally invalid or account-wide target eligibility lost             | Clear mode, reject the triggering business request as context changed, and do not fall through to an actor action.                                     |
+| Request-local tenant or route access denied                                 | Reject this request without clearing mode or falling through to actor behavior.                                                                        |
+| Request is a safe method                                                    | Resolve target as effective principal if mode is valid; still apply ordinary target authorization. Safe method does not guarantee no side effects.     |
+| Request is unsafe and route has no mutation opt-in                          | Deny while mode is active.                                                                                                                             |
+| Request is unsafe and route opts into ordinary mutation                     | Permit only if target authorization and current mode context pass and the action is not sensitive.                                                     |
+| Unsafe request has stale context token/version                              | Reject with HTTP 409 context changed; do not run the business action.                                                                                  |
+| Unsafe request has no context token/version                                 | Reject with HTTP 428 context required; do not run the business action.                                                                                 |
+| Sensitive credential, identity, recovery, security, or billing mutation     | Deny even if the route otherwise allows mutation.                                                                                                      |
+| Request reaches a route outside mode enforcement                            | This is a launch-blocking coverage defect.                                                                                                             |
+| Mode changes after request admission                                        | The already-admitted request may finish; later requests use the new revision. Applications must handle downstream/asynchronous work.                   |
 
 The default policy blocks unsafe methods but cannot prove a GET handler has no side effects. Applications own side-effecting GET routes, jobs, queue consumers, webhooks, and external systems. The package must not promise transaction rollback or cancellation of already-admitted work.
 
@@ -249,17 +249,17 @@ The default policy blocks unsafe methods but cannot prove a GET handler has no s
 
 ## Risks and mitigations
 
-| Risk | Product consequence | Required mitigation |
-|---|---|---|
-| Account-global scope surprises an operator | Other signed-in devices begin acting through the target too. | Make cross-device scope obvious in host UI/docs; allow an authorized valid actor credential on any device to stop the mode. |
-| Actor and target identities become confused | Authorization, logs, or actions may be attributed to the wrong account. | Preserve native actor identity; pass effective target separately; test Bouncer behavior and audit attribution. |
-| Credential and account revocation are conflated | Revoking one device may unintentionally end every device’s mode, or global revocation may leave mode active. | Define credential-level and account-epoch checks explicitly in the adapter contract. |
-| Stale rendered forms mutate in a newer mode | A form created as actor may submit after the actor starts masquerade, or vice versa. | Require current context token/version on all covered authenticated unsafe business requests, including idle mode. |
-| In-flight or asynchronous work outlives mode | Already admitted requests or queued actions may continue after stop/expiry. | State the limit and require applications to propagate/recheck context for background work. |
-| Route coverage is incomplete | Some handlers act under effective target without policy or context validation. | Treat complete enforcement as launch gate; document framework integration and coverage checks. |
-| Durable state races or store outage | Concurrent transitions may overwrite one another or falsely report success. | Use atomic compare-and-swap revision updates and fail closed on required persistence failure. |
-| Optional target checks are too weak | A disabled/revoked target may remain effective. | Require explicit app target-access validation and review per-request security-stamp needs. |
-| SQL integration adds cost | Applications may inherit ORM/database assumptions. | Keep SQL as an optional subpath behind a store contract; keep core independent. |
+| Risk                                            | Product consequence                                                                                          | Required mitigation                                                                                                         |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| Account-global scope surprises an operator      | Other signed-in devices begin acting through the target too.                                                 | Make cross-device scope obvious in host UI/docs; allow an authorized valid actor credential on any device to stop the mode. |
+| Actor and target identities become confused     | Authorization, logs, or actions may be attributed to the wrong account.                                      | Preserve native actor identity; pass effective target separately; test Bouncer behavior and audit attribution.              |
+| Credential and account revocation are conflated | Revoking one device may unintentionally end every device’s mode, or global revocation may leave mode active. | Define credential-level and account-epoch checks explicitly in the adapter contract.                                        |
+| Stale rendered forms mutate in a newer mode     | A form created as actor may submit after the actor starts masquerade, or vice versa.                         | Require current context token/version on all covered authenticated unsafe business requests, including idle mode.           |
+| In-flight or asynchronous work outlives mode    | Already admitted requests or queued actions may continue after stop/expiry.                                  | State the limit and require applications to propagate/recheck context for background work.                                  |
+| Route coverage is incomplete                    | Some handlers act under effective target without policy or context validation.                               | Treat complete enforcement as launch gate; document framework integration and coverage checks.                              |
+| Durable state races or store outage             | Concurrent transitions may overwrite one another or falsely report success.                                  | Use atomic compare-and-swap revision updates and fail closed on required persistence failure.                               |
+| Optional target checks are too weak             | A disabled/revoked target may remain effective.                                                              | Require explicit app target-access validation and review per-request security-stamp needs.                                  |
+| SQL integration adds cost                       | Applications may inherit ORM/database assumptions.                                                           | Keep SQL as an optional subpath behind a store contract; keep core independent.                                             |
 
 ## Alternatives considered
 
