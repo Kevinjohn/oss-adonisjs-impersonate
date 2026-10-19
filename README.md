@@ -12,7 +12,8 @@ and stop is recorded.
 **Status: pre-release.** The repository holds the design and the scaffold. Nothing is published
 yet. [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md) is the accepted v1 plan,
 [SPEC-impersonation.md](SPEC-impersonation.md) the technical contract and
-[PRD-impersonation.md](PRD-impersonation.md) the product requirements.
+[PRD-impersonation.md](PRD-impersonation.md) the product requirements. Implementers start at
+[docs/maintainers/handoff.md](docs/maintainers/handoff.md).
 
 ## What v1 will do
 
