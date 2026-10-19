@@ -1,4 +1,5 @@
 node_modules
+.pnpm-store/
 coverage
 .DS_Store
 .idea
@@ -11,6 +12,7 @@ package-lock.json
 .env
 .env.*
 !.env.example
+!examples/native-session/.env.test
 !examples/inertia-react/.env.test
 *.tgz
 /tmp/
