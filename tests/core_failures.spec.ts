@@ -285,18 +285,37 @@ test('authority and policy failures log safe categories while preserving unavail
 test('malformed inspection stamps log a bounded authority diagnostic and leave active state intact', async ({
   assert,
 }) => {
+  for (const account of ['a', 'b']) {
+    const f = fixture()
+    const service = await f.create()
+    await f.start(service)
+    f.users.get(account)!.stamp = ''
+
+    assert.equal(await errorCode(() => service.resolve({})), 'E_MASQUERADE_UNAVAILABLE')
+    assert.deepEqual(f.diagnostics, [
+      { category: 'authority', operation: 'security_stamp', code: 'E_MASQUERADE_UNAVAILABLE' },
+    ])
+    assert.isTrue((await service.status({})).isMasquerading)
+    assert.lengthOf(f.store.events, 1)
+  }
+})
+
+test('actor stamp revocation invalidates before an unrelated malformed target stamp', async ({
+  assert,
+}) => {
   const f = fixture()
   const service = await f.create()
   await f.start(service)
+  f.users.get('a')!.stamp = 'revoked'
   f.users.get('b')!.stamp = ''
 
-  assert.equal(await errorCode(() => service.resolve({})), 'E_MASQUERADE_UNAVAILABLE')
-  assert.deepEqual(f.diagnostics, [
-    { category: 'authority', operation: 'security_stamp', code: 'E_MASQUERADE_UNAVAILABLE' },
-  ])
-  const status = await service.status({})
-  assert.isTrue(status.isMasquerading)
-  assert.lengthOf(f.store.events, 1)
+  assert.equal(await errorCode(() => service.resolve({})), 'E_MASQUERADE_CONTEXT_CHANGED')
+  assert.isFalse((await service.status({})).isMasquerading)
+  assert.deepEqual(
+    f.store.events.map((event) => event.kind),
+    ['started', 'invalidated']
+  )
+  assert.deepEqual(f.diagnostics, [])
 })
 
 test('denied controls and required audit failures log bounded diagnostics without sensitive data', async ({
