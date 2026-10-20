@@ -11,6 +11,8 @@ test.group('fresh host public recipe', (group) => {
     client,
     assert,
   }) => {
+    const hold = Number(process.env.RECIPE_TEST_HOLD_MS ?? 0)
+    if (hold > 0 && hold <= 60_000) await new Promise((resolve) => setTimeout(resolve, hold))
     const actor = await User.create({
       email: 'actor@example.test',
       accountIncarnation: 'actor-one',
@@ -38,19 +40,23 @@ test.group('fresh host public recipe', (group) => {
     const idleToken = idle.body().contextToken as string
 
     const csrfDenied = await client
-      .post('/masquerade/start')
+      .post('/support/start')
       .form({ targetId: String(target.id), reason: 'Recipe check', _masqueradeContext: idleToken })
       .loginAs(actor)
     csrfDenied.assertStatus(403)
 
     const started = await client
-      .post('/masquerade/start')
+      .post('/support/start')
+      .redirects(0)
       .withCsrfToken()
       .form({ targetId: String(target.id), reason: 'Recipe check', _masqueradeContext: idleToken })
       .loginAs(actor)
-    started.assertStatus(200)
-    assert.isTrue(started.body().isMasquerading)
-    const activeToken = started.body().contextToken as string
+    assert.equal(started.status(), 302, 'recipe form start')
+    assert.equal(started.header('location'), '/support/customer')
+    const activeStatus = await client.get('/masquerade').loginAs(actor)
+    activeStatus.assertStatus(200)
+    assert.isTrue(activeStatus.body().isMasquerading)
+    const activeToken = activeStatus.body().contextToken as string
     assert.notEqual(activeToken, idleToken)
 
     const active = await client.get('/support/customer').loginAs(actor)
@@ -76,19 +82,47 @@ test.group('fresh host public recipe', (group) => {
       .form({ _masqueradeContext: activeToken })
       .loginAs(actor)
     blocked.assertStatus(403)
-    assert.isUndefined(blocked.body().ran)
+    assert.isUndefined(blocked.body().ran, 'sensitive handler must not execute')
 
     const stopped = await client
-      .post('/masquerade/stop')
+      .post('/support/stop')
+      .redirects(0)
       .withCsrfToken()
       .form({ _masqueradeContext: activeToken })
       .loginAs(actor)
-    stopped.assertStatus(200)
-    assert.isFalse(stopped.body().isMasquerading)
-    assert.notEqual(stopped.body().contextToken, activeToken)
+    stopped.assertStatus(302)
+    assert.equal(stopped.header('location'), '/support')
+    const idleStatus = await client.get('/masquerade').loginAs(actor)
+    idleStatus.assertStatus(200)
+    assert.isFalse(idleStatus.body().isMasquerading)
+    assert.notEqual(idleStatus.body().contextToken, activeToken)
+
+    const stale = await client
+      .post('/support/customer/preference')
+      .withCsrfToken()
+      .form({ _masqueradeContext: activeToken })
+      .loginAs(actor)
+    assert.equal(stale.status(), 409, 'stale context rejection')
 
     const idleAgain = await client.get('/support/customer').loginAs(actor)
     idleAgain.assertStatus(200)
     assert.equal(idleAgain.body().effectiveId, actor.id)
+
+    const jsonStart = await client
+      .post('/masquerade/start')
+      .withCsrfToken()
+      .form({
+        targetId: String(target.id),
+        reason: 'JSON control',
+        _masqueradeContext: idleStatus.body().contextToken,
+      })
+      .loginAs(actor)
+    jsonStart.assertStatus(200)
+    const jsonStop = await client
+      .post('/masquerade/stop')
+      .withCsrfToken()
+      .form({ _masqueradeContext: jsonStart.body().contextToken })
+      .loginAs(actor)
+    jsonStop.assertStatus(200)
   })
 })

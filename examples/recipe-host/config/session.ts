@@ -9,7 +9,7 @@ const sessionConfig = defineConfig({
 
   clearWithBrowser: false,
 
-  age: process.env.NATIVE_CREDENTIALS_SESSION === 'true' ? '1s' : '2h',
+  age: '2h',
 
   cookie: {
     path: '/',
