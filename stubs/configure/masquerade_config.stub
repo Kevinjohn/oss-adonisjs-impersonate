@@ -33,9 +33,11 @@ export { nativeAdapter }
 export default defineConfig<User, HttpContext>({
   authority: nativeAdapter.authority,
   policy: {
+    // Required global check: start receives reason/request; active admission does not.
     async canMasquerade() {
       return false
     },
+    // Optional request-local check. Remove this property if it is not needed.
     async canUseRequest() {
       return false
     },
