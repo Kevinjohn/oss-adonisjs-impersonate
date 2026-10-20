@@ -27,7 +27,7 @@ const sessionConfig = defineConfig({
    * Define how long to keep the session data alive without
    * any activity.
    */
-  age: '2h',
+  age: process.env.NATIVE_CREDENTIALS_SESSION === 'true' ? '1s' : '2h',
 
   /**
    * Configuration for session cookie and the

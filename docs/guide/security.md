@@ -1,0 +1,160 @@
+# Security and operations
+
+## Actor, target and scope
+
+Masquerade is one server-side mode per `(namespace, actor ID, incarnation)`. It is visible to all
+valid integrated sessions for that actor account. On each request the native session guard still
+authenticates the actor; the effective guard returns the target to ordinary Auth and Bouncer code.
+The actor remains available separately for explicit policy and audit. Actor permissions are never
+added to target permissions.
+
+Logging out one browser session invalidates that session only. Another valid session continues to
+see the shared mode. To end the mode for all devices, stop it or advance the account security stamp
+through the application's logout-all/security policy. A valid native actor session can stop even
+when the account stamp, actor eligibility, target, or start policy has changed. Stop reads the
+owner's mode and expected context; it does not inspect the target or call start/admission policy.
+An invalid native credential cannot stop because the host session guard rejects it first.
+
+A reused account ID must have a new immutable incarnation so it cannot inherit a retired account's
+mode or context token. `incarnation: 'id'` is a host declaration that IDs are never reused.
+Namespaces name stable identity domains, not request-selected tenants. Guards for the same users
+share one namespace. Distinct identity domains require distinct namespaces.
+
+## Authorization and route coverage
+
+`canMasquerade` is mandatory and deny-by-default. It approves an actor and target at start, then is
+rechecked for active business admission. A false result during active admission is a global
+invalidation: the mode is cleared and that request receives context changed. Missing and ineligible
+targets have the same generic denial so callers cannot enumerate accounts. A thrown policy or
+authority check returns unavailable without changing the mode. `canUseRequest` is optional and
+request-local; a false result rejects only that request, leaving the shared mode and revision
+unchanged. This is where tenant- or route-specific restrictions belong. Tenant context is derived
+after the effective identity is resolved, never inherited from the actor.
+
+On active business routes, GET/HEAD/OPTIONS are classified as reads. Other methods are mutations
+and are denied unless the route or group carries `allowMutation()`. This does not prove that a GET
+handler has no side effects. Password, credential, identity, recovery, security and billing
+mutations must carry `sensitive()`; the marker always wins over `allowMutation()`. The package does
+not infer billing or security behavior from a URL. The host owns this classification.
+
+Login, signup, logout and status/start/stop control routes use the raw actor guard. They never run
+target business handlers. Do not mix an effective guard with a raw or token guard on a covered
+business route. Use `masquerade:routes` to find raw-guard routes requiring review. Keep public and
+authentication routes outside effective mode admission and ensure they cannot dispatch business
+behavior.
+
+## Context tokens and browser clients
+
+Every covered unsafe business request requires the current owner-bound context token, including
+when the actor is idle. The token is `<revision>.<nonce>` and is a replay/version guard, not an
+authentication credential. The nonce differs by owner when no row exists and rotates on each
+committed transition. Shield continues to provide CSRF protection for cookie requests.
+
+For an Edge form, call `shareMasquerade(ctx)` before rendering, then include the token-only hidden
+field alongside Shield's CSRF field:
+
+```ts
+// In the route handler
+import { shareMasquerade } from 'adonisjs-masquerade/http'
+
+await shareMasquerade(ctx)
+return ctx.view.render('pages/edit')
+```
+
+```edge
+<form method="POST" action="/business/mutate">
+  {{ csrfField() }}
+  {{{ masqueradeContextField() }}}
+  <button type="submit">Save</button>
+</form>
+```
+
+Fetch and Inertia mutations can read `contextToken` from `GET /masquerade` and send it in
+`X-Masquerade-Context` as well as the host's CSRF token:
+
+```ts
+await fetch('/business/mutate', {
+  method: 'POST',
+  headers: {
+    'X-Masquerade-Context': contextToken,
+    'X-CSRF-TOKEN': csrfToken,
+  },
+  body: formData,
+})
+```
+
+If a request sends both header and form tokens, they must match. Missing context is 428; stale or
+conflicting context is 409. Do not fetch a newer token and replay an old intent: refresh or rebuild
+the user's action under the current mode first.
+GET/HEAD/OPTIONS requests do not need the token, though active-mode policy still applies.
+
+Start and stop always enforce their expected token. Business middleware may run in `report` while
+the host migrates forms; it logs would-be missing/stale errors and admits the request. Report mode
+is not a stale-form protection boundary. Inventory all rendered forms and clients, deploy token
+submission, verify the warnings have stopped, then switch to `enforce` before relying on stale
+intent rejection.
+
+## Duration, transition and recovery behavior
+
+The default duration is 900 seconds; the maximum is 3600 seconds and a host may narrow both. Expiry
+is fixed and does not slide with activity. At the deadline, a business request that discovers
+expiry or global invalidity is rejected and never continues as the actor. A fresh request sees the
+current state. A local tenant denial does not clear the shared mode.
+
+A nested start cannot replace, renew, or extend an active mode. Stop, then submit a fresh start with
+the newly rendered context. Every successful transition atomically updates the row and audit event.
+If the database loses the commit acknowledgement, the service returns 503 and logs the transition
+ID; use `GET /masquerade` to recover the current state. Do not retry a start using the old intent.
+Status returns only the authenticated owner's safe mode view and sends `Cache-Control: no-store`.
+When the store is unavailable, status and stop return 503; login and logout still use native auth and
+do not read mode state. Errors use stable codes and English messages for the host exception handler
+to localize; the package ships no translation catalog.
+
+## Jobs, external effects and audit
+
+A request admitted before stop or expiry may finish. Masquerade cannot undo work already admitted,
+queued, sent to another service, or committed in a separate system. Jobs and downstream messages do
+not inherit a trusted effective context automatically. If a job needs actor/effective attribution,
+carry the safe `ResolvedContext` projection and apply the host's own authorization when it runs.
+Irreversible actions need host transaction-time guards where appropriate.
+
+Committed starts, stops, expiry and global invalidation have durable audit events. After native
+authentication, CSRF and the control limiter succeed, admitted start/stop denials, invalid controls,
+context conflicts and idle-stop no-ops are also recorded when the store is available. Authentication
+failures, pre-boundary CSRF/limiter rejections, status/business denials and local tenant denials use
+host diagnostics instead. A successful start audit stores its normalized reason. Denied or invalid
+control attempts omit the reason. Do not use reasons as case notes; avoid secrets and unnecessary
+personal data. Status, observer projections and operational logs never expose raw stamps,
+credentials, request bodies or user objects.
+
+Observers run after commit without delaying the response. Delivery is best effort. Rejected
+observers are sent to the emitter error handler and cannot reverse a committed transition.
+
+Retention belongs to the host. With `retention: { days: n }`, `masquerade:prune --batch-size=100`
+expires due modes and removes old events in bounded batches. Pruning is global across every
+validated namespace visible through the supplied store; it is not limited to
+`config.authority.namespace`. One retention policy applies to that store, so use separately scoped
+stores when identity domains need different retention policies. With `'host-managed'`, pruning
+expires modes and leaves events to the host. Idle owner rows are retained so old pre-start tokens
+cannot become valid again. For account erasure, delete the retired incarnation's mode row and apply
+the host's event-retention policy; no erasure API is provided. Review the SQL against the installed
+schema and database before using it. Replace `?` with the parameter syntax your database driver
+requires and bind the values; do not interpolate them into SQL:
+
+```sql
+DELETE FROM masquerade_modes
+WHERE authority_namespace = ?
+  AND actor_id = ?
+  AND actor_incarnation = ?;
+
+-- Bind namespace, actor ID, and retired incarnation as parameters.
+-- Apply your approved retention policy to masquerade_events separately.
+```
+
+Lucid supports SQLite and PostgreSQL through an optional subpath. If native cleanup fails after a
+failed `COMMIT`, the store fails closed and shuts down its shared Lucid write pool rather than
+returning a connection with uncertain transaction state. This can also fail unrelated application
+queries using that pool. After the host reconnects or restarts, create a new store adapter; do not
+reuse the retired connection. The adapter rejects externally managed pools because it cannot
+safely retire them. Treat this rare path as an application database outage and use the host's
+normal recovery and alerting procedures.

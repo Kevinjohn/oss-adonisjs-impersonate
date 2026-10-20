@@ -42,7 +42,8 @@
     "docs:dev": "pnpm docs:api && vitepress dev docs",
     "docs:build": "pnpm docs:api && vitepress build docs",
     "quick:test": "node --import=@poppinss/ts-exec --enable-source-maps bin/test.ts",
-    "test:built-exports": "cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=package_exports.spec.ts",
+    "test:built-exports": "cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=package_exports.spec.ts --files=configure.spec.ts",
+    "test:consumer": "node --import=@poppinss/ts-exec --enable-source-maps bin/test_consumer.ts",
     "pack:fixture": "pnpm pack --out tmp/native-session-package.tgz",
     "pretest": "pnpm lint",
     "test": "c8 pnpm quick:test",
@@ -67,6 +68,7 @@
   "author": "Kevinjohn Gallagher",
   "license": "MIT",
   "devDependencies": {
+    "@adonisjs/assembler": "^8.6.0",
     "@adonisjs/auth": "^10.0.0",
     "@adonisjs/bouncer": "^4.0.0",
     "@adonisjs/core": "^7.0.1",
@@ -125,6 +127,8 @@
   "tsdown": {
     "entry": [
       "./index.ts",
+      "./configure.ts",
+      "./stubs/main.ts",
       "./src/types.ts",
       "./providers/masquerade_provider.ts",
       "./commands/main.ts",

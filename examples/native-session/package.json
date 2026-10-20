@@ -15,7 +15,8 @@
     "test:report": "MASQUERADE_CONTEXT_ENFORCEMENT=report node ace test report",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:credentials": "SESSION_DRIVER=cookie NATIVE_CREDENTIALS_SESSION=true node ace test credentials"
   },
   "imports": {
     "#controllers/*": "./app/controllers/*.js",
@@ -75,7 +76,8 @@
     "edge-iconify": "^2.0.2",
     "edge.js": "^6.5.1",
     "luxon": "^3.7.2",
-    "reflect-metadata": "^0.2.2"
+    "reflect-metadata": "^0.2.2",
+    "pg": "^8.0.0"
   },
   "hotHook": {
     "boundaries": [

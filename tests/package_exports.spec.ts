@@ -1,4 +1,6 @@
 import { spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { test } from '@japa/runner'
 
 if (process.env.TEST_BUILT_EXPORTS === '1') {
@@ -13,6 +15,9 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     const lucid = await import('adonisjs-masquerade/stores/lucid')
     const testing = await import('adonisjs-masquerade/testing')
     assert.equal(typeof root, 'object')
+    assert.isFunction(root.configure)
+    assert.isString(root.stubsRoot)
+    assert.isTrue(existsSync(join(root.stubsRoot, 'migrations/create_masquerade_tables.stub')))
     assert.lengthOf(Object.keys(types), 0)
     assert.isFunction(provider.default)
     assert.isFunction(auth.effectiveSessionGuard)
@@ -48,7 +53,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
           import { registerHooks } from 'node:module'
           registerHooks({
             resolve(specifier, context, nextResolve) {
-              if (/^@adonisjs\\/lucid(?:\\/|$)/.test(specifier) || /account[-_]kit/i.test(specifier)) {
+              if (/^@adonisjs\\//.test(specifier) || /account[-_]kit/i.test(specifier)) {
                 throw new Error('Optional integration resolved: ' + specifier)
               }
               return nextResolve(specifier, context)

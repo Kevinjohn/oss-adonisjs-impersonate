@@ -5,32 +5,39 @@
 [![Node.js 24+](https://img.shields.io/badge/node-%3E%3D24-339933)](package.json)
 [![AdonisJS 7](https://img.shields.io/badge/AdonisJS-7-5a45ff)](https://adonisjs.com)
 
-Let a support operator act as another account without logging in as them. The operator stays
-authenticated as themselves; the application sees the target as the effective user; every start
-and stop is recorded.
+Let an authorized support operator act through another account without logging in as that user.
+The operator stays authenticated as themselves; covered business routes use the target as the
+effective principal. Masquerade is a server-side account mode shared across the operator's valid
+sessions, with a fixed expiry and explicit stop.
 
-**Status: pre-release.** The repository holds the design and the scaffold. Nothing is published
-yet. [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md) is the accepted v1 plan,
-[SPEC-impersonation.md](SPEC-impersonation.md) the technical contract and
-[PRD-impersonation.md](PRD-impersonation.md) the product requirements. Implementers start at
-[docs/maintainers/handoff.md](docs/maintainers/handoff.md).
+**Status: pre-release candidate.** Version `0.0.0` is not published. The v1 adapter supports the
+AdonisJS native session guard, with Lucid SQLite and PostgreSQL storage. Access-token transport is
+planned for v1.1; the Account Kit adapter is v1.2. JWT support is out of scope.
 
-## What v1 will do
+## Get started
 
-- One server-side mode per operator account, shared by every session of that account, with a fixed
-  expiry and an explicit stop.
-- An effective Auth guard so `auth.user` and Bouncer see the target on business routes while the
-  raw session guard still reports the operator.
-- Deny-by-default: the application's own callback approves each operator and target pair; unsafe
-  methods are blocked while a mode is active unless a route opts in; sensitive routes stay blocked.
-- A context token on unsafe requests so a form rendered under one identity cannot submit under
-  another.
-- Durable, atomic audit of every transition in SQLite or PostgreSQL through Lucid, behind a store
-  contract you can implement for another database.
+- [Install and configure](docs/guide/setup.md): scaffold the package files, connect the existing
+  session provider, wire middleware and mount routes behind host protections.
+- [Security and operations](docs/guide/security.md): actor/target identity, cross-device behavior,
+  context tokens, route policy, audit, retention and asynchronous work.
+- [API reference](https://kevinjohn.github.io/oss-adonisjs-impersonate/api/): generated package exports.
 
-Access tokens and the Account Kit adapter follow in later minor versions.
+Start with Node 24 and pnpm. Configure requires Lucid for its default store and creates a migration
+that you review and run yourself. The command leaves routes and middleware ordering to the host.
 
-## Contributing
+## Behavior
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks and the project principles, and
-[SECURITY.md](SECURITY.md) for reporting vulnerabilities.
+- Native auth continues to authenticate the actor. Target credentials are never created, and actor
+  permissions are never added to the target's permissions.
+- The host must explicitly allow each actor-target pair. Unsafe active-mode routes are denied unless
+  marked with `allowMutation()`; `sensitive()` always blocks and the host must use it for billing
+  and other sensitive actions.
+- Every covered unsafe business request carries an owner-bound context token, including while idle.
+  Report mode supports migration; enforce mode rejects missing or stale intent.
+- Starts, stops and invalidations use atomic revisioned storage and durable audit. The host owns
+  retention, localization, rate limits, roles, tenants and UI.
+
+The accepted boundaries are in [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md), the technical contract
+in [SPEC-impersonation.md](SPEC-impersonation.md), and product requirements in
+[PRD-impersonation.md](PRD-impersonation.md). For project setup and contribution checks, see
+[CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).

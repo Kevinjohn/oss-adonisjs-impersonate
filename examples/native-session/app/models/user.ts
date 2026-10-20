@@ -1,6 +1,7 @@
 import { UserSchema } from '#database/schema'
 import hash from '@adonisjs/core/services/hash'
 import { compose } from '@adonisjs/core/helpers'
+import { DbRememberMeTokensProvider } from '@adonisjs/auth/session'
 import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
 
 /**
@@ -9,6 +10,8 @@ import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
  * through the withAuthFinder mixin.
  */
 export default class User extends compose(UserSchema, withAuthFinder(hash)) {
+  static rememberMeTokens = DbRememberMeTokensProvider.forModel(User)
+
   /**
    * Get the user's initials from their full name or email.
    * Returns the first letter of first and last name if available,

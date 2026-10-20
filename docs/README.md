@@ -1,19 +1,14 @@
 # Masquerade documentation
 
-The user-facing pages are written milestone by milestone; see
-[DEVELOPMENT-PLAN.md](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/DEVELOPMENT-PLAN.md).
+Use these pages to install and operate the v1 native-session integration.
 
-## Reference
+- [Install and configure](guide/setup.md): `node ace configure`, callbacks and manual auth wiring.
+- [Security and operations](guide/security.md): identity boundaries, routes, context tokens, sessions, audit and side effects.
+- [API reference](https://kevinjohn.github.io/oss-adonisjs-impersonate/api/): generated package exports.
+- [Maintainer records](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/main/docs/maintainers): release evidence and repository conventions.
 
-- [API reference](https://kevinjohn.github.io/oss-adonisjs-impersonate/api/): every export,
-  generated from the source.
-
-## Design
-
-- [Product requirements](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/PRD-impersonation.md)
-- [Technical specification](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/SPEC-impersonation.md)
-- [Development plan](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/DEVELOPMENT-PLAN.md)
-
-## Maintainers
-
-- [Maintainer records](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/docs/maintainers/README.md)
+The package is a pre-release candidate and has not been published. See the root
+[README](../README.md) for project status. The accepted design is recorded in the
+[development plan](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/DEVELOPMENT-PLAN.md),
+[technical specification](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/SPEC-impersonation.md),
+and [product requirements](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/PRD-impersonation.md).

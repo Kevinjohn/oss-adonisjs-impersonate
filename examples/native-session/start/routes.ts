@@ -1,7 +1,10 @@
 import { Bouncer } from '@adonisjs/bouncer'
 import { allowMutation, sensitive, shareMasquerade } from 'adonisjs-masquerade/http'
 import { middleware } from '#start/kernel'
-import { controllers } from '#generated/controllers'
+import Session from '#controllers/session_controller'
+import NewAccount from '#controllers/new_account_controller'
+import Masquerade from '#controllers/masquerade_controller'
+const controllers = { Session, NewAccount, Masquerade }
 import router from '@adonisjs/core/services/router'
 import type User from '#models/user'
 
@@ -40,16 +43,16 @@ router
   .get('/business', async (ctx) => {
     const { auth } = ctx
     const actor = auth.use('web').user!
-    const target = auth.user!
-    const bouncer = new Bouncer<User>(() => auth.user ?? null)
+    const target = auth.user as User
+    const bouncer = new Bouncer<User>(() => (auth.user as User | undefined) ?? null)
     const seesTarget = await bouncer.allows(Bouncer.ability((user: User) => user.id === target.id))
     return {
       actorId: actor.id,
-      effectiveId: auth.user!.id,
-      getUserOrFailId: auth.getUserOrFail().id,
+      effectiveId: (auth.user as User).id,
+      getUserOrFailId: (auth.getUserOrFail() as User).id,
       authenticatedViaGuard: auth.authenticatedViaGuard,
       rawActorId: auth.use('web').user!.id,
-      bouncerUserId: seesTarget ? auth.user!.id : null,
+      bouncerUserId: seesTarget ? (auth.user as User).id : null,
       actorAllowed: await bouncer.allows(Bouncer.ability((user: User) => user.id === actor.id)),
       silentAuthSnapshot: (
         ctx as typeof ctx & {
@@ -94,11 +97,11 @@ router
 
 router
   .post('/business/mutate', async ({ auth }) => {
-    const bouncer = new Bouncer<User>(() => auth.user ?? null)
+    const bouncer = new Bouncer<User>(() => (auth.user as User | undefined) ?? null)
     await bouncer.authorize(Bouncer.ability((user: User) => Boolean(user.canMutate)))
     return {
       ran: true,
-      effectiveId: auth.user!.id,
+      effectiveId: (auth.user as User).id,
       rawActorId: auth.use('web').user!.id,
     }
   })
@@ -113,7 +116,7 @@ router
 router
   .group(() => {
     router.post('/group-marked', async ({ auth }) => ({
-      effectiveId: auth.user!.id,
+      effectiveId: (auth.user as User).id,
       rawActorId: auth.use('web').user!.id,
     }))
   })
@@ -124,9 +127,9 @@ router
 router
   .post('/business/actor-only', async ({ auth }) => {
     const actor = auth.use('web').user!
-    const bouncer = new Bouncer<User>(() => auth.user ?? null)
+    const bouncer = new Bouncer<User>(() => (auth.user as User | undefined) ?? null)
     await bouncer.authorize(Bouncer.ability((user: User) => user.id === actor.id))
-    return { ran: true, effectiveId: auth.user!.id }
+    return { ran: true, effectiveId: (auth.user as User).id }
   })
   .use(allowMutation())
   .use(middleware.auth({ guards: ['web_effective'] }))

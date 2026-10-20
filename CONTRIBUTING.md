@@ -49,7 +49,7 @@ Run the repository scripts, not the bare tools. They carry the flags the release
 | `pnpm quick:test`         | Japa test suite against SQLite                                 |
 | `pnpm test:pg`            | The same suite against a throwaway local PostgreSQL 16 cluster |
 | `pnpm build`              | Compiles to `build/`                                           |
-| `pnpm test:built-exports` | Loads every public export from the compiled package            |
+| `pnpm test:built-exports` | Loads public exports and runs Ace configure from the build     |
 
 `pnpm test:pg` needs PostgreSQL 16 binaries (`brew install postgresql@16` on macOS). To use your
 own server instead, set `DB_CLIENT=pg` plus `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and

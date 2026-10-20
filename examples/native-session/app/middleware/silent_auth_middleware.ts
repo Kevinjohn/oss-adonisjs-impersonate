@@ -1,3 +1,4 @@
+import type User from '#models/user'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 
@@ -16,7 +17,7 @@ export default class SilentAuthMiddleware {
     }
     context.silentAuthSnapshot = {
       guard: ctx.auth.authenticatedViaGuard,
-      userId: ctx.auth.user?.id,
+      userId: (ctx.auth.user as User | undefined)?.id,
     }
 
     return next()
