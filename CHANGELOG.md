@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Add repeatable local demo setup with a fictional operator, two customers and a bounded reset
+command.
+
 Allow native-session flash alerts to opt out of the five-second auto-dismiss timeout while
 preserving their delayed reveal and manual dismissal behavior.
 
