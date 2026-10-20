@@ -1,0 +1,94 @@
+import { test } from '@japa/runner'
+import testUtils from '@adonisjs/core/services/test_utils'
+import db from '@adonisjs/lucid/services/db'
+import User from '#models/user'
+import Member from '#models/member'
+
+test.group('fresh host public recipe', (group) => {
+  group.setup(() => testUtils.db().migrate())
+
+  test('preserves the second guard and completes the CSRF-protected support journey', async ({
+    client,
+    assert,
+  }) => {
+    const actor = await User.create({
+      email: 'actor@example.test',
+      accountIncarnation: 'actor-one',
+      securityEpoch: 'actor-epoch-one',
+      active: true,
+      masqueradeOperator: true,
+      canMutate: false,
+    })
+    const target = await User.create({
+      email: 'target@example.test',
+      accountIncarnation: 'target-one',
+      securityEpoch: 'target-epoch-one',
+      active: true,
+      masqueradeOperator: false,
+      canMutate: true,
+    })
+    const member = await Member.create({ email: 'member@example.test' })
+    const memberResponse = await client.get('/member').withGuard('members').loginAs(member)
+    memberResponse.assertStatus(200)
+    assert.equal(memberResponse.body().memberId, member.id)
+
+    const idle = await client.get('/masquerade').loginAs(actor)
+    idle.assertStatus(200)
+    assert.isFalse(idle.body().isMasquerading)
+    const idleToken = idle.body().contextToken as string
+
+    const csrfDenied = await client
+      .post('/masquerade/start')
+      .form({ targetId: String(target.id), reason: 'Recipe check', _masqueradeContext: idleToken })
+      .loginAs(actor)
+    csrfDenied.assertStatus(403)
+
+    const started = await client
+      .post('/masquerade/start')
+      .withCsrfToken()
+      .form({ targetId: String(target.id), reason: 'Recipe check', _masqueradeContext: idleToken })
+      .loginAs(actor)
+    started.assertStatus(200)
+    assert.isTrue(started.body().isMasquerading)
+    const activeToken = started.body().contextToken as string
+    assert.notEqual(activeToken, idleToken)
+
+    const active = await client.get('/support/customer').loginAs(actor)
+    active.assertStatus(200)
+    assert.equal(active.body().actorId, actor.id)
+    assert.equal(active.body().effectiveId, target.id)
+    assert.equal(active.body().guard, 'web_effective')
+    assert.equal(active.body().resolvedActorId, String(actor.id))
+    assert.equal(active.body().resolvedEffectiveId, String(target.id))
+
+    const mutated = await client
+      .post('/support/customer/preference')
+      .withCsrfToken()
+      .form({ _masqueradeContext: activeToken })
+      .loginAs(actor)
+    mutated.assertStatus(200)
+    assert.equal(mutated.body().changedId, target.id)
+    assert.equal((await db.from('recipe_preferences').first())?.user_id, target.id)
+
+    const blocked = await client
+      .post('/support/customer/sensitive')
+      .withCsrfToken()
+      .form({ _masqueradeContext: activeToken })
+      .loginAs(actor)
+    blocked.assertStatus(403)
+    assert.isUndefined(blocked.body().ran)
+
+    const stopped = await client
+      .post('/masquerade/stop')
+      .withCsrfToken()
+      .form({ _masqueradeContext: activeToken })
+      .loginAs(actor)
+    stopped.assertStatus(200)
+    assert.isFalse(stopped.body().isMasquerading)
+    assert.notEqual(stopped.body().contextToken, activeToken)
+
+    const idleAgain = await client.get('/support/customer').loginAs(actor)
+    idleAgain.assertStatus(200)
+    assert.equal(idleAgain.body().effectiveId, actor.id)
+  })
+})

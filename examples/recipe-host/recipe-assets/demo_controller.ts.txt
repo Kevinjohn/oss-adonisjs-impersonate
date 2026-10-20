@@ -1,0 +1,32 @@
+import User from '#models/user'
+import { Bouncer } from '@adonisjs/bouncer'
+import type { HttpContext } from '@adonisjs/core/http'
+import db from '@adonisjs/lucid/services/db'
+
+export default class DemoController {
+  async customer(ctx: HttpContext) {
+    const actor = ctx.auth.use('web').getUserOrFail() as User
+    const effective = ctx.auth.user as User
+    const runtime = await ctx.containerResolver.make('masquerade.runtime')
+    const identity = await runtime.service.resolve(ctx)
+    return {
+      actorId: actor.id,
+      effectiveId: effective.id,
+      guard: ctx.auth.authenticatedViaGuard,
+      resolvedActorId: identity.actorId,
+      resolvedEffectiveId: identity.effectiveId,
+    }
+  }
+
+  async preference(ctx: HttpContext) {
+    const effective = ctx.auth.user as User
+    const bouncer = new Bouncer<User>(() => (ctx.auth.user as User | undefined) ?? null)
+    await bouncer.authorize(Bouncer.ability((user: User) => user.active && user.canMutate))
+    await db.table('recipe_preferences').insert({ user_id: effective.id, enabled: true })
+    return { changedId: effective.id }
+  }
+
+  async sensitive(ctx: HttpContext) {
+    return ctx.response.forbidden({ ran: true })
+  }
+}
