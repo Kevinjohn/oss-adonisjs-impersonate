@@ -8,16 +8,40 @@ test('exact expiry clears durably without stamp access and rejects the triggerin
   const service = await f.create()
   const active = await f.start(service)
   if (!active.isMasquerading) throw new Error('Expected active view')
+  const storedActive = await f.store.read(f.owner)
+  if (!storedActive) throw new Error('Expected persisted active row')
+  const eventCount = f.store.events.length
+  const expiresAt = Date.parse(active.expiresAt)
+
   f.state.now = Date.parse(active.expiresAt) - 1
-  const observedResult2 = await service.resolve({})
-  assert.equal(observedResult2.effectiveId, 'b')
-  const observedResult3 = await service.status({})
-  assert.equal(observedResult3.contextToken, active.contextToken)
-  f.state.now++
+  const beforeExpiry = await service.status({})
+  if (!beforeExpiry.isMasquerading) throw new Error('Expected persisted active status')
+  assert.equal(beforeExpiry.expiresAt, active.expiresAt)
+  let stored = await f.store.read(f.owner)
+  assert.deepEqual(stored, storedActive)
+  assert.lengthOf(f.store.events, eventCount)
+  const admittedBeforeExpiry = await service.resolve({})
+  assert.equal(admittedBeforeExpiry.effectiveId, 'b')
+
+  for (const now of [expiresAt, expiresAt + 1]) {
+    f.state.now = now
+    const view = await service.status({})
+    if (!view.isMasquerading) throw new Error('Expected persisted active status')
+    assert.equal(view.expiresAt, active.expiresAt)
+    assert.equal(view.contextToken, active.contextToken)
+    stored = await f.store.read(f.owner)
+    assert.deepEqual(stored, storedActive)
+    assert.lengthOf(f.store.events, eventCount)
+  }
+
   f.state.stampThrows = true
   f.state.inspectThrows = true
   assert.equal(await errorCode(() => service.resolve({})), 'E_MASQUERADE_CONTEXT_CHANGED')
+  const expired = await f.store.read(f.owner)
+  assert.equal(expired!.state, 'idle')
+  assert.equal(expired!.revision, storedActive.revision + 1)
   assert.equal(f.store.events.at(-1)!.kind, 'expired')
+  assert.lengthOf(f.store.events, eventCount + 1)
   f.state.now -= 1000000
   const observedResult4 = await service.resolve({})
   assert.equal(observedResult4.effectiveId, 'a')
