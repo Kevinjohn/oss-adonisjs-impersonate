@@ -12,3 +12,6 @@ The package is a pre-release candidate and has not been published. See the root
 [development plan](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/DEVELOPMENT-PLAN.md),
 [technical specification](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/SPEC-impersonation.md),
 and [product requirements](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/PRD-impersonation.md).
+
+The API reference lists supported package entry points. A few signatures name internal types needed
+to describe those entry points; those types are implementation details and are not package exports.

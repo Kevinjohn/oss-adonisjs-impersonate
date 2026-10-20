@@ -6,7 +6,10 @@ import type {} from '@adonisjs/auth/initialize_auth_middleware'
 import { isBusinessRoute } from '../integration/route_metadata.js'
 import { runtimeFor } from '../integration/runtime.js'
 
-/** A native session wrapper; the raw guard continues to own all credentials. */
+/**
+ * A native session wrapper; the raw guard continues to own all credentials.
+ * @internal
+ */
 export class EffectiveSessionGuard<User> implements GuardContract<User> {
   [symbols.GUARD_KNOWN_EVENTS] = undefined
   readonly driverName: string

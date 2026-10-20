@@ -2,18 +2,14 @@
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": [
     "index.ts",
+    "src/types.ts",
     "auth/main.ts",
     "http/main.ts",
     "native/main.ts",
     "stores/lucid.ts",
     "providers/masquerade_provider.ts",
     "commands/main.ts",
-    "testing/main.ts",
-    "src/errors.ts",
-    "commands/routes.ts",
-    "integration/route_metadata.ts",
-    "src/request_admission.ts",
-    "auth/effective_session_guard.ts"
+    "testing/main.ts"
   ],
   "out": "docs/api",
   "plugin": [
@@ -28,8 +24,11 @@
   "gitRevision": "main",
   "treatWarningsAsErrors": true,
   "intentionallyNotExported": [
-    "MarkedMiddleware",
-    "RouteMetadata"
+    "errorDetails",
+    "default",
+    "RequestAdmission",
+    "EffectiveSessionGuard",
+    "MarkedMiddleware"
   ],
   "externalSymbolLinkMappings": {
     "@adonisjs/ace": {

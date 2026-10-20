@@ -3,6 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 const marker = Symbol('masquerade.routeMarker')
 type MarkerName = 'sensitive' | 'allowMutation'
 type RouteMetadata = { middleware: { all(): Iterable<unknown> } }
+/** @internal */
 type MarkedMiddleware = ((ctx: HttpContext, next: () => Promise<unknown>) => Promise<unknown>) & {
   [marker]?: MarkerName
 }
@@ -37,7 +38,10 @@ export function isBusinessRoute(
   )
 }
 
-/** Resolve omitted auth options once; an explicitly named "default" remains an ordinary guard. */
+/**
+ * Resolve omitted auth options once; an explicitly named "default" remains an ordinary guard.
+ * @internal
+ */
 export function routeGuards(route: RouteMetadata | undefined, defaultGuardName: string): string[] {
   if (!route) return []
   const guards = new Set<string>()
