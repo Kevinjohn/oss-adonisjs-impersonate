@@ -16,6 +16,9 @@ that have not run the router auth/session middleware: unknown URLs retain HTTP 4
 normal not-found page. The functional suite exercises this real HTTP path with production status
 rendering enabled, alongside direct rendering of both error templates without auth/session data.
 
+Flash alerts reveal after 80 ms and dismiss after five seconds by default. Set `autoDismiss: false`
+on `@alert.root` to keep an alert visible until its dismiss action is called.
+
 Use Node 24 and pnpm. From the repository root:
 
 ```sh
