@@ -2,12 +2,17 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import { defineConfig } from './define_config.js'
 import { contextToken, requireContext } from './context_token.js'
 import { invalidInput, MasqueradeError, unavailable } from './errors.js'
-import { boundedString } from './bounded_string.js'
-import { normalizeReason } from './reason.js'
+import { openControlStore } from './control_store.js'
+import { parseStartSelection, validateStartInputShape } from './start_input.js'
 import { stampHash } from './security_stamp.js'
 import { validateRow } from './row_validation.js'
 import { validateSubject } from './subject_validation.js'
-import { observe, reportUnknown } from './observers.js'
+import {
+  commitTransition,
+  idleAfterTransition,
+  nextRevision,
+  UnknownCommit,
+} from './mode_transition.js'
 import { admission } from './request_admission.js'
 import type { RequestAdmission } from './request_admission.js'
 import type {
@@ -34,20 +39,13 @@ export async function createMasqueradeService<User, Request extends object>(
   dependencies: ServiceDependencies<User, Request>
 ): Promise<MasqueradeService<Request>> {
   const validated = defineConfig(config)
-  let store: ControlStore
-  try {
-    store = await validated.store()
-  } catch {
-    throw unavailable()
-  }
-  if (
-    !store ||
-    (store.testOnly && dependencies.environment !== 'test') ||
-    !['read', 'compareAndSet', 'recordControlOutcome', 'expiredBatch', 'pruneEvents'].every(
-      (name) => typeof store[name as keyof ControlStore] === 'function'
-    )
-  )
-    throw new TypeError('Invalid masquerade store for environment')
+  const store = await openControlStore(validated.store, dependencies.environment, [
+    'read',
+    'compareAndSet',
+    'recordControlOutcome',
+    'expiredBatch',
+    'pruneEvents',
+  ])
   if (typeof dependencies.authenticateActor !== 'function')
     throw new TypeError('Actor authentication resolver required')
   if (
@@ -58,12 +56,6 @@ export async function createMasqueradeService<User, Request extends object>(
   )
     throw new TypeError('Observer and diagnostic ports required')
   return new CoreService(validated, dependencies, store)
-}
-
-class UnknownCommit extends MasqueradeError {
-  constructor() {
-    super('E_MASQUERADE_UNAVAILABLE')
-  }
 }
 
 class CoreService<User, Request extends object> implements MasqueradeService<Request> {
@@ -154,8 +146,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
     }
   }
   private revision(row: ModeRow | null): number {
-    if (row?.revision === Number.MAX_SAFE_INTEGER) throw unavailable()
-    return (row?.revision ?? 0) + 1
+    return nextRevision(row)
   }
   private async commit(
     owner: OwnerKey,
@@ -163,26 +154,16 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
     next: ModeRow,
     event: AuditEvent
   ): Promise<void> {
-    let outcome
-    try {
-      outcome = await this.store.compareAndSet({
-        owner,
-        expected: previous?.revision ?? null,
-        next,
-        event,
-      })
-    } catch {
-      throw unavailable()
-    }
-    if (outcome?.status === 'conflict') {
+    const outcome = await commitTransition(this.store, this.dependencies, {
+      owner,
+      expected: previous?.revision ?? null,
+      next,
+      event,
+    })
+    if (outcome === 'conflict') {
       await this.read(owner)
       throw new MasqueradeError('E_MASQUERADE_CONTEXT_CHANGED')
     }
-    if (outcome?.status !== 'applied' || outcome.transitionId !== event.id) {
-      reportUnknown(this.dependencies, event.id)
-      throw new UnknownCommit()
-    }
-    observe(this.dependencies, event)
   }
   private async clear(
     owner: OwnerKey,
@@ -191,22 +172,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
     code: string
   ): Promise<IdleModeRow> {
     const event = this.event(owner, row, kind, code)
-    const next: IdleModeRow = {
-      ...owner,
-      state: 'idle',
-      revision: this.revision(row),
-      revisionNonce: randomBytes(16).toString('hex'),
-      modeId: row.modeId,
-      lastTransitionId: event.id,
-      updatedAt: event.at,
-      targetId: null,
-      targetIncarnation: null,
-      actorStampHash: null,
-      targetStampHash: null,
-      reason: null,
-      startedAt: null,
-      expiresAt: null,
-    }
+    const next = idleAfterTransition(row, event)
     event.revision = next.revision
     await this.commit(owner, row, next, event)
     return next
@@ -268,13 +234,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
     let row: ModeRow | null = null
     try {
       row = await this.read(owner)
-      if (
-        !input ||
-        Object.keys(input).some(
-          (key) => !['targetId', 'reason', 'durationSeconds', 'expectedContext'].includes(key)
-        )
-      )
-        throw invalidInput()
+      validateStartInputShape(input)
       requireContext(input.expectedContext, contextToken(owner, row))
       this.revision(row)
       if (row?.state === 'active' && this.now() >= row.expiresAt) {
@@ -282,22 +242,12 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
         throw new MasqueradeError('E_MASQUERADE_CONTEXT_CHANGED')
       }
       if (row?.state === 'active') throw new MasqueradeError('E_MASQUERADE_ALREADY_ACTIVE')
-      const reason = normalizeReason(input.reason)
-      if (!(
-        typeof input.targetId === 'string' ||
-        (typeof input.targetId === 'number' && Number.isSafeInteger(input.targetId))
-      ))
-        throw invalidInput()
-      const targetId = String(input.targetId)
-      if (!boundedString(targetId, 255) || targetId === actor.id) throw invalidInput()
-      const duration =
-        input.durationSeconds === undefined ? this.config.durationSeconds! : input.durationSeconds
-      if (
-        !Number.isInteger(duration) ||
-        duration < 60 ||
-        duration > this.config.maxDurationSeconds!
+      const { targetId, reason, duration } = parseStartSelection(
+        input,
+        actor.id,
+        this.config.durationSeconds!,
+        this.config.maxDurationSeconds!
       )
-        throw invalidInput()
       const currentActor = await this.inspect(actor.id)
       const target = await this.inspect(targetId)
       if (target?.subject.id === actor.id) throw invalidInput()

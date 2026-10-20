@@ -1,8 +1,9 @@
-import { randomBytes, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { defineConfig } from './define_config.js'
 import { unavailable } from './errors.js'
 import { boundedString } from './bounded_string.js'
-import { observe, reportUnknown } from './observers.js'
+import { openControlStore } from './control_store.js'
+import { commitTransition, idleAfterTransition } from './mode_transition.js'
 import { validateRow } from './row_validation.js'
 import type { ObserverDependencies } from './observers.js'
 import type { ActiveModeRow, AuditEvent, ControlStore, MasqueradeConfig, ModeRow } from './types.js'
@@ -35,28 +36,6 @@ function resolveNow(options: PruneOptions, dependencies: PruneDependencies): Dat
   }
 }
 
-function idleAfterExpiry(row: ActiveModeRow, event: AuditEvent): ModeRow {
-  if (row.revision >= Number.MAX_SAFE_INTEGER) throw unavailable()
-  return {
-    namespace: row.namespace,
-    actorId: row.actorId,
-    actorIncarnation: row.actorIncarnation,
-    state: 'idle',
-    revision: row.revision + 1,
-    revisionNonce: randomBytes(16).toString('hex'),
-    modeId: row.modeId,
-    lastTransitionId: event.id,
-    updatedAt: event.at,
-    targetId: null,
-    targetIncarnation: null,
-    actorStampHash: null,
-    targetStampHash: null,
-    reason: null,
-    startedAt: null,
-    expiresAt: null,
-  }
-}
-
 /**
  * Process one bounded housekeeping pass. Expiry is re-read and guarded by CAS per owner.
  * Retention applies to every namespace visible through this store; use a scoped store when
@@ -75,15 +54,12 @@ export async function pruneMasquerade<User, Request>(
   const validated = defineConfig(config)
   let store: ControlStore
   try {
-    store = await validated.store()
-    if (
-      !store ||
-      (store.testOnly && dependencies.environment !== 'test') ||
-      !['read', 'compareAndSet', 'expiredBatch', 'pruneEvents'].every(
-        (name) => typeof store[name as keyof ControlStore] === 'function'
-      )
-    )
-      throw unavailable()
+    store = await openControlStore(validated.store, dependencies.environment, [
+      'read',
+      'compareAndSet',
+      'expiredBatch',
+      'pruneEvents',
+    ])
   } catch {
     throw unavailable()
   }
@@ -146,24 +122,19 @@ export async function pruneMasquerade<User, Request>(
     }
     let next: ModeRow
     try {
-      next = idleAfterExpiry(current, event)
-      let outcome
-      try {
-        outcome = await store.compareAndSet({ owner, expected: current.revision, next, event })
-      } catch {
-        throw unavailable()
-      }
-      if (outcome?.status === 'conflict') continue
-      if (outcome?.status !== 'applied' || outcome.transitionId !== id) {
-        reportUnknown(dependencies, id)
-        throw unavailable()
-      }
+      next = idleAfterTransition(current, event)
+      const outcome = await commitTransition(store, dependencies, {
+        owner,
+        expected: current.revision,
+        next,
+        event,
+      })
+      if (outcome === 'conflict') continue
     } catch (error) {
       if ((error as { code?: string }).code === 'E_MASQUERADE_UNAVAILABLE') throw error
       throw unavailable()
     }
     expired++
-    observe(dependencies, event)
   }
 
   let eventsDeleted = 0
