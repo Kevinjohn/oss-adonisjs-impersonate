@@ -1,0 +1,89 @@
+/* ==========================================================================
+   Auth — split, form left, colophon + Plus pitch right
+   ========================================================================== */
+.auth {
+  display: grid;
+  grid-template-columns: 1.04fr 1fr;
+  min-height: 100vh;
+}
+.auth__form-col {
+  display: flex;
+  flex-direction: column;
+  padding: 30px 36px;
+  position: relative;
+  background: var(--card);
+}
+.auth__form-wrap {
+  margin: auto;
+  width: 100%;
+  max-width: 344px;
+  padding: 20px 0;
+}
+.auth__form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 22px;
+}
+.auth__title {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 27px;
+  letter-spacing: 0.2px;
+  text-wrap: balance;
+}
+.auth__sub {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 4px;
+}
+.auth__foot {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.auth__aside {
+  position: relative;
+  border-left: 1px solid var(--line);
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 44px;
+}
+.auth__aside-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.auth__quote {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 25px;
+  line-height: 1.3;
+  letter-spacing: 0.2px;
+  text-wrap: balance;
+  max-width: 22ch;
+}
+.pitch__t {
+  font-weight: 560;
+  font-size: 15px;
+  margin-bottom: 5px;
+  letter-spacing: -0.01em;
+}
+.pitch__p {
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.55;
+  text-wrap: pretty;
+  max-width: 36ch;
+}
+.pitch__a {
+  margin-top: 14px;
+  display: inline-block;
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+

@@ -1,0 +1,48 @@
+/* ==========================================================================
+   App layout
+   ========================================================================== */
+.subnav {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+}
+.subnav__inner {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 0 30px;
+  height: 100%;
+}
+.subnav__item {
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  position: relative;
+}
+.subnav__item:hover {
+  color: var(--ink);
+}
+.subnav__item[aria-current='page'] {
+  color: var(--ink);
+}
+.subnav__item[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--ink);
+}
+.app-main {
+  min-height: calc(100vh - 108px);
+  display: flex;
+  background: var(--paper);
+}
+
