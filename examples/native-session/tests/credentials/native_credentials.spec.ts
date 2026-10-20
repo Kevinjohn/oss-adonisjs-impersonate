@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import testUtils from '@adonisjs/core/services/test_utils'
+import limiter from '@adonisjs/limiter/services/main'
 import db from '@adonisjs/lucid/services/db'
 import { cleanUsers, createUsers } from '#tests/helpers/users'
 import { NativeCookieJar } from '#tests/helpers/native_cookie_jar'
@@ -11,7 +12,10 @@ type MasqueradeStatus = {
 
 test.group('native session credential controls', (group) => {
   group.setup(() => testUtils.db().migrate())
-  group.each.teardown(cleanUsers)
+  group.each.teardown(async () => {
+    await limiter.clear(['memory'])
+    await cleanUsers()
+  })
 
   test('recovers the raw actor through remember-me after native session expiry while the effective guard keeps the admitted target', async ({
     assert,

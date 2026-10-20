@@ -96,3 +96,12 @@ Set `NODE_ENV=test` when running `node ace masquerade:routes` to include those r
 coverage report. `app/services/masquerade_test_boundary.ts` and
 `app/services/fixture_control_store.ts` hold test-only failure injection and diagnostics. The
 admitted-stop-form endpoint is a concurrency probe and is not registered for an interactive app.
+
+The start and stop controls each use a separate `@adonisjs/limiter` budget keyed by the raw actor.
+Both allow 10 requests per minute by default; `MASQUERADE_START_REQUESTS` and
+`MASQUERADE_STOP_REQUESTS` override those counts. The fixture uses AdonisJS's process-local
+memory store, so counters reset on restart and are not shared between app processes. Use a shared
+store for a multi-process deployment. Tests select the memory store, lower the start budget to two,
+and clear limiter state between cases. Authentication and Shield CSRF middleware still run before
+the route limiters. See the [official rate-limiting guide](https://docs.adonisjs.com/guides/security/rate-limiting)
+for supported stores and middleware behavior.
