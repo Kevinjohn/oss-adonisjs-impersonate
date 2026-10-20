@@ -37,9 +37,9 @@ Open <http://localhost:3333>, then sign in with one of these local-only credenti
 These reserved accounts are for local demonstration only. Signup creates ordinary non-operator
 accounts. `node ace demo:seed` can be run again safely: it refreshes these three addresses and does
 not remove other accounts. To remove only these accounts, their remember-me tokens and their
-masquerade rows, run `node ace demo:reset`. Reset is allowed only when `NODE_ENV` is `development`
-or `test`, and when the app uses its local SQLite database; it refuses production and PostgreSQL.
-It does not drop tables or wipe unrelated accounts. Stop the server with Ctrl+C.
+masquerade rows, run `node ace demo:reset`. Both commands require `NODE_ENV` to be `development`
+or `test` and the local SQLite database; they refuse production and PostgreSQL. Reset does not
+drop tables or wipe unrelated accounts. Stop the server with Ctrl+C.
 
 `node ace generate:key` creates a unique application key in your local `.env`. The fixed keys in
 `.env.test` belong only to repeatable tests and are not suitable for an interactive app.

@@ -1,5 +1,6 @@
 import { BaseCommand } from '@adonisjs/core/ace'
 import { resetDemoAccounts } from '#services/demo_accounts'
+import env from '#start/env'
 
 /** Remove only the reserved fictional accounts from the local SQLite database. */
 export default class DemoResetCommand extends BaseCommand {
@@ -9,7 +10,7 @@ export default class DemoResetCommand extends BaseCommand {
 
   async run(): Promise<void> {
     await resetDemoAccounts({
-      nodeEnv: this.app.getEnvironment(),
+      nodeEnv: env.get('NODE_ENV'),
       dbClient: process.env.DB_CLIENT,
     })
     this.logger.info('Removed the demo accounts and their masquerade data.')

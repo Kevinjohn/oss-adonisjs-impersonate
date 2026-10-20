@@ -33,10 +33,17 @@ export const demoAccounts = [
 
 const demoEmails = demoAccounts.map(({ email }) => email)
 
-type ResetEnvironment = { nodeEnv?: string; dbClient?: string }
+type DemoEnvironment = { nodeEnv?: string; dbClient?: string }
 
 /** Create or refresh the three reserved demo accounts without touching other users. */
-export async function seedDemoAccounts(): Promise<void> {
+export async function seedDemoAccounts(
+  environment: DemoEnvironment = {
+    nodeEnv: process.env.NODE_ENV,
+    dbClient: process.env.DB_CLIENT,
+  }
+): Promise<void> {
+  assertDemoEnvironmentAllowed(environment)
+
   await db.transaction(async (trx) => {
     for (const account of demoAccounts) {
       await User.updateOrCreate({ email: account.email }, { ...account }, { client: trx })
@@ -46,12 +53,12 @@ export async function seedDemoAccounts(): Promise<void> {
 
 /** Delete only the reserved demo accounts from the local SQLite fixture database. */
 export async function resetDemoAccounts(
-  environment: ResetEnvironment = {
+  environment: DemoEnvironment = {
     nodeEnv: process.env.NODE_ENV,
     dbClient: process.env.DB_CLIENT,
   }
 ): Promise<void> {
-  assertDemoResetAllowed(environment)
+  assertDemoEnvironmentAllowed(environment)
 
   await db.transaction(async (trx) => {
     const users = await trx.from('users').whereIn('email', demoEmails).select('id')
@@ -77,12 +84,12 @@ export async function resetDemoAccounts(
   })
 }
 
-/** Refuse demo reset outside development/test or when the app is configured for PostgreSQL. */
-export function assertDemoResetAllowed(environment: ResetEnvironment): void {
+/** Refuse demo commands outside development/test or when the app uses PostgreSQL. */
+export function assertDemoEnvironmentAllowed(environment: DemoEnvironment): void {
   if (environment.nodeEnv !== 'development' && environment.nodeEnv !== 'test') {
-    throw new Error('Demo reset is allowed only in development or test environments.')
+    throw new Error('Demo commands are allowed only in development or test environments.')
   }
   if (environment.dbClient && environment.dbClient !== 'sqlite') {
-    throw new Error('Demo reset is allowed only with the local SQLite database.')
+    throw new Error('Demo commands are allowed only with the local SQLite database.')
   }
 }

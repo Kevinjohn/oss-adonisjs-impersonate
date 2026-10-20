@@ -1,13 +1,15 @@
 import { cleanUsers, createUsers } from '#tests/helpers/users'
 import User from '#models/user'
 import {
-  assertDemoResetAllowed,
+  assertDemoEnvironmentAllowed,
   resetDemoAccounts,
   seedDemoAccounts,
 } from '#services/demo_accounts'
 import testUtils from '@adonisjs/core/services/test_utils'
 import db from '@adonisjs/lucid/services/db'
 import { test } from '@japa/runner'
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 
 const demoEmails = [
   'operator@example.test',
@@ -65,6 +67,12 @@ test.group('demo accounts', (group) => {
     await seedDemoAccounts()
     const demoOperator = await User.findByOrFail('email', 'operator@example.test')
     await db.table('masquerade_modes').insert([idleMode(demoOperator.id), idleMode(actor.id)])
+    await db
+      .table('remember_me_tokens')
+      .insert([rememberMeToken(demoOperator.id), rememberMeToken(actor.id)])
+    await db
+      .table('masquerade_events')
+      .insert([masqueradeEvent(demoOperator.id), masqueradeEvent(actor.id)])
 
     await resetDemoAccounts({ nodeEnv: 'test', dbClient: 'sqlite' })
 
@@ -93,19 +101,113 @@ test.group('demo accounts', (group) => {
       ),
       1
     )
+    assert.equal(
+      Number(
+        await db
+          .from('remember_me_tokens')
+          .where('tokenable_id', demoOperator.id)
+          .count('* as total')
+          .first()
+          .then((row) => row?.total)
+      ),
+      0
+    )
+    assert.equal(
+      Number(
+        await db
+          .from('remember_me_tokens')
+          .where('tokenable_id', actor.id)
+          .count('* as total')
+          .first()
+          .then((row) => row?.total)
+      ),
+      1
+    )
+    assert.equal(
+      Number(
+        await db
+          .from('masquerade_events')
+          .where('actor_id', String(demoOperator.id))
+          .count('* as total')
+          .first()
+          .then((row) => row?.total)
+      ),
+      0
+    )
+    assert.equal(
+      Number(
+        await db
+          .from('masquerade_events')
+          .where('actor_id', String(actor.id))
+          .count('* as total')
+          .first()
+          .then((row) => row?.total)
+      ),
+      1
+    )
+  })
+
+  test('runs reset through Ace using NODE_ENV instead of the console execution environment', async ({
+    assert,
+  }) => {
+    await seedDemoAccounts()
+    assert.equal(runDemoReset('development').exitCode, 0)
+    assert.isNull(await User.findBy('email', 'operator@example.test'))
+
+    await seedDemoAccounts()
+    const productionReset = runDemoReset('production')
+    assert.notEqual(productionReset.exitCode, 0)
+    assert.include(productionReset.output, 'Demo commands are allowed only in development or test')
+    assert.isNotNull(await User.findBy('email', 'operator@example.test'))
   })
 
   test('refuses reset in production or against PostgreSQL', ({ assert }) => {
     assert.throws(
-      () => assertDemoResetAllowed({ nodeEnv: 'production', dbClient: 'sqlite' }),
+      () => assertDemoEnvironmentAllowed({ nodeEnv: 'production', dbClient: 'sqlite' }),
       /development or test/
     )
     assert.throws(
-      () => assertDemoResetAllowed({ nodeEnv: 'development', dbClient: 'pg' }),
+      () => assertDemoEnvironmentAllowed({ nodeEnv: 'development', dbClient: 'pg' }),
       /local SQLite/
     )
   })
 })
+
+function runDemoReset(nodeEnv: 'development' | 'production'): {
+  exitCode: number
+  output: string
+} {
+  const appRoot = fileURLToPath(new URL('../../', import.meta.url))
+  try {
+    const output = execFileSync(process.execPath, ['ace', 'demo:reset'], {
+      cwd: appRoot,
+      env: {
+        ...process.env,
+        NODE_ENV: nodeEnv,
+        PORT: '3333',
+        HOST: 'localhost',
+        LOG_LEVEL: 'error',
+        APP_KEY: 'development-command-fixture-key-012345',
+        APP_URL: 'http://localhost:3333',
+        SESSION_DRIVER: 'memory',
+        DB_CLIENT: 'sqlite',
+      },
+      encoding: 'utf8',
+      stdio: 'pipe',
+    })
+    return { exitCode: 0, output }
+  } catch (error) {
+    const commandError = error as {
+      status?: number
+      stderr?: string | Buffer
+      stdout?: string | Buffer
+    }
+    return {
+      exitCode: commandError.status ?? 1,
+      output: `${commandError.stdout?.toString() ?? ''}${commandError.stderr?.toString() ?? ''}`,
+    }
+  }
+}
 
 function idleMode(actorId: number) {
   return {
@@ -125,5 +227,33 @@ function idleMode(actorId: number) {
     started_at: null,
     expires_at: null,
     updated_at: new Date().toISOString(),
+  }
+}
+
+function rememberMeToken(tokenableId: number) {
+  const timestamp = new Date()
+  return {
+    tokenable_id: tokenableId,
+    hash: crypto.randomUUID(),
+    created_at: timestamp,
+    updated_at: timestamp,
+    expires_at: new Date(timestamp.getTime() + 60_000),
+  }
+}
+
+function masqueradeEvent(actorId: number) {
+  return {
+    id: crypto.randomUUID(),
+    mode_id: null,
+    authority_namespace: 'native-session-fixture',
+    actor_id: String(actorId),
+    actor_incarnation: '1',
+    target_id: null,
+    target_incarnation: null,
+    at: new Date().toISOString(),
+    kind: 'start_denied',
+    outcome_code: 'E_MASQUERADE_DENIED',
+    revision: 1,
+    reason: null,
   }
 }
