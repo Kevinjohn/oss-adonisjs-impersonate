@@ -8,7 +8,10 @@ Masquerade calls `securityStamp(user)` when a mode starts and stores a hash of t
 active business admission, it reads `inspectAccount(id)` for the actor and target and compares the
 hash of each inspected snapshot's stamp with the hash captured at start. If the two callbacks derive
 different values for the same account state, the first active admission clears the mode as globally
-invalid and rejects that request. If inspection returns an older epoch, it has the same effect.
+invalid and rejects that request. An older inspected epoch invalidates the mode only if it differs
+from the stamp captured at start. If inspection keeps returning the captured epoch after the
+authoritative account changes, it can conceal revocation and leave the mode admitted. Always read
+the current authoritative epoch rather than a stale cache.
 
 Derive both values from one persisted account epoch. For example, if the host stores an incrementing
 `securityEpoch` on the account row:
