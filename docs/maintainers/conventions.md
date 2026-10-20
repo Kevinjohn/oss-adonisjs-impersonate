@@ -37,8 +37,10 @@ exercises SQLite/PostgreSQL consumers.
 `examples/recipe-host` template, installs the packed package in a disposable directory, runs
 `configure`, applies the marked literal setup and usage guide fragments, typechecks the host,
 and exercises native auth, Shield CSRF, status/start/effective read/allowed mutation/sensitive
-denial/stop. It verifies that changing the documented control guard, context middleware order,
-or form token field breaks synchronization. The runner preserves the host's existing Session and
+denial/stop. It compiles and executes the documented form-input helper. It checks that changing
+the documented control guard or middleware order breaks synchronization, then runs broken-host
+form-token and missing-context-middleware journeys to prove those request boundaries fail. The
+runner preserves the host's existing Session and
 Shield stack while inserting the documented context line, and it checks that the separate guard
 still works. It cleans the temporary host and its SQLite database, and drops its uniquely named
 PostgreSQL schema. It starts/stops the managed PostgreSQL server only when it owns the start;

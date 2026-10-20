@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -7,6 +7,36 @@ import { fileURLToPath } from 'node:url'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const template = join(root, 'examples/recipe-host')
+let activeChild: ChildProcess | undefined
+let interrupted: NodeJS.Signals | undefined
+let terminationTimer: NodeJS.Timeout | undefined
+
+function terminateActiveChild(): void {
+  const child = activeChild
+  if (!child?.pid) return
+  try {
+    process.kill(-child.pid, 'SIGTERM')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') console.error(error)
+  }
+  terminationTimer = setTimeout(() => {
+    if (activeChild !== child) return
+    try {
+      process.kill(-child.pid!, 'SIGKILL')
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ESRCH') console.error(error)
+    }
+  }, 5000)
+}
+
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.on(signal, () => {
+    if (interrupted) return
+    interrupted = signal
+    process.exitCode = 1
+    terminateActiveChild()
+  })
+}
 const database = process.argv.find((arg) => arg.startsWith('--database='))?.split('=')[1] ?? 'all'
 if (!['sqlite', 'pg', 'all'].includes(database)) throw new Error('Use --database=sqlite|pg|all')
 if (Number(process.versions.node.split('.')[0]) !== 24) throw new Error('Use Node 24')
@@ -38,6 +68,7 @@ const snippets = {
   controlRoutes: fence(usage, 'control-routes'),
   controlLimiters: fence(usage, 'control-limiters'),
   businessRoutes: fence(usage, 'business-routes'),
+  htmlRoutes: fence(usage, 'html-control-routes'),
   htmlParser: fence(usage, 'demo-control-input'),
 }
 
@@ -123,11 +154,19 @@ async function run(
   cwd: string,
   args: string[],
   label: string,
-  env: NodeJS.ProcessEnv
+  env: NodeJS.ProcessEnv,
+  cleanup = false
 ): Promise<string> {
+  if (interrupted && !cleanup) throw new Error(`Recipe interrupted by ${interrupted}`)
   console.log(`[recipe] ${label}: pnpm ${args.join(' ')}`)
   return new Promise((resolveOutput, reject) => {
-    const child = spawn('pnpm', args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn('pnpm', args, {
+      cwd,
+      env,
+      detached: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    activeChild = child
     let output = ''
     child.stdout.on('data', (chunk) => {
       output += chunk
@@ -135,9 +174,16 @@ async function run(
     child.stderr.on('data', (chunk) => {
       output += chunk
     })
-    child.on('error', reject)
+    child.on('error', (error) => {
+      if (activeChild === child) activeChild = undefined
+      if (terminationTimer) clearTimeout(terminationTimer)
+      reject(error)
+    })
     child.on('exit', (code) => {
-      if (code === 0) resolveOutput(output)
+      if (activeChild === child) activeChild = undefined
+      if (terminationTimer) clearTimeout(terminationTimer)
+      if (interrupted && !cleanup) reject(new Error(`Recipe interrupted by ${interrupted}`))
+      else if (code === 0) resolveOutput(output)
       else reject(new Error(`${label} failed (${code}):\n${output.slice(-6000)}`))
     })
   })
@@ -147,6 +193,38 @@ async function writeHost(app: string, path: string, contents: string): Promise<v
   const destination = join(app, path)
   await mkdir(resolve(destination, '..'), { recursive: true })
   await writeFile(destination, contents)
+}
+
+async function expectBrokenJourney(
+  app: string,
+  path: string,
+  originalText: string,
+  brokenText: string,
+  label: string,
+  expectedAssertion: string,
+  env: NodeJS.ProcessEnv
+): Promise<void> {
+  const destination = join(app, path)
+  const original = await readFile(destination, 'utf8')
+  requireRecipe(original.includes(originalText), `${label} mutation seam`)
+  await writeFile(destination, original.replace(originalText, brokenText))
+  try {
+    let expectedFailure = false
+    try {
+      await run(app, ['test'], `${label} negative journey`, env)
+    } catch (error) {
+      const output = String(error)
+      expectedFailure =
+        output.includes(`${label} negative journey failed`) &&
+        output.includes(expectedAssertion) &&
+        output.includes('1 failed')
+      if (!expectedFailure) throw error
+    }
+    if (!expectedFailure) throw new Error(`${label} broken host unexpectedly passed`)
+    console.log(`[recipe] PASS ${label} broken-host negative`)
+  } finally {
+    await writeFile(destination, original)
+  }
 }
 
 async function applyRecipe(app: string): Promise<void> {
@@ -211,6 +289,8 @@ async function applyRecipe(app: string): Promise<void> {
   await writeHost(app, 'start/masquerade_control_limiter.ts', snippets.controlLimiters)
   await writeHost(app, 'start/masquerade_control_routes.ts', snippets.controlRoutes)
   await writeHost(app, 'start/recipe_business_routes.ts', snippets.businessRoutes)
+  await writeHost(app, 'start/recipe_html_routes.ts', snippets.htmlRoutes)
+  await writeHost(app, 'app/services/demo_control_input.ts', snippets.htmlParser)
   await cp(
     join(app, 'recipe-assets/masquerade_controller.ts.txt'),
     join(app, 'app/controllers/masquerade_controller.ts')
@@ -227,7 +307,7 @@ async function applyRecipe(app: string): Promise<void> {
   await writeFile(
     routesPath,
     (await readFile(routesPath, 'utf8')) +
-      "\nimport '#start/masquerade_control_routes'\nimport '#start/recipe_business_routes'\n"
+      "\nimport '#start/masquerade_control_routes'\nimport '#start/recipe_business_routes'\nimport '#start/recipe_html_routes'\n"
   )
 }
 
@@ -260,7 +340,7 @@ try {
     const app = await mkdtemp(join(tmpdir(), `masquerade_recipe_${engine}_`))
     const schemaName = `recipe_${randomUUID().replaceAll('-', '')}`
     const env = { ...baseEnv, DB_CLIENT: engine, DB_SCHEMA: schemaName }
-    let schemaCreated = false
+    let schemaCreationAttempted = false
     try {
       await cp(template, app, {
         recursive: true,
@@ -301,10 +381,26 @@ try {
       await applyRecipe(app)
       if (engine === 'pg') {
         if (process.env.RECIPE_PG_EXTERNAL !== '1') {
-          const start = await run(root, ['pg:start'], 'start PostgreSQL', env)
-          ownsPostgres = !start.includes('already running')
+          let alreadyRunning = false
+          try {
+            const status = await run(
+              root,
+              ['exec', 'bash', 'bin/pg.sh', 'status'],
+              'check PostgreSQL ownership',
+              env
+            )
+            requireRecipe(status.includes(`on port ${env.DB_PORT}`), 'PostgreSQL port mismatch')
+            alreadyRunning = true
+          } catch (error) {
+            if (!String(error).includes('owned cluster stopped')) throw error
+          }
+          if (!alreadyRunning) {
+            ownsPostgres = true
+            await run(root, ['pg:start'], 'start PostgreSQL', env)
+          }
         }
         const sql = `create schema ${schemaName}`
+        schemaCreationAttempted = true
         await run(
           app,
           [
@@ -317,14 +413,32 @@ try {
           'create PostgreSQL schema',
           env
         )
-        schemaCreated = true
       }
       await run(app, ['typecheck'], `${engine} typecheck`, env)
       await run(app, ['test'], `${engine} journey`, env)
+      await expectBrokenJourney(
+        app,
+        'app/services/demo_control_input.ts',
+        'const hidden = body._masqueradeContext',
+        'const hidden = body.contextToken',
+        'form token',
+        'recipe form start',
+        env
+      )
+      await expectBrokenJourney(
+        app,
+        'start/kernel.ts',
+        "  () => import('#middleware/masquerade_context_middleware'),\n",
+        '',
+        'context middleware',
+        'sensitive handler must not execute',
+        env
+      )
+      await run(app, ['test'], `${engine} restored journey`, env)
       console.log(`[recipe] PASS ${engine}`)
     } finally {
       let cleanupError: unknown
-      if (engine === 'pg' && schemaCreated) {
+      if (engine === 'pg' && schemaCreationAttempted) {
         const sql = `drop schema if exists ${schemaName} cascade`
         try {
           await run(
@@ -337,7 +451,8 @@ try {
               `import pg from 'pg'; const c=new pg.Client({host:process.env.DB_HOST,port:Number(process.env.DB_PORT),user:process.env.DB_USER,password:process.env.DB_PASSWORD,database:process.env.DB_DATABASE}); await c.connect(); try { await c.query(${JSON.stringify(sql)}) } finally { await c.end() }`,
             ],
             'drop PostgreSQL schema',
-            env
+            env,
+            true
           )
         } catch (error) {
           cleanupError = error
@@ -351,5 +466,6 @@ try {
     }
   }
 } finally {
-  if (ownsPostgres) await run(root, ['pg:stop'], 'stop PostgreSQL', baseEnv)
+  if (ownsPostgres) await run(root, ['pg:stop'], 'stop PostgreSQL', baseEnv, true)
 }
+if (interrupted) throw new Error(`Recipe interrupted by ${interrupted}`)
