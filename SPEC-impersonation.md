@@ -1,0 +1,394 @@
+# Technical specification: server-side account masquerade
+
+**Status:** v1 development contract, reduced to the scope accepted in [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md) on 19 October 2026.
+**Version:** 0.3
+**Date:** 19 October 2026
+**Product requirements:** [PRD-impersonation.md](PRD-impersonation.md)
+**Working package label:** `adonisjs-masquerade`; registry name, repository name, version and publication are undecided.
+
+## 1. Reading contract and authority
+
+- This document describes a new, independently maintained package for AdonisJS 7, native Auth 10 and Session 8. Names are proposed APIs. MUST, MUST NOT, SHOULD and MAY carry their usual meaning.
+- The PRD's settled boundaries and document-review decisions are requirements. The development plan's twenty agreed items and four owner decisions are the v1 contract; where the plan narrows an earlier proposal, the plan wins.
+- Masquerade is an account-level setting: an authenticated operator selects "masquerade as this user" and the server resolves that operator's effective identity on later requests. Start and stop never log in as the target, change the authenticated actor, replace a session or mint target credentials. Native remember-me and cookie maintenance keep their ordinary behaviour.
+- This document authorises the milestones in section 11.2. It does not authorise publication, repository naming or merging.
+- v1 decisions in one line each: one mode per actor per namespace, visible to all of that actor's sessions (D01); native session transport only, opaque tokens v1.1, JWT out (D02); 15-minute default, 60-minute ceiling, hosts may only narrow (D03); mandatory normalised reason (D04); one `ControlStore` contract with a Lucid SQLite/PostgreSQL subpath (D05); owner-bound context token on every covered unsafe request with report and enforce modes (D06); one revoked credential never clears the mode, an advanced stamp does (D07); hashed stamps captured at start and rechecked on every active admission (D08); unsafe methods denied while active unless `allowMutation()`, `sensitive()` always denied (D09); an invalidated request never continues as the actor (D10); Account Kit integration is v1.2 (D11).
+
+## 2. Architecture and ownership
+
+- `masquerade-core` owns the state machine, CAS semantics, policy evaluation, expiry, errors and audit contract, and depends on ports only.
+- `adonis-integration` owns the provider, request context, effective session guard, controllers, markers, context middleware and commands. `native-authority` owns actor loading, `securityStamp`, `inspectAccount` and incarnation mapping.
+- `lucid-control-store` owns atomic persistence, the migration stub, prune and conformance behind the core store contract. The host owns policies, namespace, UI, Bouncer abilities, tenant rules, route markers, limiter and retention.
+
+Proposed exports:
+
+```text
+.                 # defineConfig, service, domain types/errors, configure export
+./types           # public types only
+./providers/masquerade_provider
+./auth            # effective guard factory
+./http            # context middleware, sensitive()/allowMutation() markers, error mapping, controllers
+./native          # native session authority factory
+./stores/lucid    # optional SQLite/PostgreSQL store and migration stub
+./testing         # memory store and ControlStore conformance suite
+```
+
+Lucid is an optional peer, lazily imported from `./stores/lucid`. A packed native-session consumer MUST prove that importing the root resolves neither Lucid nor Account Kit. Peer floors are release claims established by floor/latest consumer runs, not by this document. Repository layout follows this export map plus `tests/`, `examples/native-session/` (the M0 app kept as the consumer fixture) and `docs/`: one responsibility per file, ESM, explicit types at ports, snake_case filenames, narrow exports, no Docker or container-based tests, no AI attribution or private review metadata in source, docs or commits.
+
+### 2.1 Request flow
+
+Session cookie → effective guard authenticates the actor with the raw session guard → read mode row by `(namespace, actorId, incarnation)` → check expiry, hashed stamps, `canMasquerade`, `canUseRequest` → context middleware validates the token on unsafe requests → effective user is the target while active and the actor while idle → Bouncer and application code run as the effective user → handler runs with an immutable actor/effective audit projection.
+
+Control routes (start, stop, status), login, signup, logout and public routes use the raw actor guard. They never read the mode store during authentication. Stop and status read the store inside their handlers and return 503 when it is unavailable. Logout never needs the store.
+
+## 3. Invariants
+
+- **I01:** Every admission has a valid native actor credential from the raw session guard, never from body, query or headers. A stored mode never authenticates a request.
+- **I02:** At most one active target per `(namespace, actorId, incarnation)`.
+- **I03:** Effective target permissions never include the actor's permissions.
+- **I04:** No target session, token or cookie is created, modified or revoked, and transitions add no actor credential refresh, replacement or lifetime extension.
+- **I05:** Each committed transition atomically advances the revision, rotates the nonce and writes its audit event in one transaction. A stale expected revision cannot overwrite the current row, including across an idle → active → idle cycle.
+- **I06:** Expiry is fixed and UTC-based; `now >= expiresAt` is expired and is checked before business admission.
+- **I07:** Policy denial, store failure or validation failure never falls through to running a handler as another identity.
+- **I08:** Stop clears the actor's own mode without loading the target or holding permission to start a new one. Status never starts, renews or selects a target.
+- **I09:** Observers cannot turn a committed success into a failure or trigger a second transition. Process-local caches and locks are not authoritative.
+- **I10:** A request's identity snapshot is immutable after admission; admitted work is not recalled.
+- **I11:** Responses, events and observers never receive raw stamps, credentials or whole user records.
+- **I12:** While active, `sensitive()` routes and billing mutations cannot be allowed by `allowMutation()`.
+
+## 4. Identity and policy contracts
+
+```ts
+type SubjectId = string // canonical provider ID
+type Instant = string // UTC ISO 8601, millisecond precision
+type Revision = number // integer 0..Number.MAX_SAFE_INTEGER; 0 is the no-row sentinel
+type ContextToken = string // `<revision>.<nonce>`, non-secret
+
+interface Subject<User> {
+  id: SubjectId
+  incarnation: string
+  user: User
+}
+interface AccountSnapshot<User> {
+  subject: Subject<User>
+  securityStamp: string
+  active: boolean
+} // stamp hashed before storage
+interface NativeAuthority<User> {
+  namespace: string
+  guard: string // raw session guard name, e.g. 'web'
+  incarnation: 'id' | ((user: User) => string) // required; no silent default
+  securityStamp(user: User): string | Promise<string>
+  inspectAccount(id: SubjectId): Promise<AccountSnapshot<User> | null>
+}
+interface MasqueradePolicy<User, Request> {
+  canMasquerade(input: {
+    actor: Subject<User>
+    target: Subject<User>
+    reason?: string
+    request?: Request
+  }): Promise<boolean>
+  canUseRequest?(input: {
+    actor: Subject<User>
+    target: Subject<User>
+    request: Request
+  }): Promise<boolean>
+}
+```
+
+- `canMasquerade` is required. It runs at start with `reason` and `request`, and on every active admission without them. Only exact `true` allows. `false` on admission is global invalidation: CAS to idle, one `invalidated` event, 409 context changed. A throw is 503 with mode unchanged.
+- `canUseRequest` is optional request-local tenant or route denial. `false` is 403 with mode unchanged; a throw is 503 with mode unchanged. Neither permits actor fallback.
+- `inspectAccount` establishes eligibility and the current stamp, never authentication. `null`, `active: false` or a thrown error prevents admission; the public response never discloses target existence.
+- Start is deny-by-default: a missing policy fails at boot.
+
+### 4.1 Namespace, identifiers and incarnation
+
+- Namespace is deployment configuration naming one identity domain, not a request-supplied tenant selector. Guards for the same users share a namespace; different identity domains must not.
+- `incarnation: 'id'` declares that the host never reuses IDs; otherwise the callback returns a persisted immutable per-account value that does not change on ordinary security updates.
+- Resolve target input through the provider, then use the canonical ID. `"001"` and `"1"` are not equated. Bounds: namespace 128 UTF-8 bytes, subject ID 255, incarnation 128, raw stamp 512. Oversized values fail at boot or as invalid input.
+- Tenant context is derived after effective identity resolution, never copied from the actor.
+
+### 4.2 Native authority and security stamps
+
+- The host supplies `securityStamp(user)` per subject. A constant, a read-time timestamp or a hash of incomplete fields is not valid.
+- The package stores `sha256(stamp)` and compares equality. No sealing, encryption, key provider, rotation or decryption failure paths.
+- Both hashes are captured at start and rechecked for actor and target on every active admission. Stop and expiry never read a stamp.
+- Logout of one session rejects that credential natively and does not advance the stamp. Logout-all advances the stamp; a later login cannot inherit the prior mode. A server-only `invalidate(actorId)` helper is optional, not a hook system.
+- Opaque access-token transport is deferred to v1.1: token guards remain raw actor guards in v1, and a token credential cannot start, use or stop a mode. The v1.1 adapter adds a per-token masquerade ability and the T-TOKEN family.
+
+### 4.3 Effective session guard and Bouncer
+
+The effective guard wraps one declared raw session guard (`web` → `web_effective`) and implements the Auth 10 guard contract. The seam is normative and has no fallback:
+
+1. Business middleware calls `ctx.auth.authenticateUsing(['web_effective'])`. The wrapper's `check()` resolves the effective user, sets its own `authenticationAttempted` and `isAuthenticated`, and returns `true` only after every admission check.
+2. Inside the wrapper, actor authentication calls only `ctx.auth.use('web').authenticate()`, never facade `authenticate`, `check`, `authenticateUsing` or `checkUsing`.
+3. The default guard for business surfaces is the effective guard. `silent_auth` on a business route must leave the facade on the effective guard.
+4. Request Bouncer uses the host's lazy resolver, `new Bouncer(() => ctx.auth.user, ...)`. Policy callbacks receive explicit actor and target models and an explicitly bound Bouncer, never the default instance.
+5. Before dispatch, `auth.authenticatedViaGuard` is the effective guard, `auth.user === effectiveGuard.user`, and `auth.use('web').user.id === actorId`. In idle mode the IDs coincide but the effective guard owns the facade.
+6. `check()` translates only genuine missing or invalid actor authentication into `false`; domain errors propagate. `driverName` passes through so `E_UNAUTHORIZED_ACCESS` renders as for the session guard, and Japa `loginAs` works unchanged.
+
+M0 proves this in a stock AdonisJS 7 hypermedia starter kit. If facade `auth.user` cannot be made the effective user, M1 does not start. Plain assignment to `ctx.auth.user` or private-field patching is prohibited.
+
+## 5. Service API and request context
+
+### 5.1 Configuration
+
+```ts
+interface MasqueradeConfig<User, Request> {
+  authority: NativeAuthority<User>
+  policy: MasqueradePolicy<User, Request>
+  store: () => Promise<ControlStore>
+  durationSeconds?: number // default 900; integer 60..maxDurationSeconds
+  maxDurationSeconds?: number // default 3600; may only narrow
+  contextEnforcement: 'report' | 'enforce'
+  retention: { days: number } | 'host-managed'
+}
+```
+
+Boot fails on unknown fields, non-finite or out-of-range durations, a maximum above 3600, missing policy, missing `incarnation`, unsafe namespace, or the memory store outside tests. There is no allow-all scaffold.
+
+### 5.2 Service and views
+
+```ts
+interface StartInput {
+  targetId: string | number
+  reason: string
+  durationSeconds?: number
+  expectedContext: ContextToken
+}
+interface StopInput {
+  expectedContext: ContextToken
+}
+type ModeView =
+  | { isMasquerading: false; contextToken: ContextToken }
+  | {
+      isMasquerading: true
+      contextToken: ContextToken
+      targetId: SubjectId
+      startedAt: Instant
+      expiresAt: Instant
+    }
+interface MasqueradeService<Request> {
+  start(request: Request, input: StartInput): Promise<ModeView>
+  stop(request: Request, input: StopInput): Promise<ModeView>
+  status(request: Request): Promise<ModeView>
+  resolve(request: Request): Promise<ResolvedContext>
+}
+interface ResolvedContext {
+  namespace: string
+  actorId: SubjectId
+  actorIncarnation: string
+  effectiveId: SubjectId
+  effectiveIncarnation: string
+  isMasquerading: boolean
+  contextToken: ContextToken
+  modeId?: string // modeId is audit correlation only
+}
+```
+
+- `ResolvedContext` is the safe projection for business audit, including idle requests. No service accepts an actor ID, revision or mode ID from the client as authority.
+- Mode resolution is memoised per request after admission; idle mode loads no target. Request budget: native credential validation, one mode read, stamp and policy reads, and no write unless a transition or invalidation occurs.
+- Status returns the target ID only to the authenticated owner. It excludes reason, stamps, raw revision and user objects.
+
+### 5.3 Context token
+
+- Token is `<revision>.<nonce>`. For a row, `nonce` is the stored per-revision random 128-bit value. For an actor with no row, revision is `0` and the nonce is `sha256` of the length-framed tuple `(namespace, actorId, incarnation)`, so it is owner-bound without a key.
+- Validation parses the integer revision, compares it to the owner's current revision and compares the nonce for equality. No MAC, key provider or format version. Input is bounded to 128 bytes; malformed input is treated as missing.
+- Every covered unsafe request carries the token in the `X-Masquerade-Context` header or the `_masqueradeContext` hidden field. If both are present they must match. Missing is 428; stale is 409.
+- `contextEnforcement: 'report'` logs the would-be 428/409 outcome with route and actor ID and lets the request continue. `'enforce'` rejects. Hosts migrate forms in report mode, then flip to enforce before relying on T-CONTEXT.
+- Clients MUST NOT refresh the token and replay an old intent. GET/HEAD need no token. Start and stop require the expected token and rotate it on success.
+- Idle rows are retained with their latest revision and nonce; pruning never removes them, or pre-start tokens would validate again.
+
+### 5.4 Route classification and markers
+
+- Routes under an effective guard are business routes. GET, HEAD and OPTIONS are `read`; other methods are `mutation` and denied while active unless the route or group carries `allowMutation()`. `sensitive()` denies while active regardless of `allowMutation()`.
+- Markers are explicit route or group middleware; an unsafe verb is at least `mutation` whatever the markers say. Idle requests follow ordinary actor policy and still need the context token.
+- Routes under a raw guard are control routes only if they are the package's start, stop and status routes or the host's login, signup, logout and public routes. A raw-guard route that runs business behaviour is a coverage defect.
+- `node ace masquerade:routes` prints every route grouped by guard with its classification and flags raw-guard routes that are not recognised control routes. The host reviews that report as a release gate (PRD FR-09); it is not a boot gate.
+- One Edge share exposes the safe `ModeView` and renders the hidden field. Inertia and API clients read status and send the header.
+
+## 6. Persistence and atomic transitions
+
+### 6.1 Mode table `masquerade_modes`
+
+| Column                                                                               | Constraint                                                                                                                                            |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `authority_namespace`, `actor_id`, `actor_incarnation`                               | Unique owner key, bounded strings                                                                                                                     |
+| `revision`, `revision_nonce`                                                         | Integer `1..2^53-1` (BIGINT on PostgreSQL, INTEGER on SQLite, parsed and validated on read); random 128-bit hex rotated on every committed transition |
+| `state`, `mode_id`, `last_transition_id`                                             | `idle` or `active`; random UUID for the current or most recent mode; UUID generated before the CAS                                                    |
+| `target_id`, `target_incarnation`, `actor_stamp_hash`, `target_stamp_hash`, `reason` | Set while active, null while idle; stamps are `sha256` hex                                                                                            |
+| `started_at`, `expires_at`, `updated_at`                                             | UTC; active rows require `expires_at > started_at`                                                                                                    |
+
+Malformed rows fail closed. A reused ID with a different incarnation is a different owner key. Idle rows keep only owner key, revision, nonce, `mode_id` and timestamps.
+
+### 6.2 Audit table `masquerade_events`
+
+- Columns: event ID, mode ID when known, namespace, actor ID and incarnation, target ID and incarnation when known, UTC time, kind, outcome code, owner revision, bounded reason for start.
+- Kinds: `started`, `stopped`, `expired`, `invalidated`, `start_denied`, `stop_denied`, `control_noop`. Invalidation codes distinguish actor stamp, target stamp, actor ineligible, target ineligible and policy denied; public responses stay generic.
+- Never persist credentials, cookies, stamps, user objects, request bodies, IP addresses or user agents.
+- Committed transitions write the row update and the event in one transaction. After native authentication, CSRF and the host limiter, each start or stop is inside the control-audit boundary: its denial, input failure, context conflict or idle-stop no-op is written through `recordControlOutcome` without changing revision. A failed outcome write is 503 with no state change.
+- Native authentication failures, limiter rejections, status denials and business or local denials use host diagnostics, not package events.
+- Rate limiting is the host's `@adonisjs/limiter` on the mounted routes, with separate start and stop budgets so an exhausted start budget cannot block recovery. The package ships documentation, not limiter code.
+- After commit, the service emits `masquerade:started|stopped|expired|invalidated` through the Adonis emitter and logs through the logger without awaiting. Rejections are caught and routed to the emitter error handler. No deadline, slot cap, abort signal or config hooks. This satisfies PRD FR-30 by never awaiting; delivery is best effort with event IDs for deduplication.
+
+### 6.3 Store contract
+
+```ts
+interface OwnerKey {
+  namespace: string
+  actorId: SubjectId
+  actorIncarnation: string
+}
+
+type CasOutcome =
+  | { status: 'applied'; transitionId: string }
+  | { status: 'conflict' }
+  | { status: 'indeterminate'; transitionId: string }
+
+interface ControlStore {
+  read(owner: OwnerKey): Promise<ModeRow | null>
+  // expected=null means INSERT IF ABSENT. Row update and event commit together or not at all.
+  compareAndSet(input: {
+    owner: OwnerKey
+    expected: Revision | null
+    next: ModeRow
+    event: AuditEvent
+  }): Promise<CasOutcome>
+  recordControlOutcome(event: AuditEvent): Promise<void>
+  expiredBatch(input: { now: Instant; limit: number }): Promise<ModeRow[]>
+  pruneEvents(input: { before: Instant; limit: number }): Promise<number>
+}
+```
+
+- PostgreSQL uses unique insert or conditional update with the event insert in the same transaction. SQLite uses real transactions with bounded busy handling. Process-local mutexes do not satisfy the contract; read-then-unconditional-write is prohibited.
+- The transition UUID is generated before the CAS and retained across the adapter's safe retries. A definite pre-commit failure throws unavailable. A lost commit acknowledgement returns `indeterminate`; the service logs the transition ID server-side and returns 503 `E_MASQUERADE_UNAVAILABLE`. GET status is the recovery path. No automatic retry, compensation or speculative observer emission.
+- The conformance suite under `./testing` runs against memory, SQLite and PostgreSQL and is the contract for custom stores.
+
+### 6.4 State transition table
+
+| Current state | Input / condition                                                              | Result                                                                                |
+| ------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| Absent/idle   | Valid start, matching context, eligible actor and target, `canMasquerade` true | Active; new mode ID, revision and nonce; fixed expiry; one `started` event            |
+| Active        | Any second start, including same target                                        | 409 `E_MASQUERADE_ALREADY_ACTIVE`; no replacement or extension; `start_denied` record |
+| Active        | Valid stop with matching context                                               | Idle; next revision and nonce; clear stamps, target, reason; one `stopped` event      |
+| Idle/absent   | Stop with current context                                                      | 200 idle; no revision change; one `control_noop` record                               |
+| Any           | Mismatching expected context on start or stop                                  | 409 `E_MASQUERADE_CONTEXT_CHANGED`; current winner untouched; denial record           |
+| Active        | Expired, stamp changed, account ineligible or `canMasquerade` false            | CAS to idle; one `expired` or `invalidated` event; triggering business request 409    |
+| Active        | Actor credential invalid, or `canUseRequest` false                             | Reject that request (401 or 403); mode unchanged                                      |
+| Any           | Store unavailable, malformed row, policy or authority throw                    | 503; no handler, no actor fallback                                                    |
+| Any           | Revision at `Number.MAX_SAFE_INTEGER`                                          | Fail closed; controlled migration required; never wrap                                |
+
+## 7. Algorithms
+
+### 7.1 Start
+
+1. Authenticate the raw actor guard; Shield CSRF and the host limiter have already run. Validate input shape and the expected context against the current row. Resolve an expired active row to idle first, then return 409; never start from an old token in the same request.
+2. Reject an active mode and self-targeting. Resolve the target through `inspectAccount` with generic denial for missing or ineligible targets.
+3. Evaluate `canMasquerade` with reason and request, then `canUseRequest` when configured. Capture both stamp hashes and the fixed deadline from the injectable clock.
+4. CAS the active row and `started` event against the observed idle revision, or insert if absent. Only the winner succeeds. Return the committed view with the new token, then emit without awaiting. No login, logout or cookie change occurs.
+
+### 7.2 Business request admission
+
+1. Authenticate the raw actor guard inside the effective guard, then read the owner row. No cross-request allow cache.
+2. If idle, the effective user is the actor; the context middleware still validates unsafe requests and no active-mode restrictions apply.
+3. If active, check expiry, both stamp hashes, both accounts' eligibility and `canMasquerade`. Any global invalidity CASes to idle and returns 409; a CAS conflict is re-read, never treated as permission. Then `canUseRequest` when configured: `false` is 403, a throw is 503, mode unchanged.
+4. Validate the context token on unsafe requests under the configured enforcement mode.
+5. While active, deny `sensitive()` routes and billing mutations and unsafe routes without `allowMutation()`; then ordinary Bouncer checks run as the target.
+6. Freeze the actor/effective snapshot and return the effective user through the guard.
+
+### 7.3 Stop, expiry and logout
+
+- Stop authenticates the raw actor guard and does not load the target or evaluate `canMasquerade` or `canUseRequest`. It reads the owner row, verifies the expected context (a stale stop never clears a newer mode), then CASes to idle with one `stopped` event. Repeated stop with the current idle token records `control_noop` and returns idle.
+- Stop works after target deletion, suspension, stamp change or loss of start permission, provided the actor credential is valid.
+- Every admission enforces expiry; the prune command is housekeeping, not the mechanism. Cleanup re-reads and never clears a newer mode.
+- Clock is injectable for tests; deployments need synchronised clocks. A durably ended mode never reactivates on backward clock movement.
+- Logout of one session ends that credential only. Logout-all advances the stamp. A fresh login during a valid mode sees the target; documentation states this.
+- Self-targeting is invalid input. Switching target requires stop, fresh context, then start.
+
+## 8. HTTP contract
+
+| Method/path              | Operation | Input                                               | Success               |
+| ------------------------ | --------- | --------------------------------------------------- | --------------------- |
+| `GET /masquerade`        | Status    | Raw actor credential                                | 200 `ModeView`        |
+| `POST /masquerade/start` | Start     | `{ targetId, reason, durationSeconds? }` plus token | 200 active `ModeView` |
+| `POST /masquerade/stop`  | Stop      | `{}` plus token                                     | 200 idle `ModeView`   |
+
+- Routes are opt-in and mounted by the host under a prefix behind Shield CSRF and the host limiter. Server-rendered controllers may redirect to fixed same-origin paths.
+- Control, status and effective-user responses send `Cache-Control: no-store` and appropriate `Vary`.
+- Input: reject unknown fields, oversized bodies (8 KiB), fractional or out-of-range durations, and client-supplied expiry.
+- Reason normalisation order: trim with `String.prototype.trim()`, replace `\r\n` with `\n`, reject any C0 or C1 control except `\n` and `\t`, then require 1–500 Unicode code points and at most 2,000 UTF-8 bytes. Persist the normalised value; never truncate. Acceptable: `Ticket 4821: cannot see invoices`. Unacceptable: a tab-only string, or text containing `\u0007`.
+- JSON errors are `{ errors: [{ code, message }] }` with stable codes and English messages. The host exception handler localises; the package ships no translations, i18n lookup or JSON:API negotiation.
+
+| HTTP | Code                            | Meaning                                                                           |
+| ---- | ------------------------------- | --------------------------------------------------------------------------------- |
+| 401  | `E_MASQUERADE_UNAUTHENTICATED`  | Actor credential or account access invalid                                        |
+| 403  | `E_MASQUERADE_NOT_ALLOWED`      | Policy or eligibility denial; no target disclosure                                |
+| 403  | `E_MASQUERADE_ACTION_BLOCKED`   | Sensitive route or mutation denied while active                                   |
+| 409  | `E_MASQUERADE_ALREADY_ACTIVE`   | Cannot nest, replace or renew                                                     |
+| 409  | `E_MASQUERADE_CONTEXT_CHANGED`  | Stale token, concurrent transition, expiry or invalidation; no handler ran        |
+| 422  | `E_MASQUERADE_INVALID_INPUT`    | Invalid control input or self-target                                              |
+| 428  | `E_MASQUERADE_CONTEXT_REQUIRED` | Covered unsafe request lacks a token                                              |
+| 503  | `E_MASQUERADE_UNAVAILABLE`      | Store, authority or policy infrastructure failure, or lost commit acknowledgement |
+
+Limiter rejections are the host limiter's own 429. Shield CSRF errors remain framework errors. No `Idempotency-Key` header is advertised; CAS plus status defines retry behaviour.
+
+## 9. Account Kit integration (deferred to v1.2)
+
+The Account Kit adapter, the proposed public account-access inspection operation and managed-route blocking are not part of v1. Core keeps the native authority contract in section 4 as the only contract: `securityStamp` and `inspectAccount` callbacks. v1.2 implements that contract on top of Account Kit's existing actor credential checks, where the inspection read must return a coherent `{account, revision}` snapshot under Account Kit's account lock or an equivalent, and the adapter performs the comparison. The inspection API lands in the Account Kit repository first, with its own API review.
+
+Until then, hosts using Account Kit may wire the native contract by hand against Account Kit's public API, but no test family (T-KIT, T-KIT-HTTP) or packed consumer claims that integration in v1. Account Kit MUST NOT depend on this package; core MUST NOT import Account Kit. Nothing in v1 adds an Account Kit column, flag or route.
+
+## 10. Operational limits and retention
+
+- Each threat maps to one test family in section 11.1: privilege escalation to T-AUTH and T-IDENTITY, stale or cross-account intent to T-CONTEXT, races to T-CONCURRENCY, renewal to T-EXPIRY, outage fallback to T-FAILURE, listener failure to T-AUDIT, data leakage to T-PRIVACY, hidden mutations to T-ACTIONS, tenant crossing to T-TENANT.
+- Background workers, jobs, WebSocket messages and external calls do not inherit a safe effective context. Jobs created under a mode must carry the `ResolvedContext` projection and the host's own authorisation.
+- Already admitted requests finish; a stop cannot retract their effects. Transaction-time guards for irreversible operations are the host's responsibility. Shared automation credentials should use a distinct namespace or subject so operator modes never apply to them.
+- `retention: { days: n }` makes `masquerade:prune --batch-size=100` expire active rows by conditional update, then delete events older than `n` days. `'host-managed'` prunes expiry only and leaves events to the host.
+- Pruning rechecks revision and expiry per row so a stale batch cannot clear a newer mode. Idle rows are never pruned.
+- Owner erasure for account deletion is a documented SQL recipe: delete the retired incarnation's row and apply the host's event policy. No erasure API ships.
+- Diagnostics for store or authority outages, denied transitions and invalid configuration are logged without reasons or user IDs in metric labels.
+
+## 11. Verification
+
+### 11.1 Test families
+
+| Family             | Required cases                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **T-AUTH**         | Missing, false and throwing `canMasquerade`; non-operator caller; self-target; missing and ineligible target indistinguishable; stop allowed after start permission removed; no client actor substitution.                                                                                                                                                                                               |
+| **T-IDENTITY**     | In the M0 app: facade `auth.user`, `getUserOrFail()` and `authenticatedViaGuard` are the effective guard before, during and after a mode; raw `web` guard still reports the actor; lazy Bouncer resolves the target; `silent_auth` on a business route keeps the facade effective; `driverName` passthrough renders `E_UNAUTHORIZED_ACCESS`; Japa `loginAs` works; two simultaneous actors are isolated. |
+| **T-CREDENTIALS**  | Start, stop, status and effective requests compared with native-authentication controls for existing sessions, remember-me recovery and expired sessions; no login, logout, cookie rotation or session issuance by mode code.                                                                                                                                                                            |
+| **T-CONTEXT**      | Idle token rejected after start; active token rejected after stop; A → idle → A invalidates the old token; missing is 428, stale is 409; wrong owner, wrong namespace and malformed tokens fail; header/field conflict fails; form rendered as A then submitted as B fails; report mode logs and admits, enforce rejects; no-row deterministic token differs per actor.                                  |
+| **T-CONCURRENCY**  | Two starts at the same idle revision on independent connections yield one winner and one event; simultaneous stop/start; stale stop; separate devices share one mode; stale expiry batch cannot clear a new selection.                                                                                                                                                                                   |
+| **T-EXPIRY**       | Exact deadline with injectable clock; non-sliding reads; minimum, maximum and invalid durations; host narrowing; backward clock; delayed prune; expiry concurrent with stop or start; no handler on the triggering request.                                                                                                                                                                              |
+| **T-INVALIDATION** | Actor or target deleted, suspended or stamp changed; `canMasquerade` false on admission; `canUseRequest` false leaves mode; throws return 503 without clearing; target deletion does not block stop.                                                                                                                                                                                                     |
+| **T-ACTIONS**      | Active unsafe denied by default; `allowMutation()` permits under target Bouncer; `sensitive()` and billing denied regardless; idle routes follow actor policy with token; unsafe verb cannot be marked read; `masquerade:routes` flags unmarked raw-guard routes; logout affects the actor credential only.                                                                                              |
+| **T-FAILURE**      | Store read, write and event failure; unique conflict; SQLite busy timeout and rollback; lost commit acknowledgement maps to 503 with the transition ID logged; authority and policy throws; stop and status 503 when store unavailable while login and logout succeed.                                                                                                                                   |
+| **T-AUDIT**        | Row and event atomicity; admitted denials, conflicts and no-ops recorded without revision change; outcome write failure is 503; pre-boundary rejections write nothing; events carry both incarnations; rejected listener leaves the committed result and reaches the emitter error handler.                                                                                                              |
+| **T-PRIVACY**      | No stamps, raw models or reasons in status, errors, logs or events; no target enumeration; reason normalisation order with one acceptable and one unacceptable example; code-point and byte boundaries; body size; `no-store` headers; reused ID with new incarnation rejects old mode and token.                                                                                                        |
+| **T-STORE**        | Conformance suite on memory, SQLite and PostgreSQL; two-connection PostgreSQL race; SQLite independent-connection CAS and audit under busy timeout and rollback; owner isolation; idle row retention; malformed state; BIGINT string parsed to integer; one `MAX_SAFE_INTEGER` overflow test.                                                                                                            |
+| **T-PACKAGE**      | Packed native-session consumer at floor and latest dependency sets on SQLite and PostgreSQL; root import resolves neither Lucid nor Account Kit; `configure` command; numeric, string and UUID IDs; alternate users table.                                                                                                                                                                               |
+| **T-TENANT**       | Distinct namespaces never collide; actor across included guards shares one mode; cross-tenant denial; device in tenant B denied locally while tenant A mode and revision stay unchanged; tenant context not inherited from the actor.                                                                                                                                                                    |
+
+Deferred families: T-TOKEN (v1.1), T-KIT and T-KIT-HTTP (v1.2). PRD traceability: AC-01 and AC-05 to T-AUTH, T-STORE, T-CONCURRENCY, T-CREDENTIALS; AC-02 and AC-03 to T-IDENTITY, T-TENANT, T-AUDIT; AC-04 to T-AUTH, T-FAILURE; AC-06 to AC-08 to T-AUTH, T-INVALIDATION, T-CREDENTIALS; AC-09 and AC-10 to T-INVALIDATION, T-EXPIRY, T-CONTEXT, T-ACTIONS, T-TENANT; AC-11 and AC-12 to T-CONTEXT, T-ACTIONS; AC-13 and AC-14 to T-AUDIT, T-PRIVACY, T-FAILURE, T-STORE; AC-15 and AC-16 to T-PACKAGE and documentation review.
+
+FR-24 and FR-25 are satisfied in v1 only to the extent of the native-session transport; their adapter clauses are deferred per the PRD v1 scope addendum. M4 produces a requirement-to-test ledger for every retained FR, NFR and AC; a family label alone is not evidence.
+
+### 11.2 Milestones
+
+| #   | Ships                                                                                                                                                                                                                    | Gate                                                                                                 |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| M0  | Throwaway AdonisJS 7 hypermedia starter-kit app with the effective guard over the session guard.                                                                                                                         | T-IDENTITY passes in the real app. This document is the SPEC per plan item 17.                       |
+| M1  | Core: state machine, CAS on the memory store, policy, fixed expiry with injectable clock, nonce token, hashed stamps, reason rule, emitter events.                                                                       | Every row of section 6.4 has a mutation-checked test.                                                |
+| M2  | Lucid store: migration stub, CAS plus event in one transaction, conformance suite on SQLite and PostgreSQL, prune command.                                                                                               | Two-connection PostgreSQL race yields one winner and one event; SQLite busy and rollback cases pass. |
+| M3  | HTTP: controllers, effective session guard, markers, context middleware with report/enforce, Edge share, error codes, `no-store`, `masquerade:routes`.                                                                   | T-CONTEXT and T-ACTIONS pass in the M0 app.                                                          |
+| M4  | `configure` command, docs (account-global scope, one-device logout, cross-device behaviour, Inertia/fetch header, jobs and side effects, report-to-enforce migration), packed consumer at floor and latest. Publish 0.x. | Requirement-to-test ledger complete.                                                                 |
+
+Commands are future repository scripts on Node 24 with pnpm: `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm quick:test`, `pnpm test:pg`, `pnpm test:consumer`. Each is run exactly as the repository script, never the bare tool.
+
+## 12. References
+
+- [AdonisJS session guard](https://docs.adonisjs.com/guides/auth/session-guard), [custom guards](https://docs.adonisjs.com/guides/auth/custom-auth-guard) and [authorization](https://docs.adonisjs.com/guides/auth/authorization): integration contracts to verify in M0.
+- [Auth 10 Authenticator](https://github.com/adonisjs/auth/blob/10.x/src/authenticator.ts) and [session guard](https://github.com/adonisjs/auth/blob/10.x/modules/session_guard/guard.ts): the seam in section 4.3 depends on their last-attempted-guard behaviour, which M0 proves rather than assumes.
+- [Previously assessed package](https://github.com/devnymous/adonis-impersonate/tree/b86b3c82dcff91026473d861999a6afba9c42314): comparison only; its browser-login-switch architecture is not adopted.
+
+Everything above is unimplemented until the milestone gates pass. Compatibility, concurrency and security claims are acceptance targets, not results.

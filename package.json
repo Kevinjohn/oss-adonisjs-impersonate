@@ -1,0 +1,182 @@
+{
+  "name": "adonisjs-masquerade",
+  "description": "Server-side account masquerade for AdonisJS: an operator acts as another account without a target login",
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "type": "module",
+  "files": [
+    "build",
+    "docs",
+    "!build/bin",
+    "!build/tests",
+    "!docs/maintainers/**",
+    "!docs/.vitepress/**",
+    "!docs/api/**",
+    "!PLAN*.md",
+    "!PRD*.md",
+    "!SPEC*.md",
+    "!DEVELOPMENT-PLAN.md",
+    "SECURITY.md",
+    "CHANGELOG.md"
+  ],
+  "main": "build/index.js",
+  "exports": {
+    ".": "./build/index.js",
+    "./types": "./build/src/types.js",
+    "./providers/masquerade_provider": "./build/providers/masquerade_provider.js",
+    "./auth": "./build/auth/main.js",
+    "./http": "./build/http/main.js",
+    "./native": "./build/native/main.js",
+    "./stores/lucid": "./build/stores/lucid.js",
+    "./testing": "./build/testing/main.js"
+  },
+  "scripts": {
+    "copy:templates": "copyfiles \"stubs/**/*.stub\" build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "docs:api": "typedoc",
+    "docs:dev": "pnpm docs:api && vitepress dev docs",
+    "docs:build": "pnpm docs:api && vitepress build docs",
+    "quick:test": "node --import=@poppinss/ts-exec --enable-source-maps bin/test.ts",
+    "test:built-exports": "cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=package_exports.spec.ts",
+    "pretest": "pnpm lint",
+    "test": "c8 pnpm quick:test",
+    "precompile": "pnpm lint",
+    "compile": "tsdown && tsc --emitDeclarationOnly --declaration",
+    "postcompile": "pnpm copy:templates",
+    "build": "pnpm compile",
+    "release": "release-it",
+    "version": "pnpm build",
+    "prepublishOnly": "pnpm build",
+    "pg:start": "bash bin/pg.sh start",
+    "pg:stop": "bash bin/pg.sh stop",
+    "test:pg": "bash bin/pg.sh test"
+  },
+  "keywords": [
+    "adonisjs",
+    "impersonation",
+    "masquerade",
+    "support",
+    "auth"
+  ],
+  "author": "Kevinjohn Gallagher",
+  "license": "MIT",
+  "devDependencies": {
+    "@adonisjs/auth": "^10.0.0",
+    "@adonisjs/bouncer": "^4.0.0",
+    "@adonisjs/core": "^7.0.1",
+    "@adonisjs/eslint-config": "^3.0.0",
+    "@adonisjs/lucid": "^22.4.2",
+    "@adonisjs/prettier-config": "^1.4.5",
+    "@adonisjs/session": "^8.1.0",
+    "@adonisjs/tsconfig": "^2.0.0",
+    "@japa/assert": "^4.2.0",
+    "@japa/runner": "^5.3.0",
+    "@poppinss/ts-exec": "^1.4.4",
+    "@release-it/conventional-changelog": "^10.0.5",
+    "@types/node": "^25.3.5",
+    "better-sqlite3": "^12.0.0",
+    "c8": "^11.0.0",
+    "copyfiles": "^2.4.1",
+    "cross-env": "^10.1.0",
+    "eslint": "^10.0.3",
+    "pg": "^8.0.0",
+    "prettier": "^3.8.1",
+    "release-it": "^19.2.4",
+    "tsdown": "^0.21.0",
+    "typedoc": "^0.28.20",
+    "typedoc-plugin-markdown": "^4.14.0",
+    "typescript": "^5.9.3",
+    "vitepress": "^1.6.4"
+  },
+  "peerDependencies": {
+    "@adonisjs/auth": "^10.0.0",
+    "@adonisjs/bouncer": "^4.0.0",
+    "@adonisjs/core": "^7.0.0",
+    "@adonisjs/lucid": "^22.4.2",
+    "@adonisjs/session": "^8.1.0",
+    "typescript": "^5.9.3 || ^6.0.3"
+  },
+  "peerDependenciesMeta": {
+    "@adonisjs/bouncer": {
+      "optional": true
+    },
+    "@adonisjs/lucid": {
+      "optional": true
+    },
+    "@adonisjs/session": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "tsdown": {
+    "entry": [
+      "./index.ts",
+      "./src/types.ts",
+      "./providers/masquerade_provider.ts",
+      "./auth/main.ts",
+      "./http/main.ts",
+      "./native/main.ts",
+      "./stores/lucid.ts",
+      "./testing/main.ts"
+    ],
+    "outDir": "./build",
+    "clean": true,
+    "format": "esm",
+    "minify": "dce-only",
+    "fixedExtension": false,
+    "dts": false,
+    "treeshake": false,
+    "sourcemaps": false,
+    "target": "esnext"
+  },
+  "release-it": {
+    "hooks": {
+      "before:bump": "pnpm version ${version} --no-git-tag-version --allow-same-version",
+      "before:release": "pnpm publish --access public --provenance --no-git-checks"
+    },
+    "git": {
+      "requireCleanWorkingDir": true,
+      "requireUpstream": true,
+      "commitMessage": "chore(release): ${version}",
+      "tagAnnotation": "v${version}",
+      "push": true,
+      "tagName": "v${version}"
+    },
+    "github": {
+      "release": true
+    },
+    "npm": false,
+    "plugins": {
+      "@release-it/conventional-changelog": {
+        "preset": {
+          "name": "angular"
+        }
+      }
+    }
+  },
+  "c8": {
+    "reporter": [
+      "text",
+      "html"
+    ],
+    "exclude": [
+      "tests/**"
+    ]
+  },
+  "prettier": "@adonisjs/prettier-config",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kevinjohn/oss-adonisjs-impersonate.git"
+  },
+  "packageManager": "pnpm@11.23.0"
+}
