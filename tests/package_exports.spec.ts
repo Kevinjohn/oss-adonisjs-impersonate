@@ -16,6 +16,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     const testing = await import('adonisjs-masquerade/testing')
     assert.equal(typeof root, 'object')
     assert.isFunction(root.configure)
+    assert.isFunction(root.MasqueradeSetupError)
     assert.isString(root.stubsRoot)
     assert.isTrue(existsSync(join(root.stubsRoot, 'migrations/create_masquerade_tables.stub')))
     assert.lengthOf(Object.keys(types), 0)

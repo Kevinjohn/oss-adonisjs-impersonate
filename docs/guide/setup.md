@@ -84,6 +84,12 @@ deny rejects that request without clearing a mode that is valid elsewhere. Globa
 ineligibility clears the mode. A thrown callback fails closed. Replace generated deny/throw
 placeholders with application-owned checks before enabling routes.
 
+`defineConfig` validates synchronously. Invalid options throw `MasqueradeSetupError`, a `TypeError`
+subclass with code `E_MASQUERADE_INVALID_CONFIGURATION` and a safe `field` such as
+`authority.namespace` or `retention.days`. An invalid store contract uses code
+`E_MASQUERADE_INVALID_STORE` and identifies the missing store capability. Messages and fields never
+include supplied values. Runtime request failures continue to use `MasqueradeError` codes.
+
 ## Wire authentication and middleware
 
 Configure the effective guard as the default for ordinary business surfaces, and keep the raw

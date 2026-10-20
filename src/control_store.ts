@@ -1,5 +1,15 @@
-import { unavailable } from './errors.js'
+import { MasqueradeSetupError, unavailable } from './errors.js'
+import type { MasqueradeSetupErrorField } from './errors.js'
 import type { ControlStore } from './types.js'
+
+const storeErrorFields: Record<keyof ControlStore, MasqueradeSetupErrorField> = {
+  testOnly: 'store.testOnly',
+  read: 'store.read',
+  compareAndSet: 'store.compareAndSet',
+  recordControlOutcome: 'store.recordControlOutcome',
+  expiredBatch: 'store.expiredBatch',
+  pruneEvents: 'store.pruneEvents',
+}
 
 /** Resolve the host store and validate the capabilities needed by its caller. */
 export async function openControlStore(
@@ -13,11 +23,11 @@ export async function openControlStore(
   } catch {
     throw unavailable()
   }
-  if (
-    !store ||
-    (store.testOnly && environment !== 'test') ||
-    !required.every((name) => typeof store[name] === 'function')
-  )
-    throw new TypeError('Invalid masquerade store for environment')
+  if (!store) throw new MasqueradeSetupError('E_MASQUERADE_INVALID_STORE', 'store')
+  if (store.testOnly && environment !== 'test')
+    throw new MasqueradeSetupError('E_MASQUERADE_INVALID_STORE', 'store.testOnly')
+  const missing = required.find((name) => typeof store[name] !== 'function')
+  if (missing)
+    throw new MasqueradeSetupError('E_MASQUERADE_INVALID_STORE', storeErrorFields[missing])
   return store
 }
