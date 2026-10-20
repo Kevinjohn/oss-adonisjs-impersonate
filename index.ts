@@ -1,7 +1,6 @@
-/**
- * adonisjs-masquerade: server-side account masquerade for AdonisJS 7.
- *
- * The public surface follows SPEC-impersonation.md section 2. Milestone M1 adds `defineConfig`,
- * the service and the domain errors here; until then the root export is intentionally empty.
- */
+/** Server-side account masquerade core. SQL and framework adapters are separate subpaths. */
 export * from './src/types.js'
+export { MasqueradeError } from './src/errors.js'
+export type { MasqueradeErrorCode } from './src/errors.js'
+export { defineConfig } from './src/define_config.js'
+export { createMasqueradeService } from './src/service.js'

@@ -1,6 +1,7 @@
+import { spawnSync } from 'node:child_process'
 import { test } from '@japa/runner'
 
-if (process.env.TEST_BUILT_EXPORTS === '1')
+if (process.env.TEST_BUILT_EXPORTS === '1') {
   test('loads every built public export', async ({ assert }) => {
     const root = await import('adonisjs-masquerade')
     const types = await import('adonisjs-masquerade/types')
@@ -16,3 +17,31 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     for (const subpath of [auth, http, native, lucid, testing])
       assert.equal(typeof subpath, 'object')
   })
+
+  test('imports the core without resolving optional integrations', ({ assert }) => {
+    const consumer = spawnSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '--eval',
+        `
+          import { registerHooks } from 'node:module'
+          registerHooks({
+            resolve(specifier, context, nextResolve) {
+              if (/^@adonisjs\\/lucid(?:\\/|$)/.test(specifier) || /account[-_]kit/i.test(specifier)) {
+                throw new Error('Optional integration resolved: ' + specifier)
+              }
+              return nextResolve(specifier, context)
+            },
+          })
+          const core = await import('adonisjs-masquerade')
+          if (typeof core.createMasqueradeService !== 'function') {
+            throw new Error('Core service export is missing')
+          }
+        `,
+      ],
+      { encoding: 'utf8' }
+    )
+    assert.equal(consumer.status, 0, consumer.stderr)
+  })
+}

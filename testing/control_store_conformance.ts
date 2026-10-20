@@ -1,0 +1,95 @@
+import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
+import type { AuditEvent, ControlStore, IdleModeRow, OwnerKey } from '../src/types.js'
+
+/** Run against a fresh, isolated store. SQL connection/race and rollback tests supplement this contract. */
+export async function assertControlStoreConformance(
+  createStore: () => Promise<ControlStore>
+): Promise<void> {
+  const store = await createStore()
+  const owner: OwnerKey = {
+    namespace: 'conformance',
+    actorId: randomUUID(),
+    actorIncarnation: 'original',
+  }
+  const event: AuditEvent = {
+    ...owner,
+    id: randomUUID(),
+    modeId: randomUUID(),
+    at: '2026-01-01T00:00:00.000Z',
+    kind: 'stopped',
+    outcomeCode: 'stopped',
+    revision: 1,
+  }
+  const row: IdleModeRow = {
+    ...owner,
+    revision: 1,
+    revisionNonce: 'a'.repeat(32),
+    modeId: event.modeId!,
+    lastTransitionId: event.id,
+    updatedAt: event.at,
+    state: 'idle',
+    targetId: null,
+    targetIncarnation: null,
+    actorStampHash: null,
+    targetStampHash: null,
+    reason: null,
+    startedAt: null,
+    expiresAt: null,
+  }
+  assert.equal(await store.read(owner), null)
+  const competitorId = randomUUID()
+  const commands = await Promise.all([
+    store.compareAndSet({ owner, expected: null, next: row, event }),
+    store.compareAndSet({
+      owner,
+      expected: null,
+      next: { ...row, revisionNonce: 'b'.repeat(32), lastTransitionId: competitorId },
+      event: { ...event, id: competitorId },
+    }),
+  ])
+  assert.equal(commands.filter((result) => result.status === 'applied').length, 1)
+  assert.equal(commands.filter((result) => result.status === 'conflict').length, 1)
+  const winner = (await store.read(owner))!
+  assert.equal(winner.revision, 1)
+  winner.revision = 99
+  assert.equal((await store.read(owner))!.revision, 1)
+  for (const other of [
+    { ...owner, namespace: 'other' },
+    { ...owner, actorId: randomUUID() },
+    { ...owner, actorIncarnation: 'replacement' },
+  ])
+    assert.equal(await store.read(other), null)
+  const stale = await store.compareAndSet({
+    owner,
+    expected: 0,
+    next: { ...row, revision: 2 },
+    event: { ...event, id: randomUUID(), revision: 2 },
+  })
+  assert.equal(stale.status, 'conflict')
+  const transitionId = randomUUID()
+  const update = {
+    ...row,
+    revision: 2,
+    revisionNonce: 'c'.repeat(32),
+    lastTransitionId: transitionId,
+  }
+  const updated = await store.compareAndSet({
+    owner,
+    expected: 1,
+    next: update,
+    event: { ...event, id: transitionId, revision: 2 },
+  })
+  assert.equal(updated.status, 'applied')
+  await store.recordControlOutcome({
+    ...event,
+    id: randomUUID(),
+    kind: 'control_noop',
+    revision: 2,
+  })
+  assert.deepEqual(await store.read(owner), update)
+  assert.equal(await store.pruneEvents({ before: '2027-01-01T00:00:00.000Z', limit: 2 }), 2)
+  assert.equal(await store.pruneEvents({ before: '2027-01-01T00:00:00.000Z', limit: 2 }), 1)
+  assert.deepEqual(await store.read(owner), update)
+  assert.deepEqual(await store.expiredBatch({ now: '2027-01-01T00:00:00.000Z', limit: 2 }), [])
+}
