@@ -20,7 +20,7 @@ test('memory CAS clones inputs/outputs, commits one event and preserves row on e
       owner: f.owner,
       expected: 1,
       next,
-      event: { ...event, invalid: () => {} } as never,
+      event: { ...event, revision: 2, invalid: () => {} } as never,
     })
   )
   assert.deepEqual(await f.store.read(f.owner), row)
@@ -29,6 +29,57 @@ test('memory CAS clones inputs/outputs, commits one event and preserves row on e
   event.revision = 20
   assert.equal((await f.store.read(f.owner))!.revision, 1)
   assert.equal(f.store.events[0].revision, 1)
+})
+
+test('memory CAS rejects transition identity and projection mismatches without mutation', async ({
+  assert,
+}) => {
+  const f = fixture()
+  const service = await f.create()
+  await f.start(service)
+  const row = (await f.store.read(f.owner))!
+  const event = f.store.events[0]
+  const attempts = [
+    {
+      owner: f.owner,
+      next: { ...row, actorId: 'other', revision: 2 },
+      event: { ...event, revision: 2 },
+    },
+    {
+      owner: f.owner,
+      next: { ...row, revision: 2, lastTransitionId: '00000000-0000-4000-8000-000000000001' },
+      event: { ...event, revision: 2 },
+    },
+    {
+      owner: f.owner,
+      next: { ...row, revision: 2 },
+      event: { ...event, revision: 2, id: '00000000-0000-4000-8000-000000000002' },
+    },
+    {
+      owner: f.owner,
+      next: { ...row, revision: 2, modeId: '00000000-0000-4000-8000-000000000003' },
+      event: { ...event, revision: 2 },
+    },
+    {
+      owner: f.owner,
+      next: { ...row, revision: 2 },
+      event: { ...event, revision: 2, targetId: 'different' },
+    },
+  ]
+  for (const attempt of attempts) {
+    await assert.rejects(
+      () =>
+        f.store.compareAndSet({
+          owner: attempt.owner,
+          expected: 1,
+          next: attempt.next,
+          event: attempt.event,
+        }),
+      'Masquerade is unavailable'
+    )
+    assert.deepEqual(await f.store.read(f.owner), row)
+    assert.lengthOf(f.store.events, 1)
+  }
 })
 
 test('expiry batches are bounded snapshots and event pruning never deletes mode rows', async ({

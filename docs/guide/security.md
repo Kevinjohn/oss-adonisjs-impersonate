@@ -20,6 +20,13 @@ mode or context token. `incarnation: 'id'` is a host declaration that IDs are ne
 Namespaces name stable identity domains, not request-selected tenants. Guards for the same users
 share one namespace. Distinct identity domains require distinct namespaces.
 
+Provider identifiers, account incarnations and security stamps must be well-formed Unicode strings.
+Malformed UTF-16 is rejected before UTF-8 byte limits or stamp hashing are applied; valid astral
+characters remain supported. Security stamps are opaque and may contain control characters. A
+control-store transition is accepted only when its audit event agrees with the owner and resulting
+row, including the active target projection or the target being ended when the current row is
+active.
+
 ## Authorization and route coverage
 
 `canMasquerade` is mandatory and deny-by-default. It approves an actor and target at start, then is

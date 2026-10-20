@@ -7,6 +7,7 @@ import type {
   OwnerKey,
   CasOutcome,
 } from '../src/types.js'
+import { validateTransition } from '../src/transition_validation.js'
 
 function key(owner: OwnerKey): string {
   return JSON.stringify([owner.namespace, owner.actorId, owner.actorIncarnation])
@@ -25,6 +26,7 @@ export class MemoryControlStore implements ControlStore {
   async compareAndSet(input: CompareAndSetInput): Promise<CasOutcome> {
     const current = this.#rows.get(key(input.owner))
     if ((current?.revision ?? null) !== input.expected) return { status: 'conflict' }
+    validateTransition(input, current ?? null)
     const next = structuredClone(input.next)
     const event = structuredClone(input.event)
     this.#rows.set(key(input.owner), next)

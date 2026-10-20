@@ -13,7 +13,10 @@ test('validates bounded canonical IDs and immutable incarnations against authori
     { id: '' },
     { id: 'x'.repeat(256) },
     { id: ['a'] },
+    { id: '\uD800' },
+    { id: 'a\uDC00' },
     { incarnation: 'x'.repeat(129) },
+    { incarnation: '\uD800' },
     { incarnation: 'different' },
     { incarnation: ['a'] },
   ])
@@ -24,5 +27,15 @@ test('validates bounded canonical IDs and immutable incarnations against authori
   assert.strictEqual(
     validateSubject(subject, { ...f.config.authority, incarnation: 'id' }),
     subject
+  )
+  assert.strictEqual(
+    validateSubject(
+      { ...subject, id: 'astral-😀', incarnation: 'astral-😀' },
+      {
+        ...f.config.authority,
+        incarnation: 'id',
+      }
+    ).id,
+    'astral-😀'
   )
 })
