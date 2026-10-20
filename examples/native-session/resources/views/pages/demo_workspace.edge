@@ -54,7 +54,14 @@
             </p>
           @end
 
-          <p class="support-copy" role="status" aria-live="polite" data-mode-notice hidden></p>
+          <p
+            class="support-copy"
+            role="status"
+            aria-live="polite"
+            tabindex="-1"
+            data-mode-notice
+            hidden
+          ></p>
           <div class="support-actions">
             @if(beforeDeadline && targetAvailable && operator)
               <a class="btn btn--secondary" href="/support/customer" data-support-intent>

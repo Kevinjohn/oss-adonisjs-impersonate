@@ -5,7 +5,14 @@ import { initSupportMode } from '../../resources/js/components/support_mode.js'
 function page(expiresAt) {
   const label = { textContent: '' }
   const badge = { textContent: '', classList: { remove() {} } }
-  const notice = { hidden: true, textContent: '' }
+  const notice = {
+    hidden: true,
+    textContent: '',
+    focused: false,
+    focus() {
+      this.focused = true
+    },
+  }
   const button = { disabled: false }
   const intent = {
     hidden: false,
@@ -27,6 +34,7 @@ function page(expiresAt) {
   const listeners = {}
   const documentRef = {
     visibilityState: 'visible',
+    activeElement: { closest: () => intent },
     querySelector() {
       return root
     },
@@ -59,6 +67,7 @@ test('a rendered page freezes its captured customer intent at the fixed deadline
   assert.equal(rendered.intent.hidden, true)
   assert.equal(rendered.button.disabled, true)
   assert.equal(rendered.notice.hidden, false)
+  assert.equal(rendered.notice.focused, true)
   assert.match(rendered.notice.textContent, /deadline has passed/)
 })
 

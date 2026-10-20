@@ -17,6 +17,7 @@ export function initSupportMode({
   function freeze(message) {
     if (stale) return
     stale = true
+    const focusedIntent = documentRef.activeElement?.closest('[data-support-intent]')
     root.querySelector('[data-mode-label]').textContent = 'Support status needs checking'
     const badge = root.querySelector('[data-mode-badge]')
     badge.textContent = 'Check status'
@@ -30,6 +31,7 @@ export function initSupportMode({
         control.disabled = true
       }
     }
+    if (focusedIntent) notice.focus()
   }
 
   function checkDeadline() {

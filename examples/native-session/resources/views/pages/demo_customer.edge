@@ -26,7 +26,14 @@
           Fixed deadline:
           <time datetime="{{ mode.expiresAt }}">{{ expiresText }}</time>
         </p>
-        <p class="support-copy" role="status" aria-live="polite" data-mode-notice hidden></p>
+        <p
+          class="support-copy"
+          role="status"
+          aria-live="polite"
+          tabindex="-1"
+          data-mode-notice
+          hidden
+        ></p>
         <div class="support-actions">
           <a class="btn btn--secondary" href="/support">Status and customers</a>
           @form({ route: 'demo.stop', method: 'POST' })

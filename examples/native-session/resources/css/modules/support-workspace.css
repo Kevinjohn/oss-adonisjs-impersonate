@@ -1,6 +1,11 @@
 .support-stack {
   display: grid;
   gap: 18px;
+  min-width: 0;
+}
+.app-main:has(.support-stack) .page,
+.support-stack .panel {
+  min-width: 0;
 }
 .support-stack .panel h2,
 .support-entry h2 {
@@ -72,6 +77,11 @@
   margin-top: 22px;
 }
 .support-form .field {
+  width: 100%;
+}
+.support-form .field__input {
+  min-width: 0;
+  max-width: 100%;
   width: 100%;
 }
 .support-reason {
