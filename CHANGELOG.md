@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Distinguish name-inferred host controls from positively recognized package controls in the route
+coverage report.
+
 Pass package errors to the host exception handler and retain generic JSON responses as the default.
 
 Return unavailable without writing a contradictory denial when idle-stop audit acknowledgement fails.
