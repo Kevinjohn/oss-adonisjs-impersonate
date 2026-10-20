@@ -19,12 +19,16 @@ pnpm pack:fixture
 
 cd examples/native-session
 cp .env.example .env
-pnpm install --frozen-lockfile
+pnpm install --no-frozen-lockfile
 node ace generate:key
 node ace migration:run
 node ace demo:seed
 pnpm dev
 ```
+
+The example installs the package tarball packed from this checkout. Its local integrity entry
+changes when the tarball is rebuilt, so this install refreshes that entry while keeping the locked
+dependency versions unchanged.
 
 Open <http://localhost:3333>, then sign in with one of these local-only credentials:
 

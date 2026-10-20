@@ -151,15 +151,23 @@ test.group('demo accounts', (group) => {
     )
   }).skip(usesPostgres, 'Demo account fixtures require SQLite')
 
+  test('seeds through Ace after the app has started', async ({ assert }) => {
+    assert.equal(runDemoCommand('demo:seed', 'development').exitCode, 0)
+    assert.lengthOf(await User.query().whereIn('email', demoEmails), 3)
+
+    assert.equal(runDemoCommand('demo:seed', 'development').exitCode, 0)
+    assert.lengthOf(await User.query().whereIn('email', demoEmails), 3)
+  }).skip(usesPostgres, 'Demo account fixtures require SQLite')
+
   test('runs reset through Ace using NODE_ENV instead of the console execution environment', async ({
     assert,
   }) => {
     await seedDemoAccounts()
-    assert.equal(runDemoReset('development').exitCode, 0)
+    assert.equal(runDemoCommand('demo:reset', 'development').exitCode, 0)
     assert.isNull(await User.findBy('email', 'operator@example.test'))
 
     await seedDemoAccounts()
-    const productionReset = runDemoReset('production')
+    const productionReset = runDemoCommand('demo:reset', 'production')
     assert.notEqual(productionReset.exitCode, 0)
     assert.include(productionReset.output, 'Demo commands are allowed only in development or test')
     assert.isNotNull(await User.findBy('email', 'operator@example.test'))
@@ -177,13 +185,16 @@ test.group('demo accounts', (group) => {
   })
 })
 
-function runDemoReset(nodeEnv: 'development' | 'production'): {
+function runDemoCommand(
+  command: 'demo:reset' | 'demo:seed',
+  nodeEnv: 'development' | 'production'
+): {
   exitCode: number
   output: string
 } {
   const appRoot = fileURLToPath(new URL('../../', import.meta.url))
   try {
-    const output = execFileSync(process.execPath, ['ace', 'demo:reset'], {
+    const output = execFileSync(process.execPath, ['ace', command], {
       cwd: appRoot,
       env: {
         ...process.env,
