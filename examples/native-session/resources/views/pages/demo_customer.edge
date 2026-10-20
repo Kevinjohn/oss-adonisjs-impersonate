@@ -1,0 +1,102 @@
+@layouts.app({ title: 'Customer workspace' })
+  @page({
+    title: 'Customer workspace',
+    description: 'A customer-specific read and one reversible demo preference.',
+  })
+    <div class="support-stack">
+      <section
+        class="panel support-mode"
+        aria-labelledby="mode-heading"
+        data-support-mode
+        data-context-token="{{ mode.contextToken }}"
+        data-expires-at="{{ mode.expiresAt }}"
+      >
+        <div class="support-mode__header">
+          <div>
+            <p class="tag" data-mode-label>Support mode active</p>
+            <h2 id="mode-heading">Viewing as {{ customer.fullName || customer.email }}</h2>
+            <p class="support-copy">
+              Signed in as
+              {{ actor.fullName || actor.email }}. This is an account-wide mode; the customer has not signed in. Customer permissions govern this page.
+            </p>
+          </div>
+          <span class="support-badge support-badge--active" data-mode-badge>Active</span>
+        </div>
+        <p class="support-deadline">
+          Fixed deadline:
+          <time datetime="{{ mode.expiresAt }}">{{ expiresText }}</time>
+        </p>
+        <p
+          class="support-copy"
+          role="status"
+          aria-live="polite"
+          tabindex="-1"
+          data-mode-notice
+          hidden
+        ></p>
+        <div class="support-actions">
+          <a class="btn btn--secondary" href="/support">Status and customers</a>
+          @form({ route: 'demo.stop', method: 'POST' })
+            <input type="hidden" name="_masqueradeContext" value="{{ mode.contextToken }}" />
+            <button class="btn btn--primary" type="submit">Stop support mode</button>
+          @end
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="customer-heading">
+        <p class="tag">Customer-specific read</p>
+        <h2 id="customer-heading">{{ customer.fullName || customer.email }}</h2>
+        <dl class="support-details">
+          <div>
+            <dt>Email</dt>
+            <dd>{{ customer.email }}</dd>
+          </div>
+          <div>
+            <dt>Email updates</dt>
+            <dd>{{ emailUpdates ? 'On' : 'Off' }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="panel" aria-labelledby="preference-heading">
+        <p class="tag">Reversible demo action</p>
+        <h2 id="preference-heading">Email updates</h2>
+        <p class="support-copy">
+          Change this local example preference using the customer’s mutation permission. Choose either value to reverse it.
+        </p>
+        @if(canEdit)
+          @form({
+            route: 'demo.preference',
+            method: 'POST',
+            class: 'support-form',
+            'data-support-intent': true,
+          })
+            <input type="hidden" name="_masqueradeContext" value="{{ mode.contextToken }}" />
+            <div class="field">
+              <label class="field__label" for="emailUpdates">Setting</label>
+              <select class="field__input" id="emailUpdates" name="emailUpdates" required>
+                <option value="1" {{ emailUpdates ? 'selected' : '' }}>On</option>
+                <option value="0" {{ !emailUpdates ? 'selected' : '' }}>Off</option>
+              </select>
+            </div>
+            <button class="btn btn--primary" type="submit">Save preference</button>
+          @end
+        @else
+          <p role="status" class="support-copy">This customer cannot change the preference.</p>
+        @end
+      </section>
+
+      <section class="panel" aria-labelledby="sensitive-heading">
+        <p class="tag">Protected example</p>
+        <h2 id="sensitive-heading">Sensitive account action</h2>
+        <p class="support-copy">
+          Try this action to see a denial. Support mode never permits this sensitive route, even when the customer can change the demo preference.
+        </p>
+        @form({ route: 'demo.sensitive', method: 'POST', 'data-support-intent': true })
+          <input type="hidden" name="_masqueradeContext" value="{{ mode.contextToken }}" />
+          <button class="btn btn--secondary" type="submit">Try sensitive action</button>
+        @end
+      </section>
+    </div>
+  @end
+@end

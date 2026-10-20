@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Add a browser support workspace to the native-session example, with raw status and stop recovery,
+customer-scoped read and reversible preference, and a sensitive-action denial.
+
 Attach independent actor-keyed rate limits to native-session start and stop controls.
 
 Expand native-session setup guidance for additive auth wiring, provider sharing, and policy callback lifecycle.

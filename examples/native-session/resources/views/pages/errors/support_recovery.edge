@@ -1,0 +1,18 @@
+@layouts.document({ title: title })
+  <header class="header header--bar">
+    <div class="header__inner">
+      @!logo({ size: 28 })
+    </div>
+  </header>
+  <main class="page">
+    <div class="panel support-error" role="alert" aria-labelledby="support-error-title">
+      <p class="tag">Support workspace</p>
+      <h1 id="support-error-title" tabindex="-1">{{ title }}</h1>
+      <p class="support-copy">{{ explanation }}</p>
+      <div class="support-actions">
+        <a class="btn btn--primary" href="/support">Check current status</a>
+        <a class="btn btn--secondary" href="/login">Sign in</a>
+      </div>
+    </div>
+  </main>
+@end

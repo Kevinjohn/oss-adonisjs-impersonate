@@ -1,0 +1,137 @@
+.support-stack {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.app-main:has(.support-stack) .page,
+.support-stack .panel {
+  min-width: 0;
+}
+.support-stack .panel h2,
+.support-entry h2 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+.support-stack .panel .tag + h2 {
+  margin-top: 7px;
+}
+.support-copy,
+.support-entry p:not(.tag) {
+  max-width: 70ch;
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.support-identity,
+.support-mode__header,
+.support-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+.support-identity p:not(.tag) {
+  color: var(--muted);
+  margin-top: 3px;
+}
+.support-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.support-badge--active {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+.support-mode {
+  border-color: var(--ok);
+}
+.support-deadline {
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.support-deadline time {
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+.support-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+.support-form {
+  display: grid;
+  justify-items: start;
+  gap: 18px;
+  max-width: 460px;
+  margin-top: 22px;
+}
+.support-form .field {
+  width: 100%;
+}
+.support-form .field__input {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+.support-reason {
+  min-height: 100px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+.support-footnote {
+  color: var(--muted);
+  font-size: 13px;
+}
+.support-details {
+  margin-top: 14px;
+}
+.support-details > div {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  gap: 12px;
+}
+.support-details dt {
+  color: var(--muted);
+}
+.support-details dd {
+  overflow-wrap: anywhere;
+}
+.support-error {
+  max-width: 660px;
+}
+[data-support-intent][hidden],
+[data-mode-notice][hidden] {
+  display: none !important;
+}
+@media (max-width: 600px) {
+  .support-identity,
+  .support-mode__header,
+  .support-entry {
+    flex-direction: column;
+    gap: 14px;
+  }
+  .support-actions,
+  .support-actions form,
+  .support-actions .btn,
+  .support-form,
+  .support-form .btn {
+    width: 100%;
+  }
+  .support-details > div {
+    grid-template-columns: 1fr;
+    gap: 1px;
+  }
+}
