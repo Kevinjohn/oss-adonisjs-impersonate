@@ -27,8 +27,14 @@ export class EffectiveSessionGuard<User> implements GuardContract<User> {
     this.driverName = raw.driverName
   }
   getUserOrFail(): User {
-    if (!this.isAuthenticated || this.user === undefined)
+    if (!this.isAuthenticated || this.user === undefined) {
+      if (this.authenticationAttempted) {
+        throw new errors.E_UNAUTHORIZED_ACCESS('Invalid or expired user session', {
+          guardDriverName: this.driverName,
+        })
+      }
       throw new RuntimeException('No effective user is authenticated')
+    }
     return this.user
   }
   async authenticate(): Promise<User> {

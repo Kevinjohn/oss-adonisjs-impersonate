@@ -4,6 +4,7 @@ import { requestContext } from './helpers/http_context.js'
 import { errors } from '@adonisjs/auth'
 import { masqueradeContext } from '../http/context_middleware.js'
 import { allowMutation } from '../integration/route_metadata.js'
+import { MasqueradeError } from '../src/errors.js'
 
 test.group('masquerade HTTP boundary', () => {
   test('rejects mixed native-effective and other guards before authentication or downstream fallback', async ({
@@ -30,9 +31,11 @@ test.group('masquerade HTTP boundary', () => {
           routeMiddleware: [{ name: 'auth', args: { guards } }],
         })
         let downstreamCalls = 0
-        await masqueradeContext(ctx, async () => {
-          downstreamCalls++
-        })
+        await handleWithDefaultExceptionHandler(ctx, () =>
+          masqueradeContext(ctx, async () => {
+            downstreamCalls++
+          })
+        )
         assert.equal(responseState.status, 503)
         assert.equal(downstreamCalls, 0)
         assert.equal(f.state.authenticateCount, before)
@@ -126,9 +129,14 @@ test.group('masquerade HTTP boundary', () => {
       body: { _masqueradeContext: mode.contextToken },
     })
     let continued = false
-    await masqueradeContext(ctx, async () => {
-      continued = true
-    })
+    try {
+      await masqueradeContext(ctx, async () => {
+        continued = true
+      })
+    } catch (error) {
+      if (!(error instanceof MasqueradeError)) throw error
+      error.handle(error, ctx)
+    }
     assert.isFalse(continued)
     assert.equal(responseState.status, 403)
     assert.deepEqual(responseState.json, {
@@ -136,6 +144,26 @@ test.group('masquerade HTTP boundary', () => {
         { code: 'E_MASQUERADE_ACTION_BLOCKED', message: 'Action is blocked while masquerading' },
       ],
     })
+    assert.equal(responseState.headers.get('cache-control'), 'no-store')
+  })
+
+  test('passes business context errors to the host exception handler', async ({ assert }) => {
+    const f = fixture()
+    const { ctx, responseState } = requestContext(f, { body: {} })
+    let continued = false
+    let received: unknown
+
+    try {
+      await masqueradeContext(ctx, async () => {
+        continued = true
+      })
+    } catch (error) {
+      received = error
+    }
+
+    assert.isFalse(continued)
+    assert.instanceOf(received, MasqueradeError)
+    assert.equal((received as MasqueradeError).code, 'E_MASQUERADE_CONTEXT_REQUIRED')
     assert.equal(responseState.headers.get('cache-control'), 'no-store')
   })
 
@@ -203,10 +231,24 @@ test.group('masquerade HTTP boundary', () => {
       routeMiddleware: [{ name: 'auth', args: { guards: ['web_alias'] } }],
     })
     let continued = false
-    await masqueradeContext(ctx, async () => {
-      continued = true
-    })
+    await handleWithDefaultExceptionHandler(ctx, () =>
+      masqueradeContext(ctx, async () => {
+        continued = true
+      })
+    )
     assert.isFalse(continued)
     assert.equal(responseState.status, 403)
   })
 })
+
+async function handleWithDefaultExceptionHandler(
+  ctx: Parameters<typeof masqueradeContext>[0],
+  operation: () => Promise<void>
+): Promise<void> {
+  try {
+    await operation()
+  } catch (error) {
+    if (!(error instanceof MasqueradeError)) throw error
+    error.handle(error, ctx)
+  }
+}

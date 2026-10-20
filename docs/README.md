@@ -3,6 +3,7 @@
 Use these pages to install and operate the v1 native-session integration.
 
 - [Install and configure](guide/setup.md): `node ace configure`, callbacks and manual auth wiring.
+- [Custom authorities](guide/custom-authorities.md): keep custom security-stamp values coherent.
 - [Security and operations](guide/security.md): identity boundaries, routes, context tokens, sessions, audit and side effects.
 - [API reference](https://kevinjohn.github.io/oss-adonisjs-impersonate/api/): generated package exports.
 - [Maintainer records](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/main/docs/maintainers): release evidence and repository conventions.

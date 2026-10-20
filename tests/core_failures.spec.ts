@@ -190,6 +190,28 @@ test('status and stop fail closed on store read failure without account or polic
   assert.equal(f.state.policyCount, 0)
 })
 
+test('idle stop does not record a denial when its noop outcome acknowledgement fails', async ({
+  assert,
+}) => {
+  const f = fixture()
+  const service = await f.create()
+  const idle = await service.status({})
+  const record = f.store.recordControlOutcome.bind(f.store)
+  f.store.recordControlOutcome = async (event) => {
+    await record(event)
+    throw new Error('outcome acknowledgement lost')
+  }
+
+  assert.equal(
+    await errorCode(() => service.stop({}, { expectedContext: idle.contextToken })),
+    'E_MASQUERADE_UNAVAILABLE'
+  )
+  assert.deepEqual(
+    f.store.events.map((event) => event.kind),
+    ['control_noop']
+  )
+})
+
 test('simultaneous stop and start with one context cannot replace the active mode', async ({
   assert,
 }) => {
