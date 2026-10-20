@@ -32,6 +32,7 @@ test('indeterminate committed start logs a safe diagnostic and never emits or re
       category: 'store',
       operation: 'compare_and_set',
       code: 'E_MASQUERADE_UNAVAILABLE',
+      transitionId: f.store.events[0].id,
     },
   ])
   assert.notInclude(JSON.stringify(f.diagnostics), 'private case')
@@ -64,6 +65,7 @@ test('indeterminate committed stop does not emit success or record a false denia
       category: 'store',
       operation: 'compare_and_set',
       code: 'E_MASQUERADE_UNAVAILABLE',
+      transitionId: f.store.events[1].id,
     },
   ])
 })
@@ -280,6 +282,23 @@ test('authority and policy failures log safe categories while preserving unavail
   assert.notInclude(JSON.stringify(stamp.diagnostics), 'private stamp case')
 })
 
+test('malformed inspection stamps log a bounded authority diagnostic and leave active state intact', async ({
+  assert,
+}) => {
+  const f = fixture()
+  const service = await f.create()
+  await f.start(service)
+  f.users.get('b')!.stamp = ''
+
+  assert.equal(await errorCode(() => service.resolve({})), 'E_MASQUERADE_UNAVAILABLE')
+  assert.deepEqual(f.diagnostics, [
+    { category: 'authority', operation: 'security_stamp', code: 'E_MASQUERADE_UNAVAILABLE' },
+  ])
+  const status = await service.status({})
+  assert.isTrue(status.isMasquerading)
+  assert.lengthOf(f.store.events, 1)
+})
+
 test('denied controls and required audit failures log bounded diagnostics without sensitive data', async ({
   assert,
 }) => {
@@ -454,6 +473,7 @@ for (const missingOutcome of [null, undefined]) {
           category: 'store',
           operation: 'compare_and_set',
           code: 'E_MASQUERADE_UNAVAILABLE',
+          transitionId: last.id,
         },
       ])
       assert.lengthOf(f.store.events, operation === 'start' ? 1 : 2)

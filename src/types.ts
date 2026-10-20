@@ -116,6 +116,7 @@ export interface DiagnosticEvent {
   readonly category: DiagnosticCategory
   readonly operation: DiagnosticOperation
   readonly code: MasqueradeErrorCode
+  readonly transitionId?: string
 }
 /** An indeterminate commit may have succeeded; callers recover through status, never blind retry. */
 export type CasOutcome =

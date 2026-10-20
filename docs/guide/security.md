@@ -149,7 +149,9 @@ delivered.
 
 Core operational diagnostics use the same bounded fields for store, authority, policy, control and
 configuration failures. They omit actor and target identifiers, reasons, stamps, request bodies,
-user objects and raw error values. The public error response remains generic.
+user objects and raw error values. A lost commit acknowledgement also logs its transition ID so an
+operator can correlate the uncertain transition with recovery status. The public error response
+remains generic.
 
 Retention belongs to the host. With `retention: { days: n }`, `masquerade:prune --batch-size=100`
 expires due modes and removes old events in bounded batches. Pruning is global across every

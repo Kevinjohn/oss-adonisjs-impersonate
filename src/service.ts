@@ -415,8 +415,22 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       )
         invalid = 'target_ineligible'
       else {
-        if (stampHash(currentActor.securityStamp) !== row.actorStampHash) invalid = 'actor_stamp'
-        else if (stampHash(target.securityStamp) !== row.targetStampHash) invalid = 'target_stamp'
+        let actorStampMatches: boolean
+        let targetStampMatches: boolean
+        try {
+          actorStampMatches = stampHash(currentActor.securityStamp) === row.actorStampHash
+          targetStampMatches = stampHash(target.securityStamp) === row.targetStampHash
+        } catch {
+          reportDiagnostic(
+            this.dependencies,
+            'authority',
+            'security_stamp',
+            'E_MASQUERADE_UNAVAILABLE'
+          )
+          throw unavailable()
+        }
+        if (!actorStampMatches) invalid = 'actor_stamp'
+        else if (!targetStampMatches) invalid = 'target_stamp'
         else if (!(await this.allowed(currentActor.subject, target.subject)))
           invalid = 'policy_denied'
       }
