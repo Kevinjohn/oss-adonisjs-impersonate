@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Preserve the native session unauthorized error when `getUserOrFail()` follows an unsuccessful
+effective guard authentication attempt.
+
 Allow native-session flash alerts to opt out of the five-second auto-dismiss timeout while
 preserving their delayed reveal and manual dismissal behavior.
 

@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import { errors, symbols } from '@adonisjs/auth'
+import { SessionGuard } from '@adonisjs/auth/session'
 import type { GuardContract } from '@adonisjs/auth/types'
 import type { HttpContext } from '@adonisjs/core/http'
 import { EffectiveSessionGuard } from '../auth/effective_session_guard.js'
@@ -83,6 +84,61 @@ test('only a genuine native unauthorized error becomes false', async ({ assert }
   failure = Object.assign(new Error('policy error'), { code: 'E_UNAUTHORIZED_ACCESS' })
   await assert.rejects(() => guard.check(), 'policy error')
   assert.isUndefined(guard.user)
+})
+
+test('getUserOrFail preserves native session unauthorized behavior after a failed check', async ({
+  assert,
+}) => {
+  let native: GuardContract<unknown>
+  const ctx = {
+    session: { sessionId: 'session-1', get: () => undefined },
+    request: { encryptedCookie: () => undefined },
+    auth: { use: () => native },
+    route: {
+      middleware: { all: () => [{ name: 'auth', args: [{ guards: ['web'] }] }] },
+    },
+    containerResolver: {
+      make: async () => ({ effectiveGuardNames: ['web_effective'] }),
+    },
+  } as unknown as HttpContext
+  native = new SessionGuard(
+    'web',
+    ctx,
+    { useRememberMeTokens: false },
+    { emit: async () => {} } as never,
+    {} as never
+  ) as unknown as GuardContract<unknown>
+  const effective = new EffectiveSessionGuard('web_effective', 'web', ctx, native)
+
+  assert.throws(() => effective.getUserOrFail(), 'No effective user is authenticated')
+  assert.isFalse(await native.check())
+  assert.isFalse(await effective.check())
+
+  let nativeError: unknown
+  let effectiveError: unknown
+  try {
+    native.getUserOrFail()
+  } catch (error) {
+    nativeError = error
+  }
+  try {
+    effective.getUserOrFail()
+  } catch (error) {
+    effectiveError = error
+  }
+  assert.instanceOf(nativeError, errors.E_UNAUTHORIZED_ACCESS)
+  assert.instanceOf(effectiveError, errors.E_UNAUTHORIZED_ACCESS)
+  type UnauthorizedError = InstanceType<typeof errors.E_UNAUTHORIZED_ACCESS>
+  assert.equal((effectiveError as UnauthorizedError).code, (nativeError as UnauthorizedError).code)
+  assert.equal(
+    (effectiveError as UnauthorizedError).message,
+    (nativeError as UnauthorizedError).message
+  )
+  assert.equal(
+    (effectiveError as UnauthorizedError).status,
+    (nativeError as UnauthorizedError).status
+  )
+  assert.equal((effectiveError as UnauthorizedError).guardDriverName, native.driverName)
 })
 
 import { Authenticator } from '@adonisjs/auth'
