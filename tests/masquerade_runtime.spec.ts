@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import { HttpContextFactory } from '@adonisjs/core/factories/http'
+import { MasqueradeSetupError } from '../index.js'
 import { nativeRuntimeFixture } from './helpers/native_runtime.js'
 import { sqlFixture } from './helpers/sql_store.js'
 
@@ -8,7 +9,15 @@ test('configured provider validates native binding and rejects test-only store d
 }) => {
   const f = await nativeRuntimeFixture()
   try {
-    await assert.rejects(() => f.app.boot(), 'Invalid masquerade store for environment')
+    let error: unknown
+    try {
+      await f.app.boot()
+    } catch (caught) {
+      error = caught
+    }
+    assert.instanceOf(error, MasqueradeSetupError)
+    assert.equal((error as MasqueradeSetupError).code, 'E_MASQUERADE_INVALID_STORE')
+    assert.equal((error as MasqueradeSetupError).field, 'store.testOnly')
     assert.equal(f.storeCreations(), 1)
   } finally {
     await f.app.terminate()

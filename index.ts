@@ -2,6 +2,8 @@
 export * from './src/types.js'
 export { MasqueradeError } from './src/errors.js'
 export type { MasqueradeErrorCode } from './src/errors.js'
+export { MasqueradeSetupError } from './src/errors.js'
+export type { MasqueradeSetupErrorCode, MasqueradeSetupErrorField } from './src/errors.js'
 export { defineConfig } from './src/define_config.js'
 export { createMasqueradeService } from './src/service.js'
 export { configure } from './configure.js'

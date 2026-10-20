@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { createMasqueradeService, defineConfig } from '../index.js'
+import { createMasqueradeService, defineConfig, MasqueradeSetupError } from '../index.js'
 import { fixture } from './helpers/core.js'
 
 test('validates config synchronously and freezes copied configuration', ({ assert }) => {
@@ -43,10 +43,15 @@ test('rejects test store outside explicit test environment even when store facto
   assert,
 }) => {
   const f = fixture()
-  await assert.rejects(
-    () => createMasqueradeService(f.config, { ...f.dependencies, environment: 'production' }),
-    'Invalid masquerade store for environment'
-  )
+  let error: unknown
+  try {
+    await createMasqueradeService(f.config, { ...f.dependencies, environment: 'production' })
+  } catch (caught) {
+    error = caught
+  }
+  assert.instanceOf(error, MasqueradeSetupError)
+  assert.equal((error as MasqueradeSetupError).code, 'E_MASQUERADE_INVALID_STORE')
+  assert.equal((error as MasqueradeSetupError).field, 'store.testOnly')
   const narrowed = defineConfig({
     ...f.config,
     durationSeconds: 60,
@@ -72,6 +77,40 @@ test('explicit null configuration durations are rejected instead of defaulted', 
       () => defineConfig({ ...fixture().config, [key]: null } as never),
       'Invalid masquerade configuration'
     )
+  }
+})
+
+test('reports safe, stable field categories for invalid configuration', ({ assert }) => {
+  const f = fixture()
+  const cases = [
+    {
+      patch: { authority: { ...f.config.authority, namespace: '../private-secret' } },
+      field: 'authority.namespace',
+    },
+    {
+      patch: { policy: { ...f.config.policy, canMasquerade: undefined } },
+      field: 'policy.canMasquerade',
+    },
+    { patch: { durationSeconds: 40 }, field: 'durationSeconds' },
+    { patch: { maxDurationSeconds: 4000 }, field: 'maxDurationSeconds' },
+    { patch: { retention: { days: 0 } }, field: 'retention.days' },
+    { patch: { contextEnforcement: 'ignore' }, field: 'contextEnforcement' },
+    { patch: { extra: true }, field: 'config' },
+  ] as const
+
+  for (const { patch, field } of cases) {
+    let error: unknown
+    try {
+      defineConfig({ ...f.config, ...patch } as never)
+    } catch (caught) {
+      error = caught
+    }
+    assert.instanceOf(error, MasqueradeSetupError)
+    assert.instanceOf(error, TypeError)
+    assert.equal((error as { code?: string }).code, 'E_MASQUERADE_INVALID_CONFIGURATION')
+    assert.equal((error as { field?: string }).field, field)
+    assert.equal((error as Error).message, 'Invalid masquerade configuration')
+    assert.notInclude(JSON.stringify(error), 'private-secret')
   }
 })
 

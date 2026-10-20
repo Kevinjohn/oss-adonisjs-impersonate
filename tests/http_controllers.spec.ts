@@ -1,10 +1,12 @@
 import { test } from '@japa/runner'
 import { IncomingMessage } from 'node:http'
 import { Socket } from 'node:net'
+import type { HttpContext } from '@adonisjs/core/http'
 import { RequestFactory } from '@adonisjs/core/factories/http'
 import { fixture } from './helpers/core.js'
 import { requestContext } from './helpers/http_context.js'
 import { MasqueradeController } from '../http/controllers.js'
+import { MasqueradeError } from '../src/errors.js'
 
 test.group('masquerade HTTP boundary', () => {
   test('routes malformed control input through core auditing and renders the public error', async ({
@@ -15,11 +17,59 @@ test.group('masquerade HTTP boundary', () => {
       body: { targetId: 'b', reason: 'ok', unexpected: true },
     })
     const controller = new MasqueradeController()
-    await controller.start(ctx)
+    await handleWithDefaultExceptionHandler(ctx, () => controller.start(ctx))
     assert.equal(responseState.status, 422)
     assert.equal(f.store.events.at(-1)?.kind, 'start_denied')
     assert.equal(f.store.events.at(-1)?.outcomeCode, 'E_MASQUERADE_INVALID_INPUT')
     assert.equal(responseState.headers.get('cache-control'), 'no-store')
+  })
+
+  test('passes control errors to the host handler and keeps a safe default JSON renderer', async ({
+    assert,
+  }) => {
+    const f = fixture()
+    const { ctx, responseState } = requestContext(f, {
+      body: { targetId: 'b', reason: 'ok', unexpected: true },
+    })
+    const controller = new MasqueradeController()
+    let received: unknown
+
+    try {
+      await controller.start(ctx)
+    } catch (error) {
+      received = error
+    }
+
+    assert.instanceOf(received, MasqueradeError)
+    assert.equal((received as MasqueradeError).code, 'E_MASQUERADE_INVALID_INPUT')
+
+    ;(received as MasqueradeError).handle(received, ctx)
+    assert.equal(responseState.status, 422)
+    assert.deepEqual(responseState.json, {
+      errors: [{ code: 'E_MASQUERADE_INVALID_INPUT', message: 'Invalid masquerade input' }],
+    })
+    assert.equal(responseState.headers.get('cache-control'), 'no-store')
+  })
+
+  test('lets a host render a localized control error', async ({ assert }) => {
+    const f = fixture()
+    const { ctx, responseState } = requestContext(f, {
+      body: { targetId: 'b', reason: 'ok', unexpected: true },
+    })
+    let hostReceived = false
+    try {
+      await new MasqueradeController().start(ctx)
+    } catch (error) {
+      if (!(error instanceof MasqueradeError)) throw error
+      hostReceived = true
+      ;(ctx as HttpContext).response
+        .status(error.status)
+        .json({ error: 'La requête de contrôle est invalide' })
+    }
+
+    assert.isTrue(hostReceived)
+    assert.equal(responseState.status, 422)
+    assert.deepEqual(responseState.json, { error: 'La requête de contrôle est invalide' })
   })
 
   test('accepts Shield form transport without treating its CSRF field as package input', async ({
@@ -31,7 +81,7 @@ test.group('masquerade HTTP boundary', () => {
       contentType: 'application/x-www-form-urlencoded',
       raw: '_csrf=host-csrf-token',
     })
-    await new MasqueradeController().stop(ctx)
+    await handleWithDefaultExceptionHandler(ctx, () => new MasqueradeController().stop(ctx))
     assert.equal(responseState.status, 428)
     assert.equal(f.store.events.at(-1)?.kind, 'stop_denied')
     assert.equal(f.store.events.at(-1)?.outcomeCode, 'E_MASQUERADE_CONTEXT_REQUIRED')
@@ -49,7 +99,7 @@ test.group('masquerade HTTP boundary', () => {
       contentType: 'application/x-www-form-urlencoded',
       raw: `%5FmasqueradeContext=${encodeURIComponent(mode.contextToken)}&${'a='.repeat(4300)}`,
     })
-    await new MasqueradeController().stop(ctx)
+    await handleWithDefaultExceptionHandler(ctx, () => new MasqueradeController().stop(ctx))
     assert.equal(responseState.status, 422)
     assert.equal(f.store.events.at(-1)?.kind, 'stop_denied')
     assert.equal(f.store.events.at(-1)?.outcomeCode, 'E_MASQUERADE_INVALID_INPUT')
@@ -103,7 +153,9 @@ test.group('masquerade HTTP boundary', () => {
       body: { ...form, _masqueradeContext: jsonMode.contextToken },
       contentType: 'application/json',
     })
-    await new MasqueradeController().start(jsonRequest)
+    await handleWithDefaultExceptionHandler(jsonRequest, () =>
+      new MasqueradeController().start(jsonRequest)
+    )
     assert.equal(jsonResponse.status, 422)
     assert.equal(jsonFixture.store.events.at(-1)?.outcomeCode, 'E_MASQUERADE_INVALID_INPUT')
 
@@ -123,7 +175,9 @@ test.group('masquerade HTTP boundary', () => {
         raw: new URLSearchParams(noncanonical).toString(),
       }
     )
-    await new MasqueradeController().start(noncanonicalRequest)
+    await handleWithDefaultExceptionHandler(noncanonicalRequest, () =>
+      new MasqueradeController().start(noncanonicalRequest)
+    )
     assert.equal(noncanonicalResponse.status, 422)
     assert.equal(noncanonicalFixture.store.events.at(-1)?.outcomeCode, 'E_MASQUERADE_INVALID_INPUT')
   })
@@ -142,7 +196,7 @@ test.group('masquerade HTTP boundary', () => {
       contentType: 'text/plain',
       header: mode.contextToken,
     })
-    await new MasqueradeController().stop(ctx)
+    await handleWithDefaultExceptionHandler(ctx, () => new MasqueradeController().stop(ctx))
     assert.equal(responseState.status, 422)
     assert.equal(f.store.events.at(-1)?.outcomeCode, 'E_MASQUERADE_INVALID_INPUT')
   })
@@ -153,7 +207,7 @@ test.group('masquerade HTTP boundary', () => {
       throw new Error('audit unavailable')
     }
     const { ctx, responseState } = requestContext(f, { body: { unexpected: true } })
-    await new MasqueradeController().start(ctx)
+    await handleWithDefaultExceptionHandler(ctx, () => new MasqueradeController().start(ctx))
     assert.equal(responseState.status, 503)
     assert.deepEqual(responseState.json, {
       errors: [{ code: 'E_MASQUERADE_UNAVAILABLE', message: 'Masquerade is unavailable' }],
@@ -188,8 +242,22 @@ test.group('masquerade HTTP boundary', () => {
     assert.isTrue(chunkedRequest.hasBody())
     const rejected = requestContext(f, {})
     Object.defineProperty(rejected.ctx, 'request', { value: chunkedRequest })
-    await new MasqueradeController().stop(rejected.ctx)
+    await handleWithDefaultExceptionHandler(rejected.ctx, () =>
+      new MasqueradeController().stop(rejected.ctx)
+    )
     assert.equal(rejected.responseState.status, 422)
     assert.equal(f.store.events[1].kind, 'stop_denied')
   })
 })
+
+async function handleWithDefaultExceptionHandler(
+  ctx: Parameters<MasqueradeController['start']>[0],
+  operation: () => Promise<void>
+): Promise<void> {
+  try {
+    await operation()
+  } catch (error) {
+    if (!(error instanceof MasqueradeError)) throw error
+    error.handle(error, ctx)
+  }
+}
