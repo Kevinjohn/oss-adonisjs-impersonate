@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Add repeatable local demo setup with a fictional operator, two customers and a bounded reset
+command.
+
 Separate native-session application routes and configuration from explicitly enabled test probes.
 
 Log bounded, privacy-safe diagnostics for core operational failures and control denials.
