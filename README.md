@@ -15,8 +15,7 @@ valid integrated sessions for the operator account, has a fixed duration, and ca
 stopped. The package does not create customer credentials or combine actor and customer
 permissions.
 
-**Status: pre-release candidate.** Version `0.0.0` is not published. Access-token transport is
-planned for v1.1; the Account Kit adapter is v1.2; JWT support is out of scope.
+**Status: pre-release candidate.** Version `0.0.0` is not published.
 
 ## Choose a path
 
@@ -44,6 +43,9 @@ customer, the fixed deadline, and the stop control.
   preserve account security epochs and implement the control-store contract.
 - [Pruning and retention](docs/guide/operations.md) and [route coverage review](docs/guide/route-report.md):
   operate bounded cleanup and review the host's effective-route coverage.
+
+Access-token transport is planned for v1.1; the Account Kit adapter is v1.2; JWT support is out of
+scope.
 
 Start with Node.js 24 and pnpm. The setup guide creates files for you to review; you keep control of
 authorization, language, route policy, retention, and user-facing UI. Masquerade does not sign in as
