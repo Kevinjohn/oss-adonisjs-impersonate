@@ -298,6 +298,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
     const actor = await this.actor(request)
     const owner = this.owner(actor)
     let row: ModeRow | null = null
+    let idleOutcomeAttempted = false
     try {
       row = await this.read(owner)
       if (!input || Object.keys(input).some((key) => key !== 'expectedContext'))
@@ -305,12 +306,14 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       requireContext(input.expectedContext, contextToken(owner, row))
       nextRevision(row)
       if (!row || row.state === 'idle') {
+        idleOutcomeAttempted = true
         await this.outcome(owner, row, 'control_noop', 'idle')
         return modeView(owner, row)
       }
       return modeView(owner, await this.clear(owner, row, 'stopped', 'stopped'))
     } catch (error) {
       if (error instanceof UnknownCommit) throw error
+      if (idleOutcomeAttempted) throw error
       await this.outcome(
         owner,
         row,

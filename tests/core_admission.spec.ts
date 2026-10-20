@@ -66,6 +66,24 @@ for (const invalidation of [
   })
 }
 
+test('inspection stamp must match the callback stamp captured at start', async ({ assert }) => {
+  const f = fixture()
+  const service = await f.create()
+  await f.start(service)
+  const inspect = f.config.authority.inspectAccount
+  f.config.authority.inspectAccount = async (id) => {
+    const snapshot = await inspect(id)
+    if (snapshot && id === 'b') snapshot.securityStamp = 'different-epoch'
+    return snapshot
+  }
+
+  const next = await f.create()
+  assert.equal(await errorCode(() => next.resolve({})), 'E_MASQUERADE_CONTEXT_CHANGED')
+  assert.equal((await f.store.read(f.owner))!.state, 'idle')
+  assert.equal(f.store.events.at(-1)!.kind, 'invalidated')
+  assert.equal(f.store.events.at(-1)!.outcomeCode, 'target_stamp')
+})
+
 test('credential and local denial preserve mode; native rejection writes no package event', async ({
   assert,
 }) => {
