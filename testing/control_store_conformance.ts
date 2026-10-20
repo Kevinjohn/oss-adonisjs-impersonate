@@ -140,6 +140,133 @@ export async function assertControlStoreConformance(
     activeRows.push(active)
   }
   for (const active of activeRows) assert.deepEqual(await store.read(active), active)
+  const activeRow = activeRows[0]!
+  const invalidId = randomUUID()
+  const invalidNext = {
+    ...activeRow,
+    revision: activeRow.revision + 1,
+    revisionNonce: 'e'.repeat(32),
+    lastTransitionId: invalidId,
+  }
+  await assert.rejects(() =>
+    store.compareAndSet({
+      owner: activeRow,
+      expected: activeRow.revision,
+      next: invalidNext,
+      event: {
+        ...event,
+        ...activeRow,
+        id: invalidId,
+        at: activeRow.updatedAt,
+        kind: 'started',
+        outcomeCode: 'started',
+        revision: invalidNext.revision,
+        targetId: 'different-target',
+        targetIncarnation: activeRow.targetIncarnation,
+      },
+    })
+  )
+  assert.deepEqual(await store.read(activeRow), activeRow)
+  await assert.rejects(() =>
+    store.compareAndSet({
+      owner: activeRow,
+      expected: activeRow.revision,
+      next: { ...invalidNext, lastTransitionId: randomUUID() },
+      event: {
+        ...event,
+        ...activeRow,
+        id: invalidId,
+        at: activeRow.updatedAt,
+        kind: 'started',
+        outcomeCode: 'started',
+        revision: invalidNext.revision,
+        targetId: activeRow.targetId,
+        targetIncarnation: activeRow.targetIncarnation,
+      },
+    })
+  )
+  assert.deepEqual(await store.read(activeRow), activeRow)
+  const mismatchedOwner = randomUUID()
+  await assert.rejects(() =>
+    store.compareAndSet({
+      owner: activeRow,
+      expected: activeRow.revision,
+      next: invalidNext,
+      event: {
+        ...event,
+        ...activeRow,
+        actorId: mismatchedOwner,
+        id: invalidId,
+        at: activeRow.updatedAt,
+        kind: 'started',
+        outcomeCode: 'started',
+        revision: invalidNext.revision,
+        targetId: activeRow.targetId,
+        targetIncarnation: activeRow.targetIncarnation,
+      },
+    })
+  )
+  assert.deepEqual(await store.read(activeRow), activeRow)
+  const endingId = randomUUID()
+  const ending: IdleModeRow = {
+    ...activeRow,
+    revision: activeRow.revision + 1,
+    revisionNonce: 'f'.repeat(32),
+    lastTransitionId: endingId,
+    state: 'idle',
+    targetId: null,
+    targetIncarnation: null,
+    actorStampHash: null,
+    targetStampHash: null,
+    reason: null,
+    startedAt: null,
+    expiresAt: null,
+  }
+  await assert.rejects(() =>
+    store.compareAndSet({
+      owner: activeRow,
+      expected: activeRow.revision,
+      next: ending,
+      event: {
+        ...event,
+        ...activeRow,
+        id: endingId,
+        at: activeRow.updatedAt,
+        kind: 'stopped',
+        outcomeCode: 'stopped',
+        revision: ending.revision,
+        targetId: 'different-target',
+      },
+    })
+  )
+  assert.deepEqual(await store.read(activeRow), activeRow)
+  for (const mismatch of [
+    { namespace: 'different-namespace' },
+    { actorIncarnation: 'different-incarnation' },
+    { revision: invalidNext.revision + 1 },
+    { modeId: randomUUID() },
+  ]) {
+    await assert.rejects(() =>
+      store.compareAndSet({
+        owner: activeRow,
+        expected: activeRow.revision,
+        next: invalidNext,
+        event: {
+          ...event,
+          ...activeRow,
+          id: invalidId,
+          at: activeRow.updatedAt,
+          kind: 'started',
+          outcomeCode: 'started',
+          revision: invalidNext.revision,
+          targetId: activeRow.targetId,
+          targetIncarnation: activeRow.targetIncarnation,
+          ...mismatch,
+        },
+      })
+    )
+    assert.deepEqual(await store.read(activeRow), activeRow)
+  }
   assert.deepEqual(await store.expiredBatch({ now: '2026-01-01T00:14:59.999Z', limit: 2 }), [])
   const expired = await store.expiredBatch({ now: '2026-01-01T00:15:00.000Z', limit: 2 })
   assert.deepEqual(expired, activeRows.slice(0, 2))

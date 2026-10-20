@@ -2,6 +2,7 @@ import { setTimeout } from 'node:timers/promises'
 import type { QueryClientContract, TransactionClientContract } from '@adonisjs/lucid/types/database'
 import { unavailable } from '../src/errors.js'
 import { validInstant, validateRow } from '../src/row_validation.js'
+import { validateTransition } from '../src/transition_validation.js'
 import type {
   AuditEvent,
   CasOutcome,
@@ -97,6 +98,13 @@ export class LucidControlStore implements ControlStore {
           (error: unknown) => ({ ok: false as const, error })
         )
         const query = transaction.table('masquerade_modes')
+        const currentRaw = await transaction
+          .from('masquerade_modes')
+          .where(ownerRecord(command.owner))
+          .forUpdate()
+          .first()
+        const current = currentRaw ? decodeRow(currentRaw, command.owner) : null
+        if ((current?.revision ?? null) === command.expected) validateTransition(command, current)
         const changed =
           command.expected === null
             ? await query
