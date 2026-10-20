@@ -7,21 +7,29 @@ import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import User from '#models/user'
 import { demoAccounts, resetDemoAccounts, seedDemoAccounts } from '#services/demo_accounts'
-import { setMasqueradeStoreUnavailable } from '#services/masquerade_test_boundary'
+import {
+  setMasqueradeStoreUnavailable,
+  setMasqueradeTestTime,
+} from '#services/masquerade_test_boundary'
 
 type BrowserPage = Awaited<ReturnType<TestContext['browserContext']['newPage']>>
 
 const screenshots = resolve('tmp/browser')
 
 test.group('support workspace browser journey', (group) => {
-  group.setup(() => testUtils.db().migrate())
+  group.setup(async () => {
+    await testUtils.db().migrate()
+    mkdirSync(screenshots, { recursive: true })
+  })
   group.each.setup(async () => {
     setMasqueradeStoreUnavailable(false)
+    setMasqueradeTestTime(undefined)
     await resetDemoAccounts()
     await seedDemoAccounts()
   })
   group.each.teardown(async () => {
     setMasqueradeStoreUnavailable(false)
+    setMasqueradeTestTime(undefined)
     await limiter.clear(['memory'])
     await resetDemoAccounts()
   })
@@ -30,7 +38,6 @@ test.group('support workspace browser journey', (group) => {
     browserContext,
     assert,
   }) => {
-    mkdirSync(screenshots, { recursive: true })
     const operator = await User.findByOrFail('email', demoAccounts[0].email)
     const customer = await User.findByOrFail('email', demoAccounts[1].email)
     const page = await browserContext.newPage()
@@ -102,10 +109,15 @@ test.group('support workspace browser journey', (group) => {
     )
     await page.screenshot({ path: resolve(screenshots, 'active_support_banner.png') })
 
+    assert.equal(await page.locator('.support-details dd').nth(1).textContent(), 'Off')
+    assert.equal(await page.getByLabel('Setting').inputValue(), '0')
     await page.getByLabel('Setting').selectOption('1')
     await page.getByRole('button', { name: 'Save preference' }).press('Enter')
     await page.waitForURL('**/support/customer')
     await page.getByText('Customer email preference saved.').waitFor()
+    await page.reload()
+    assert.equal(await page.locator('.support-details dd').nth(1).textContent(), 'On')
+    assert.equal(await page.getByLabel('Setting').inputValue(), '1')
 
     await page.getByRole('button', { name: 'Try sensitive action' }).click()
     await page.getByRole('heading', { name: 'Sensitive action blocked' }).waitFor()
@@ -211,6 +223,7 @@ test.group('support workspace browser journey', (group) => {
 
       mock.timers.setTime(deadline)
       await page.clock.setFixedTime(deadline)
+      setMasqueradeTestTime(deadline)
       await backgroundPage!.bringToFront()
       await page.bringToFront()
       await page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
@@ -230,8 +243,22 @@ test.group('support workspace browser journey', (group) => {
       assert.equal(await intentButtons.nth(0).isDisabled(), true)
       assert.equal(await intentButtons.nth(1).isDisabled(), true)
 
+      const expiredCustomerResponse = await page.goto(`${baseUrl()}/support/customer`)
+      assert.equal(expiredCustomerResponse?.status(), 409)
+      await page.getByRole('heading', { name: 'Support context changed' }).waitFor()
+      assert.include(await page.locator('body').innerText(), 'The old action was not replayed.')
       await page.goto(`${baseUrl()}/support`)
-      await page.getByText('The deadline has passed.', { exact: false }).waitFor()
+      await page.getByRole('heading', { name: 'Choose a customer' }).waitFor()
+      await page.getByRole('heading', { name: operator.fullName! }).waitFor()
+      assert.equal(await page.getByRole('button', { name: 'Stop support mode' }).count(), 0)
+
+      await page
+        .getByLabel('Customer', { exact: true })
+        .selectOption({ label: 'Customer One — customer-one@example.test' })
+      await page.getByLabel('Reason for access').fill('Recover after the outage demonstration')
+      await page.getByRole('button', { name: 'Start support mode' }).click()
+      await page.waitForURL('**/support/customer')
+      await page.goto(`${baseUrl()}/support`)
       setMasqueradeStoreUnavailable(true)
       await page.reload()
       await page.getByRole('heading', { name: 'Support status is unavailable' }).waitFor()
@@ -243,9 +270,16 @@ test.group('support workspace browser journey', (group) => {
       await page.getByRole('link', { name: 'Check current status' }).click()
       await page.getByRole('button', { name: 'Stop support mode' }).waitFor()
     } finally {
-      setMasqueradeStoreUnavailable(false)
-      await backgroundPage?.close()
-      mock.timers.reset()
+      try {
+        setMasqueradeStoreUnavailable(false)
+      } finally {
+        try {
+          setMasqueradeTestTime(undefined)
+        } finally {
+          mock.timers.reset()
+          await backgroundPage?.close()
+        }
+      }
     }
   })
 })

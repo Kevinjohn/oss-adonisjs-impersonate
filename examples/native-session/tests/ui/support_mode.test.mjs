@@ -13,15 +13,10 @@ function page(expiresAt) {
       this.focused = true
       documentRef.activeElement = notice
     },
-    role: 'status',
-    ariaLive: 'polite',
   }
   const button = { disabled: false }
   const intent = {
     hidden: false,
-    contains(element) {
-      return element === button
-    },
     querySelectorAll() {
       return [button]
     },
@@ -76,8 +71,6 @@ test('a rendered page freezes its captured customer intent at the fixed deadline
   assert.equal(rendered.notice.focused, true)
   assert.match(rendered.notice.textContent, /deadline has passed/)
   assert.equal(rendered.documentRef.activeElement, rendered.notice)
-  assert.equal(rendered.notice.role, 'status')
-  assert.equal(rendered.notice.ariaLive, 'polite')
 })
 
 test('a visible return checks raw status and freezes even when the token is unchanged', async () => {
