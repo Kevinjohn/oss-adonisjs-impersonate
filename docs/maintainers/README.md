@@ -13,3 +13,4 @@ package archive.
 - [Source map](source-map.md): task-oriented module and test navigation.
 - [Historical handoff](handoff.md): the original implementation sequence and milestone gates.
 - [Conventions](conventions.md): repository layout, toolchain and release practices.
+- [Expiry scan measurement](expiry-scan-measurement.md): disposable SQLite and PostgreSQL 16 query plans and timings.
