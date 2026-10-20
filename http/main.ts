@@ -1,2 +1,5 @@
-/** `adonisjs-masquerade/http`: populated in the milestone named in DEVELOPMENT-PLAN.md. */
-export {}
+export { MasqueradeController } from './controllers.js'
+export { masqueradeContext } from './context_middleware.js'
+export { renderMasqueradeError } from './errors.js'
+export { contextField, shareMasquerade } from './edge.js'
+export { sensitive, allowMutation } from '../integration/route_metadata.js'

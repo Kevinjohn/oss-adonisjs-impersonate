@@ -442,6 +442,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
     })
     const result = Object.freeze({
       context,
+      view: this.view(owner, row),
       actor: Object.freeze({ id: actor.id, incarnation: actor.incarnation, user: actor.user }),
       effective: Object.freeze({
         id: effective.id,

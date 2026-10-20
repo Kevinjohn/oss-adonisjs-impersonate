@@ -1,17 +1,8 @@
-/*
-|--------------------------------------------------------------------------
-| Routes file
-|--------------------------------------------------------------------------
-|
-| The routes file is used for defining the HTTP routes.
-|
-*/
-
+import { Bouncer } from '@adonisjs/bouncer'
+import { allowMutation, sensitive, shareMasquerade } from 'adonisjs-masquerade/http'
 import { middleware } from '#start/kernel'
 import { controllers } from '#generated/controllers'
 import router from '@adonisjs/core/services/router'
-import { setTarget } from '#services/effective_guard'
-import { Bouncer } from '@adonisjs/bouncer'
 import type User from '#models/user'
 
 router.on('/').render('pages/home').as('home')
@@ -20,52 +11,46 @@ router
   .group(() => {
     router.get('signup', [controllers.NewAccount, 'create'])
     router.post('signup', [controllers.NewAccount, 'store'])
-
     router.get('login', [controllers.Session, 'create'])
     router.post('login', [controllers.Session, 'store'])
   })
   .use(middleware.guest())
 
 router
-  .group(() => {
-    router.on('/dashboard').render('pages/dashboard').as('dashboard')
-    router.post('logout', [controllers.Session, 'destroy'])
-  })
-  .use(middleware.auth())
+  .on('/dashboard')
+  .render('pages/dashboard')
+  .as('dashboard')
+  .use(middleware.auth({ guards: ['web_effective'] }))
 
 router
-  .post('/control/clear', async ({ auth }) => {
-    const actor = await auth.use('web').authenticate()
-    setTarget(String(actor.id))
-    return { actorId: actor.id, cleared: true }
-  })
+  .post('/logout', [controllers.Session, 'destroy'])
+  .as('logout')
   .use(middleware.auth({ guards: ['web'] }))
 
 router
-  .post('/control/:targetId', async ({ auth, params }) => {
-    const actor = await auth.use('web').authenticate()
-    setTarget(String(actor.id), String(params.targetId))
-    return { actorId: actor.id, targetId: String(params.targetId) }
+  .group(() => {
+    router.get('/', [controllers.Masquerade, 'status']).as('masquerade.status')
+    router.post('/start', [controllers.Masquerade, 'start']).as('masquerade.start')
+    router.post('/stop', [controllers.Masquerade, 'stop']).as('masquerade.stop')
   })
+  .prefix('/masquerade')
   .use(middleware.auth({ guards: ['web'] }))
 
 router
   .get('/business', async (ctx) => {
-    const auth = ctx.auth
+    const { auth } = ctx
     const actor = auth.use('web').user!
-    let bouncerUserId: number | undefined
-    const effectiveIsTarget = Bouncer.ability((user: User) => {
-      bouncerUserId = user.id
-      return user.id !== actor.id
-    })
+    const target = auth.user!
     const bouncer = new Bouncer<User>(() => auth.user ?? null)
+    const seesTarget = await bouncer.allows(Bouncer.ability((user: User) => user.id === target.id))
     return {
-      userId: auth.user!.id,
+      actorId: actor.id,
+      effectiveId: auth.user!.id,
       getUserOrFailId: auth.getUserOrFail().id,
       authenticatedViaGuard: auth.authenticatedViaGuard,
       rawActorId: auth.use('web').user!.id,
-      bouncerSeesTarget: await bouncer.allows(effectiveIsTarget),
-      bouncerUserId,
+      bouncerUserId: seesTarget ? auth.user!.id : null,
+      actorAllowed: await bouncer.allows(Bouncer.ability((user: User) => user.id === actor.id)),
       silentAuthSnapshot: (
         ctx as typeof ctx & {
           silentAuthSnapshot?: { guard?: string; userId?: number }
@@ -73,11 +58,96 @@ router
       ).silentAuthSnapshot,
     }
   })
-  .use(middleware.effectiveAuth())
+  .use(allowMutation())
+  .use(middleware.auth({ guards: ['web_effective'] }))
 
-router.get('/default-auth', async ({ auth }) => {
-  const user = await auth.authenticate()
-  return { userId: user.id, authenticatedViaGuard: auth.authenticatedViaGuard }
-})
+router
+  .post('/business/mixed-raw-first', async () => ({ ran: true }))
+  .use(middleware.auth({ guards: ['web'] }))
+  .use(middleware.auth({ guards: ['web_effective'] }))
 
-router.get('/api/business', async () => ({ error: 'unauthorized' })).use(middleware.effectiveAuth())
+router
+  .post('/business/mixed-effective-first', async () => ({ ran: true }))
+  .use(middleware.auth({ guards: ['web_effective'] }))
+  .use(middleware.auth({ guards: ['web'] }))
+
+router
+  .get('/raw-business', async ({ auth }) => ({ actorId: auth.use('web').user!.id }))
+  .use(middleware.auth({ guards: ['web'] }))
+
+router
+  .get('/business/form', async (ctx) => {
+    await shareMasquerade(ctx)
+    return ctx.view.render('pages/masquerade_form')
+  })
+  .use(middleware.auth({ guards: ['web_effective'] }))
+
+router
+  .get('/business/admitted-stop-form', async (ctx) => {
+    const runtime = await ctx.containerResolver.make('masquerade.runtime')
+    const admitted = await runtime.admit(ctx)
+    await runtime.service.stop(ctx, { expectedContext: admitted.view.contextToken })
+    await shareMasquerade(ctx)
+    return ctx.view.render('pages/masquerade_form')
+  })
+  .use(middleware.auth({ guards: ['web_effective'] }))
+
+router
+  .post('/business/mutate', async ({ auth }) => {
+    const bouncer = new Bouncer<User>(() => auth.user ?? null)
+    await bouncer.authorize(Bouncer.ability((user: User) => Boolean(user.canMutate)))
+    return {
+      ran: true,
+      effectiveId: auth.user!.id,
+      rawActorId: auth.use('web').user!.id,
+    }
+  })
+  .use(allowMutation())
+  .use(middleware.auth({ guards: ['web_effective'] }))
+
+router
+  .post('/business/report-probe', async ({ auth }) => ({ rawActorId: auth.use('web').user!.id }))
+  .use(allowMutation())
+  .use(middleware.auth({ guards: ['web_effective'] }))
+
+router
+  .group(() => {
+    router.post('/group-marked', async ({ auth }) => ({
+      effectiveId: auth.user!.id,
+      rawActorId: auth.use('web').user!.id,
+    }))
+  })
+  .prefix('/business')
+  .use(allowMutation())
+  .use(middleware.auth({ guards: ['web_effective'] }))
+
+router
+  .post('/business/actor-only', async ({ auth }) => {
+    const actor = auth.use('web').user!
+    const bouncer = new Bouncer<User>(() => auth.user ?? null)
+    await bouncer.authorize(Bouncer.ability((user: User) => user.id === actor.id))
+    return { ran: true, effectiveId: auth.user!.id }
+  })
+  .use(allowMutation())
+  .use(middleware.auth({ guards: ['web_effective'] }))
+
+router
+  .post('/business/denied-mutation', async () => ({ ran: true }))
+  .use(middleware.auth({ guards: ['web_effective'] }))
+
+router
+  .post('/business/read-marked-mutation', async () => ({ ran: true }))
+  .use(async (_ctx, next) => next())
+  .use(middleware.auth({ guards: ['web_effective'] }))
+
+router
+  .post('/business/sensitive', async () => ({ ran: true }))
+  .use(allowMutation())
+  .use(sensitive())
+  .use(middleware.auth({ guards: ['web_effective'] }))
+
+router
+  .post('/business/billing', async () => ({ ran: true }))
+  .use(allowMutation())
+  .use(sensitive())
+  .use(middleware.auth({ guards: ['web_effective'] }))

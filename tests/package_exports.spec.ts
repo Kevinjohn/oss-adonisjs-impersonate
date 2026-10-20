@@ -15,10 +15,25 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     assert.equal(typeof root, 'object')
     assert.lengthOf(Object.keys(types), 0)
     assert.isFunction(provider.default)
+    assert.isFunction(auth.effectiveSessionGuard)
+    assert.isFunction(native.sessionAuthority)
+    for (const name of [
+      'MasqueradeController',
+      'masqueradeContext',
+      'renderMasqueradeError',
+      'contextField',
+      'shareMasquerade',
+      'sensitive',
+      'allowMutation',
+    ] as const)
+      assert.isFunction(http[name])
     const commandMetadata = await commands.getMetaData()
     const prune = commandMetadata.find((command) => command.commandName === 'masquerade:prune')
     assert.isDefined(prune)
     assert.isFunction(await commands.getCommand(prune!))
+    const routes = commandMetadata.find((command) => command.commandName === 'masquerade:routes')
+    assert.isDefined(routes)
+    assert.isFunction(await commands.getCommand(routes!))
     for (const subpath of [auth, http, native, lucid, testing])
       assert.equal(typeof subpath, 'object')
   })

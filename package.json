@@ -43,6 +43,7 @@
     "docs:build": "pnpm docs:api && vitepress build docs",
     "quick:test": "node --import=@poppinss/ts-exec --enable-source-maps bin/test.ts",
     "test:built-exports": "cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=package_exports.spec.ts",
+    "pack:fixture": "pnpm pack --out tmp/native-session-package.tgz",
     "pretest": "pnpm lint",
     "test": "c8 pnpm quick:test",
     "precompile": "pnpm lint",

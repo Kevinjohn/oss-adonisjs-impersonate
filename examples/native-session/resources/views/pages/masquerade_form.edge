@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <form method="POST" action="/business/mutate">
+      {{ csrfField() }}
+      {{{ masqueradeContextField() }}}
+      <button type="submit">Save</button>
+    </form>
+  </body>
+</html>
