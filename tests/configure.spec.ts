@@ -114,7 +114,10 @@ export default defineConfig({
       process.exitCode = previousProcessExitCode
       await rm(root, { recursive: true, force: true })
     }
-  }).timeout(10_000)
+  })
+    .timeout(10_000)
+    // The generated app imports the compiled package; `pnpm test:built-exports` runs this after build.
+    .skip(process.env.TEST_BUILT_EXPORTS !== '1', 'requires the built package')
 
   test('generates fail-closed files and additive wiring, skips existing files, and force replaces them', async ({
     assert,
