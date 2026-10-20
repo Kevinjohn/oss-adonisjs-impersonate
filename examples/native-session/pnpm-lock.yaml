@@ -1139,7 +1139,7 @@ packages:
     hasBin: true
 
   adonisjs-masquerade@file:../../tmp/native-session-package.tgz:
-    resolution: {integrity: sha512-FOOhNkRtfYD2pf960f3+MYepee0Q3DA79ftebLj+OmdoDLHgyDo23jV/JLRbS1bKLyRtwyHETZ8HhPBgsbsa3g==, tarball: file:../../tmp/native-session-package.tgz}
+    resolution: {integrity: sha512-Z0ssalenHmwrku+0ItUacwHzMhVwPF4+2PAPKSZ4Id/QxcMFTDNsUmzeIx0QeV3Bm25jwrygK2s41BFz6cYYyQ==, tarball: file:../../tmp/native-session-package.tgz}
     version: 0.0.0
     engines: {node: '>=24.0.0'}
     peerDependencies:
