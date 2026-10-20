@@ -1,6 +1,6 @@
-/** Canonical provider identifier and UTC ISO 8601 timestamp. */
 import type { MasqueradeErrorCode } from './errors.js'
 
+/** Canonical provider identifier and UTC ISO 8601 timestamp. */
 export type SubjectId = string
 export type Instant = string
 export type Revision = number
