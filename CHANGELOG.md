@@ -2,12 +2,14 @@
 
 ## Unreleased
 
-Add a fresh native-session host recipe check for the documented wiring and SQLite/PostgreSQL HTTP journey.
+Add documentation, native-session recipe, and browser checks to pull-request validation.
 
 Organize the README and documentation landing page around the demo, integration guides, and
 security and operations paths.
 
 Map supported package imports to generated API symbols and remove edit links from generated pages.
+
+Add a fresh native-session host recipe check for the documented wiring and SQLite/PostgreSQL HTTP journey.
 
 Exercise the native-session support workspace in isolated browser journeys, including stale forms,
 account-wide sessions, expiry and recovery.

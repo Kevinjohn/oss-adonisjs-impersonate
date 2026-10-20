@@ -27,9 +27,11 @@ AdonisJS Plus compatibility.
 
 Use Node 24 and pnpm. Run repository scripts rather than bare tools. The standard checks are
 `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm quick:test`, `pnpm test:built-exports`, and
-`pnpm test:pg`. The packed native-session fixture has its own lint, typecheck, test and report-mode
-commands. `pnpm test:consumer` records floor/latest dependency versions
-from actual package resolution and exercise SQLite/PostgreSQL consumers.
+`pnpm test:pg`. `pnpm test:coverage` runs the same c8-wrapped root suite without the `pretest` lint
+hook; CI uses it in the SQLite/PostgreSQL matrix after lint is covered by the package build. The
+packed native-session fixture has its own lint, typecheck, test and report-mode commands.
+`pnpm test:consumer` records floor/latest dependency versions from actual package resolution and
+exercises SQLite/PostgreSQL consumers.
 
 `pnpm test:recipe --database=sqlite|pg|all` starts with the unwired
 `examples/recipe-host` template, installs the packed package in a disposable directory, runs
@@ -83,6 +85,16 @@ the same suite directly against your server; it does not start or stop that serv
 - The release workflow runs the packed native-session consumer matrix at floor/latest on SQLite and
   PostgreSQL before publishing. Private-repository push and pull-request checks remain gated, while
   manual and release-triggered checks run.
+- The `checks` database matrix retains its SQLite and PostgreSQL status names. Both cells run the
+  c8-wrapped root suite; the SQLite cell runs typechecking, the clean-host recipe, and built-export
+  tests, then builds the docs and runs the example browser suite twice on pull requests. The
+  recipe's `pnpm build` invokes lint once; `test:coverage` avoids the `pretest` lint hook in both
+  database cells. Repositories that require these existing status names for branch protection
+  will continue to require the new SQLite steps in that context. The release-only four-cell
+  consumer matrix retains floor/latest compatibility coverage. PR verification has read-only
+  repository permissions and never uploads or deploys Pages artifacts. Reusable checks retain the
+  caller's event context, so the release workflow's manual dispatch runs checks for private
+  repositories while their automatic push and pull-request checks remain gated.
 - Do not publish, tag, merge, or rename as part of a release-candidate implementation task unless
   separately authorized by the owner.
 
