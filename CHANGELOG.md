@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Add the Lucid control store for SQLite and PostgreSQL, a portable migration schema, and the
+`masquerade:prune` command for bounded expiry and audit retention housekeeping.
+
 Add the core state machine, revision-bound context tokens, hashed security stamps, fixed expiry,
 policy checks, atomic memory store and control-store conformance helpers. Keep mode and audit
 projections separate from user records and isolate observer failures from committed transitions.
