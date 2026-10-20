@@ -373,7 +373,7 @@ Deferred families: T-TOKEN (v1.1), T-KIT and T-KIT-HTTP (v1.2). PRD traceability
 
 FR-24 and FR-25 are satisfied in v1 only to the extent of the native-session transport; their adapter clauses are deferred per the PRD v1 scope addendum. M4 produces a requirement-to-test ledger for every retained FR, NFR and AC; a family label alone is not evidence.
 
-### 11.2 Milestones
+### 11.2 Milestone acceptance gates
 
 | #   | Ships                                                                                                                                                                                                                    | Gate                                                                                                 |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
@@ -391,4 +391,7 @@ Commands are future repository scripts on Node 24 with pnpm: `pnpm lint`, `pnpm 
 - [Auth 10 Authenticator](https://github.com/adonisjs/auth/blob/10.x/src/authenticator.ts) and [session guard](https://github.com/adonisjs/auth/blob/10.x/modules/session_guard/guard.ts): the seam in section 4.3 depends on their last-attempted-guard behaviour, which M0 proves rather than assumes.
 - [Previously assessed package](https://github.com/devnymous/adonis-impersonate/tree/b86b3c82dcff91026473d861999a6afba9c42314): comparison only; its browser-login-switch architecture is not adopted.
 
-Everything above is unimplemented until the milestone gates pass. Compatibility, concurrency and security claims are acceptance targets, not results.
+This document defines acceptance targets, not execution results. The original milestone gates
+are recorded as complete in [M4-RESULT.md](M4-RESULT.md) and the
+[requirement ledger](docs/maintainers/requirement-ledger.md). Those records distinguish verified
+behavior from publication; the technical contract remains authoritative for implementation.

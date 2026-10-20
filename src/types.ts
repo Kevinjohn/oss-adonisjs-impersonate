@@ -13,6 +13,12 @@ export interface AccountSnapshot<User> {
   securityStamp: string
   active: boolean
 }
+/**
+ * Host-owned account inspection, separate from native credential authentication.
+ * IDs are canonical provider IDs; incarnation identifies an immutable account lifetime.
+ * inspectAccount returns current eligibility and stamp from the inspected account state;
+ * a missing account is null, while operational failures reject. It never authenticates a target.
+ */
 export interface NativeAuthority<User> {
   namespace: string
   guard: string
@@ -20,6 +26,7 @@ export interface NativeAuthority<User> {
   securityStamp(user: User): string | Promise<string>
   inspectAccount(id: SubjectId): Promise<AccountSnapshot<User> | null>
 }
+/** Global eligibility and optional request-local access; only literal true permits access. */
 export interface MasqueradePolicy<User, Request> {
   canMasquerade(input: {
     actor: Subject<User>
@@ -86,6 +93,7 @@ export interface AuditEvent extends OwnerKey {
   reason?: string
 }
 export type ObserverEvent = Readonly<Omit<AuditEvent, 'reason'>>
+/** An indeterminate commit may have succeeded; callers recover through status, never blind retry. */
 export type CasOutcome =
   | { status: 'applied'; transitionId: string }
   | { status: 'conflict' }
@@ -99,10 +107,15 @@ export interface CompareAndSetInput {
 export interface ControlStore {
   /** Test stores must expose this flag so production boot rejects them. */
   readonly testOnly?: boolean
+  /** Independent row snapshot for the complete owner key; null is authoritative absence. */
   read(owner: OwnerKey): Promise<ModeRow | null>
+  /** Atomically match the expected revision (null means absent), replace the row and append its event. */
   compareAndSet(input: CompareAndSetInput): Promise<CasOutcome>
+  /** Append a required denial/no-op outcome without changing the owner's row or revision. */
   recordControlOutcome(event: AuditEvent): Promise<void>
+  /** At most limit expired active snapshots; pruning re-reads and uses CAS before clearing each. */
   expiredBatch(input: { now: Instant; limit: number }): Promise<ModeRow[]>
+  /** Delete at most limit events older than before. Never delete mode rows, including idle rows. */
   pruneEvents(input: { before: Instant; limit: number }): Promise<number>
 }
 export interface MasqueradeConfig<User, Request> {

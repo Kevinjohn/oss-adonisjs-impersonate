@@ -19,6 +19,9 @@ AdonisJS Plus compatibility.
   allowed. A sensitive marker overrides `allowMutation()`.
 - Files have one responsibility and names describe it. Tests follow source modules; shared fixtures
   live in `tests/helpers/`.
+- Use the [source map](source-map.md) to locate the owner and focused tests for a change. Separate
+  independent reasons to change when that reduces unrelated reading context; file length and a
+  second caller are not prerequisites. Preserve ordered orchestration and atomic transitions.
 
 ## Toolchain and checks
 
