@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Map supported package imports to generated API symbols and remove edit links from generated pages.
+
 Document the native-session support-mode journey with JSON controls, Edge adapters, business guards and recovery guidance.
 
 Add a browser support workspace to the native-session example, with raw status and stop recovery,

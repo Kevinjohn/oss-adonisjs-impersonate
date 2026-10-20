@@ -3,7 +3,9 @@
 Masquerade v1 integrates with AdonisJS's native session guard. The signed-in account remains the
 actor; on covered business routes, the selected account becomes the effective principal. The
 package does not create a target login or credential. See [security](security.md) for the identity
-boundary and [custom authorities](custom-authorities.md) for the native authority contract.
+boundary and [custom authorities](custom-authorities.md) for the native authority contract. The
+[API entry-point map](../api-reference.md#supported-package-imports) links the supported imports
+for `effectiveSessionGuard`, `sessionAuthority`, and the provider.
 
 ## Generate the starter files
 
