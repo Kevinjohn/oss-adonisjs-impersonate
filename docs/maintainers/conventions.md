@@ -34,6 +34,20 @@ from actual package resolution and exercise SQLite/PostgreSQL consumers.
 Use the bundled scripts to preserve flags and runtime setup. Do not add Docker support or use npm,
 npx, yarn, or yarn dlx. `better-sqlite3` requires the pinned Node 24 runtime.
 
+## External PostgreSQL
+
+Use Node 24 (`nvm use`) and a disposable PostgreSQL 16 database when the managed local
+binaries are unavailable. Provide all connection settings explicitly; the tests create and
+remove their own tables, so never point them at a production or shared application database.
+
+```sh
+DB_CLIENT=pg DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=masquerade_test \
+  DB_PASSWORD=local_test_password DB_DATABASE=masquerade_test pnpm quick:test
+```
+
+Replace these local example credentials with those of your disposable test database. This runs
+the same suite directly against your server; it does not start or stop that server.
+
 ## Verification and release evidence
 
 - A test counts as evidence only when it names and asserts the required behavior. Cite the exact
