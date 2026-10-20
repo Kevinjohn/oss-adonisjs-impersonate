@@ -1,5 +1,7 @@
 # Security and operations
 
+For a practical status → start → customer work → stop journey, see [Use a support mode](usage.md).
+
 ## Actor, target and scope
 
 Masquerade is one server-side mode per `(namespace, actor ID, incarnation)`. It is visible to all
@@ -98,6 +100,15 @@ If a request sends both header and form tokens, they must match. Missing context
 conflicting context is 409. Do not fetch a newer token and replay an old intent: refresh or rebuild
 the user's action under the current mode first.
 GET/HEAD/OPTIONS requests do not need the token, though active-mode policy still applies.
+
+## Expiry and status
+
+Status is a read-only view of persisted control state. A row whose `expiresAt` has passed can still
+be returned as active until admission or bounded cleanup performs the durable transition. Treat a
+mode as usable only while `expiresAt` is strictly later than the current time. Status must not
+clear the row, advance its revision, or append an expiry event. On a context-changed response,
+refresh the view and require the user to rebuild the action; never fetch a token and replay stale
+intent automatically.
 
 Start and stop always enforce their expected token. Business middleware may run in `report` while
 the host migrates forms; it logs would-be missing/stale errors and admits the request. Report mode
