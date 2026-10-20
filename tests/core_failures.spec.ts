@@ -295,7 +295,8 @@ test('malformed inspection stamps log a bounded authority diagnostic and leave a
     assert.deepEqual(f.diagnostics, [
       { category: 'authority', operation: 'security_stamp', code: 'E_MASQUERADE_UNAVAILABLE' },
     ])
-    assert.isTrue((await service.status({})).isMasquerading)
+    const status = await service.status({})
+    assert.isTrue(status.isMasquerading)
     assert.lengthOf(f.store.events, 1)
   }
 })
@@ -310,7 +311,8 @@ test('actor stamp revocation invalidates before an unrelated malformed target st
   f.users.get('b')!.stamp = ''
 
   assert.equal(await errorCode(() => service.resolve({})), 'E_MASQUERADE_CONTEXT_CHANGED')
-  assert.isFalse((await service.status({})).isMasquerading)
+  const status = await service.status({})
+  assert.isFalse(status.isMasquerading)
   assert.deepEqual(
     f.store.events.map((event) => event.kind),
     ['started', 'invalidated']
