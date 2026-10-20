@@ -48,7 +48,10 @@ remain one protocol; service control and admission ordering remain one lifecycle
   The [app](../../examples/native-session/resources/views/components/layouts/app.edge),
   [auth](../../examples/native-session/resources/views/components/layouts/auth.edge) and
   [marketing](../../examples/native-session/resources/views/components/layouts/marketing.edge)
-  layouts retain their own body structure.
+  layouts retain their own body structure. Error pages can render before router middleware has
+  initialized auth or session state, so shared marketing and flash markup must tolerate missing
+  context. [Error-page regressions](../../examples/native-session/tests/functional/error_pages.spec.ts)
+  cover direct rendering and real unmatched HTTP requests with production status rendering.
 
 ## Verification
 
