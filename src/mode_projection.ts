@@ -34,15 +34,11 @@ export function admittedProjection<User>(
   return Object.freeze({
     context,
     view: modeView(owner, row),
-    actor: subjectProjection(actor),
-    effective: subjectProjection(effective),
-  })
-}
-
-function subjectProjection<User>(subject: Subject<User>): Readonly<Subject<User>> {
-  return Object.freeze({
-    id: subject.id,
-    incarnation: subject.incarnation,
-    user: subject.user,
+    actor: Object.freeze({ id: actor.id, incarnation: actor.incarnation, user: actor.user }),
+    effective: Object.freeze({
+      id: effective.id,
+      incarnation: effective.incarnation,
+      user: effective.user,
+    }),
   })
 }
