@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import { pruneMasquerade } from '../src/prune.js'
 import { createMasqueradeService } from '../src/service.js'
-import { fixture } from './helpers/core.js'
+import { fixture, errorCode } from './helpers/core.js'
 
 test.group('pruneMasquerade', () => {
   test('expires a still-current expired row and preserves the active audit projection', async ({
@@ -188,5 +188,72 @@ test.group('pruneMasquerade', () => {
     await assert.rejects(() =>
       pruneMasquerade(f.config, { ...f.dependencies, clock: () => new Date(Number.NaN) })
     )
+  })
+
+  test('a CAS conflict skips expiry without emitting a transition', async ({ assert }) => {
+    const f = fixture()
+    const service = await f.create()
+    await f.start(service)
+    const before = await f.store.read(f.owner)
+    f.observed.length = 0
+    f.state.now += 901_000
+    f.store.compareAndSet = async () => ({ status: 'conflict' })
+    assert.deepEqual(await pruneMasquerade(f.config, f.dependencies), {
+      expired: 0,
+      eventsDeleted: 0,
+    })
+    assert.deepEqual(await f.store.read(f.owner), before)
+    assert.lengthOf(f.store.events, 1)
+    assert.deepEqual(f.observed, [])
+  })
+
+  test('an uncertain expiry commit reports correlation without emitting success or compensating', async ({
+    assert,
+  }) => {
+    const f = fixture()
+    const service = await f.create()
+    await f.start(service)
+    f.state.now += 901_000
+    f.observed.length = 0
+    const compareAndSet = f.store.compareAndSet.bind(f.store)
+    f.store.compareAndSet = async (input) => {
+      await compareAndSet(input)
+      return { status: 'indeterminate', transitionId: input.event.id }
+    }
+    assert.equal(
+      await errorCode(() => pruneMasquerade(f.config, f.dependencies)),
+      'E_MASQUERADE_UNAVAILABLE'
+    )
+    const row = await f.store.read(f.owner)
+    assert.equal(row?.state, 'idle')
+    assert.deepEqual(
+      f.store.events.map((event) => event.kind),
+      ['started', 'expired']
+    )
+    assert.deepEqual(f.observed, [
+      { code: 'E_MASQUERADE_UNAVAILABLE', transitionId: f.store.events[1].id },
+    ])
+  })
+
+  test('revision exhaustion rejects expiry without changing its row or audit', async ({
+    assert,
+  }) => {
+    const f = fixture()
+    const service = await f.create()
+    await f.start(service)
+    f.state.now += 901_000
+    const read = f.store.read.bind(f.store)
+    const exhausted = { ...(await read(f.owner))!, revision: Number.MAX_SAFE_INTEGER }
+    f.store.read = async () => exhausted
+    f.store.expiredBatch = async () => [exhausted]
+    f.observed.length = 0
+    assert.equal(
+      await errorCode(() => pruneMasquerade(f.config, f.dependencies)),
+      'E_MASQUERADE_UNAVAILABLE'
+    )
+    const row = await read(f.owner)
+    assert.equal(row?.revision, 1)
+    assert.lengthOf(f.store.events, 1)
+    assert.deepEqual(f.observed, [])
   })
 })

@@ -145,9 +145,6 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       throw unavailable()
     }
   }
-  private revision(row: ModeRow | null): number {
-    return nextRevision(row)
-  }
   private async commit(
     owner: OwnerKey,
     previous: ModeRow | null,
@@ -188,6 +185,16 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       throw unavailable()
     }
   }
+  private eligibleActor(
+    current: AccountSnapshot<User> | null,
+    actor: Subject<User>
+  ): current is AccountSnapshot<User> {
+    return Boolean(
+      current?.active &&
+      current.subject.id === actor.id &&
+      current.subject.incarnation === actor.incarnation
+    )
+  }
   private async allowed(
     actor: Subject<User>,
     target: Subject<User>,
@@ -225,7 +232,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
     const actor = await this.actor(request)
     const owner = this.owner(actor)
     const row = await this.read(owner)
-    this.revision(row)
+    nextRevision(row)
     return this.view(owner, row)
   }
   async start(request: Request, input: StartInput): Promise<ModeView> {
@@ -236,7 +243,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       row = await this.read(owner)
       validateStartInputShape(input)
       requireContext(input.expectedContext, contextToken(owner, row))
-      this.revision(row)
+      nextRevision(row)
       if (row?.state === 'active' && this.now() >= row.expiresAt) {
         await this.clear(owner, row, 'expired', 'expired')
         throw new MasqueradeError('E_MASQUERADE_CONTEXT_CHANGED')
@@ -251,12 +258,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       const currentActor = await this.inspect(actor.id)
       const target = await this.inspect(targetId)
       if (target?.subject.id === actor.id) throw invalidInput()
-      if (
-        !currentActor?.active ||
-        currentActor.subject.incarnation !== actor.incarnation ||
-        currentActor.subject.id !== actor.id ||
-        !target?.active
-      )
+      if (!this.eligibleActor(currentActor, actor) || !target?.active)
         throw new MasqueradeError('E_MASQUERADE_NOT_ALLOWED')
       if (!(await this.allowed(currentActor.subject, target.subject, request, reason)))
         throw new MasqueradeError('E_MASQUERADE_NOT_ALLOWED')
@@ -273,7 +275,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       const next: ActiveModeRow = {
         ...owner,
         state: 'active',
-        revision: this.revision(row),
+        revision: nextRevision(row),
         revisionNonce: randomBytes(16).toString('hex'),
         modeId: randomUUID(),
         lastTransitionId: event.id,
@@ -314,7 +316,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       if (!input || Object.keys(input).some((key) => key !== 'expectedContext'))
         throw invalidInput()
       requireContext(input.expectedContext, contextToken(owner, row))
-      this.revision(row)
+      nextRevision(row)
       if (!row || row.state === 'idle') {
         await this.outcome(owner, row, 'control_noop', 'idle')
         return this.view(owner, row)
@@ -357,12 +359,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       }
       const currentActor = await this.inspect(actor.id)
       const target = await this.inspect(row.targetId)
-      if (
-        !currentActor?.active ||
-        currentActor.subject.id !== actor.id ||
-        currentActor.subject.incarnation !== actor.incarnation
-      )
-        invalid = 'actor_ineligible'
+      if (!this.eligibleActor(currentActor, actor)) invalid = 'actor_ineligible'
       else if (
         !target?.active ||
         target.subject.id !== row.targetId ||

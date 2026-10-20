@@ -1,6 +1,42 @@
 import { test } from '@japa/runner'
 import { fixture, errorCode } from './helpers/core.js'
 
+test('start preserves input-shape, context and active-mode error precedence', async ({
+  assert,
+}) => {
+  const f = fixture()
+  const service = await f.create()
+  const idle = await service.status({})
+  const selection = { targetId: 'b', reason: '', durationSeconds: 0 }
+  assert.equal(
+    await errorCode(() => service.start({}, { ...selection, expectedContext: '' })),
+    'E_MASQUERADE_CONTEXT_REQUIRED'
+  )
+  assert.equal(
+    await errorCode(() =>
+      service.start({}, { ...selection, expectedContext: '', extra: true } as never)
+    ),
+    'E_MASQUERADE_INVALID_INPUT'
+  )
+  const active = await f.start(service)
+  assert.equal(
+    await errorCode(() => service.start({}, { ...selection, expectedContext: idle.contextToken })),
+    'E_MASQUERADE_CONTEXT_CHANGED'
+  )
+  assert.equal(
+    await errorCode(() =>
+      service.start({}, { ...selection, expectedContext: active.contextToken })
+    ),
+    'E_MASQUERADE_ALREADY_ACTIVE'
+  )
+  assert.deepEqual(
+    f.store.events.map((event) => event.kind),
+    ['start_denied', 'start_denied', 'started', 'start_denied', 'start_denied']
+  )
+  const row = await f.store.read(f.owner)
+  assert.equal(row?.revision, 1)
+})
+
 test('start denies false and truthy nonboolean policy; policy throws unavailable; no revision change', async ({
   assert,
 }) => {

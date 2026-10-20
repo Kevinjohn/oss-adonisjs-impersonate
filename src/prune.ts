@@ -120,9 +120,8 @@ export async function pruneMasquerade<User, Request>(
       outcomeCode: 'expired',
       revision: current.revision + 1,
     }
-    let next: ModeRow
     try {
-      next = idleAfterTransition(current, event)
+      const next = idleAfterTransition(current, event)
       const outcome = await commitTransition(store, dependencies, {
         owner,
         expected: current.revision,
