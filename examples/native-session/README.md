@@ -6,6 +6,11 @@ It consumes the built package tarball through native session authentication, Bou
 controllers, middleware and a real Lucid store on SQLite or PostgreSQL. Accounts and application
 keys are fictional test data.
 
+The authenticated dashboard renders its native logout form. The functional suite covers the
+dashboard response and logout redirect. Production-mode browser captures show the
+[previous render failure](../../docs/assets/review/dashboard_render_before.png) and the
+[working dashboard](../../docs/assets/review/dashboard_render_after.png), using fictional data.
+
 Use Node 24 and pnpm. From the repository root:
 
 ```sh

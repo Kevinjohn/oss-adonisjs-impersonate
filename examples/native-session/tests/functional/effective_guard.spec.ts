@@ -9,6 +9,21 @@ test.group('effective session guard through the packed package', (group) => {
   group.setup(() => testUtils.db().migrate())
   group.each.teardown(() => cleanUsers())
 
+  test('renders the authenticated dashboard with a working native logout form', async ({
+    client,
+    assert,
+  }) => {
+    const { actor } = await createUsers()
+    const dashboard = await client.get('/dashboard').loginAs(actor)
+    dashboard.assertStatus(200)
+    assert.match(dashboard.text(), /<form[^>]*action="\/logout"[^>]*>/)
+    assert.include(dashboard.text(), 'Log out')
+
+    const logout = await client.post('/logout').withCsrfToken().loginAs(actor).redirects(0)
+    logout.assertStatus(302)
+    logout.assertHeader('location', '/login')
+  })
+
   test('facade, raw actor, Bouncer and silent_auth retain their identities across start and stop', async ({
     client,
     assert,
