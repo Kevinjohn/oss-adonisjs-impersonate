@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Preserve the native session unauthorized error when `getUserOrFail()` follows an unsuccessful
+effective guard authentication attempt.
+
 Point the PostgreSQL helper diagnostic to the documented external-server test instructions.
 
 Pass package errors to the host exception handler and retain generic JSON responses as the default.

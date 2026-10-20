@@ -50,6 +50,10 @@ business route. Use `masquerade:routes` to find raw-guard routes requiring revie
 authentication routes outside effective mode admission and ensure they cannot dispatch business
 behavior.
 
+If native session authentication fails, `check()` returns `false`; calling `getUserOrFail()` after
+that failed attempt raises the native session unauthorized error. Masquerade admission errors still
+propagate unchanged.
+
 ## Context tokens and browser clients
 
 Every covered unsafe business request requires the current owner-bound context token, including
