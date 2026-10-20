@@ -20,6 +20,7 @@ export function fixture() {
     now: Date.parse('2026-01-01T00:00:00.000Z'),
     policy: true,
     local: true,
+    localThrows: false,
     policyThrows: false,
     inspectThrows: false,
     stampThrows: false,
@@ -56,13 +57,17 @@ export function fixture() {
         if (state.policyThrows) throw new Error('policy failure')
         return state.policy
       },
-      canUseRequest: async ({ request }) => state.local && !request.denied,
+      canUseRequest: async ({ request }) => {
+        if (state.localThrows) throw new Error('local policy failure')
+        return state.local && !request.denied
+      },
     },
     store: async () => store,
     contextEnforcement: 'enforce',
     retention: 'host-managed',
   }
   const observed: unknown[] = []
+  const diagnostics: unknown[] = []
   const failures: unknown[] = []
   const dependencies: ServiceDependencies<User, Request> = {
     environment: 'test',
@@ -82,7 +87,7 @@ export function fixture() {
         observed.push(event)
       },
       error: (event) => {
-        observed.push(event)
+        diagnostics.push(event)
       },
     },
     observerErrorHandler: (error) => {
@@ -105,6 +110,7 @@ export function fixture() {
     config,
     dependencies,
     observed,
+    diagnostics,
     failures,
     create,
     start,
