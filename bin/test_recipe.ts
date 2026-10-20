@@ -9,24 +9,35 @@ const root = fileURLToPath(new URL('../', import.meta.url))
 const template = join(root, 'examples/recipe-host')
 let activeChild: ChildProcess | undefined
 let interrupted: NodeJS.Signals | undefined
-let terminationTimer: NodeJS.Timeout | undefined
+let finishStartup = false
+let termination: Promise<void> | undefined
 
-function terminateActiveChild(): void {
-  const child = activeChild
-  if (!child?.pid) return
+function signalGroup(pid: number, signal: NodeJS.Signals | 0): boolean {
   try {
-    process.kill(-child.pid, 'SIGTERM')
+    process.kill(-pid, signal)
+    return true
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') console.error(error)
+    if ((error as NodeJS.ErrnoException).code === 'ESRCH') return false
+    throw error
   }
-  terminationTimer = setTimeout(() => {
-    if (activeChild !== child) return
-    try {
-      process.kill(-child.pid!, 'SIGKILL')
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ESRCH') console.error(error)
-    }
-  }, 5000)
+}
+
+async function waitForGroupExit(pid: number, milliseconds: number): Promise<boolean> {
+  const deadline = Date.now() + milliseconds
+  while (signalGroup(pid, 0)) {
+    if (Date.now() >= deadline) return false
+    await new Promise((resume) => setTimeout(resume, 100))
+  }
+  return true
+}
+
+async function terminateGroup(pid: number): Promise<void> {
+  if (!signalGroup(pid, 'SIGTERM')) return
+  if (await waitForGroupExit(pid, 5000)) return
+  signalGroup(pid, 'SIGKILL')
+  if (!(await waitForGroupExit(pid, 5000))) {
+    throw new Error(`Interrupted process group ${pid} did not exit`)
+  }
 }
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
@@ -34,7 +45,10 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     if (interrupted) return
     interrupted = signal
     process.exitCode = 1
-    terminateActiveChild()
+    if (activeChild?.pid && !finishStartup) {
+      termination = terminateGroup(activeChild.pid)
+      void termination.catch(() => {})
+    }
   })
 }
 const database = process.argv.find((arg) => arg.startsWith('--database='))?.split('=')[1] ?? 'all'
@@ -155,7 +169,8 @@ async function run(
   args: string[],
   label: string,
   env: NodeJS.ProcessEnv,
-  cleanup = false
+  cleanup = false,
+  completeOnInterrupt = false
 ): Promise<string> {
   if (interrupted && !cleanup) throw new Error(`Recipe interrupted by ${interrupted}`)
   console.log(`[recipe] ${label}: pnpm ${args.join(' ')}`)
@@ -167,6 +182,11 @@ async function run(
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     activeChild = child
+    finishStartup = completeOnInterrupt
+    if (interrupted && child.pid && !completeOnInterrupt && !cleanup) {
+      termination = terminateGroup(child.pid)
+      void termination.catch(() => {})
+    }
     let output = ''
     child.stdout.on('data', (chunk) => {
       output += chunk
@@ -176,15 +196,23 @@ async function run(
     })
     child.on('error', (error) => {
       if (activeChild === child) activeChild = undefined
-      if (terminationTimer) clearTimeout(terminationTimer)
       reject(error)
     })
-    child.on('exit', (code) => {
+    child.on('close', async (code) => {
       if (activeChild === child) activeChild = undefined
-      if (terminationTimer) clearTimeout(terminationTimer)
-      if (interrupted && !cleanup) reject(new Error(`Recipe interrupted by ${interrupted}`))
-      else if (code === 0) resolveOutput(output)
-      else reject(new Error(`${label} failed (${code}):\n${output.slice(-6000)}`))
+      finishStartup = false
+      try {
+        if (termination) {
+          await termination
+          termination = undefined
+        }
+        if (interrupted && !cleanup && !completeOnInterrupt)
+          throw new Error(`Recipe interrupted by ${interrupted}`)
+        if (code !== 0) throw new Error(`${label} failed (${code}):\n${output.slice(-6000)}`)
+        resolveOutput(output)
+      } catch (error) {
+        reject(error)
+      }
     })
   })
 }
@@ -381,22 +409,13 @@ try {
       await applyRecipe(app)
       if (engine === 'pg') {
         if (process.env.RECIPE_PG_EXTERNAL !== '1') {
-          let alreadyRunning = false
-          try {
-            const status = await run(
-              root,
-              ['exec', 'bash', 'bin/pg.sh', 'status'],
-              'check PostgreSQL ownership',
-              env
-            )
-            requireRecipe(status.includes(`on port ${env.DB_PORT}`), 'PostgreSQL port mismatch')
-            alreadyRunning = true
-          } catch (error) {
-            if (!String(error).includes('owned cluster stopped')) throw error
-          }
-          if (!alreadyRunning) {
+          const startup = await run(root, ['pg:start'], 'start PostgreSQL', env, false, true)
+          if (startup.includes(`already running on port ${env.DB_PORT}`)) {
+            console.log('[recipe] using existing managed PostgreSQL')
+          } else if (startup.includes('server started')) {
             ownsPostgres = true
-            await run(root, ['pg:start'], 'start PostgreSQL', env)
+          } else {
+            throw new Error(`Cannot determine PostgreSQL startup ownership:\n${startup}`)
           }
         }
         const sql = `create schema ${schemaName}`
