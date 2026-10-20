@@ -17,9 +17,9 @@ type BrowserPage = Awaited<ReturnType<TestContext['browserContext']['newPage']>>
 const screenshots = resolve('tmp/browser')
 
 test.group('support workspace browser journey', (group) => {
-  group.setup(async () => {
-    await testUtils.db().migrate()
+  group.setup(() => {
     mkdirSync(screenshots, { recursive: true })
+    return testUtils.db().migrate()
   })
   group.each.setup(async () => {
     setMasqueradeStoreUnavailable(false)
