@@ -1,5 +1,8 @@
 # Security and operations
 
+The [API entry-point map](../api-reference.md#supported-package-imports) links the HTTP context
+middleware and route markers, and the native authority's host-owned account check boundary.
+
 For a practical status → start → customer work → stop journey, see [Use a support mode](usage.md).
 
 ## Actor, target and scope

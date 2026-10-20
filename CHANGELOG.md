@@ -4,6 +4,14 @@
 
 Add a fresh native-session host recipe check for the documented wiring and SQLite/PostgreSQL HTTP journey.
 
+Organize the README and documentation landing page around the demo, integration guides, and
+security and operations paths.
+
+Map supported package imports to generated API symbols and remove edit links from generated pages.
+
+Exercise the native-session support workspace in isolated browser journeys, including stale forms,
+account-wide sessions, expiry and recovery.
+
 Document the native-session support-mode journey with JSON controls, Edge adapters, business guards and recovery guidance.
 
 Add a browser support workspace to the native-session example, with raw status and stop recovery,
