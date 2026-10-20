@@ -59,17 +59,19 @@ export function routeCoverageReport(
         const markers = routeMarkers({ route })
         const methods = route.methods.join(',')
         const packageControl = await isPackageControl(route.handler, controllerCache)
-        const control = packageControl.control || isHostControl(route.name)
+        const nameInferredControl = !packageControl.control && isHostControl(route.name)
         for (const declaredGuard of labels) {
           const guard = declaredGuard
           const category =
             guard === 'unprotected'
               ? 'UNCLASSIFIED'
-              : control
+              : packageControl.control
                 ? 'CONTROL'
-                : guard === rawGuard || !effectiveGuardNames.includes(guard)
-                  ? 'RAW-GUARD BUSINESS'
-                  : 'BUSINESS'
+                : nameInferredControl
+                  ? 'POSSIBLE CONTROL'
+                  : guard === rawGuard || !effectiveGuardNames.includes(guard)
+                    ? 'RAW-GUARD BUSINESS'
+                    : 'BUSINESS'
           const action = route.methods.some(
             (method) => !['GET', 'HEAD', 'OPTIONS'].includes(method)
           )
@@ -78,6 +80,7 @@ export function routeCoverageReport(
           const flags = [
             markers.sensitive ? 'sensitive' : '',
             markers.allowMutation ? 'allowMutation' : '',
+            nameInferredControl ? 'name-inferred; review handler' : '',
             packageControl.unresolved ? 'unresolved handler' : '',
             mixedEffectiveGuards ? 'unsupported mixed effective/non-effective guards' : '',
           ]
