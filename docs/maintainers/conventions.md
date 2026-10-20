@@ -43,6 +43,9 @@ npx, yarn, or yarn dlx. `better-sqlite3` requires the pinned Node 24 runtime.
 - M4's packed consumer evidence includes native session at floor/latest on SQLite and PostgreSQL,
   root optional-import isolation, canonical numeric/string/UUID identifiers and an alternate users
   table.
+- The release workflow runs the packed native-session consumer matrix at floor/latest on SQLite and
+  PostgreSQL before publishing. Private-repository push and pull-request checks remain gated, while
+  manual and release-triggered checks run.
 - Do not publish, tag, merge, or rename as part of a release-candidate implementation task unless
   separately authorized by the owner.
 
