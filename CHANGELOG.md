@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Pass package errors to the host exception handler and retain generic JSON responses as the default.
+
 Return unavailable without writing a contradictory denial when idle-stop audit acknowledgement fails.
 
 Allow native-session flash alerts to opt out of the five-second auto-dismiss timeout while
