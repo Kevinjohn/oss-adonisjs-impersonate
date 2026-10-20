@@ -109,6 +109,27 @@ SESSION_DRIVER=memory pnpm test:report
 pnpm test:credentials
 ```
 
+The browser suite uses the Japa browser client already included in the example. Install its pinned
+Chromium build once, then run the browser suite twice on an isolated local port to check test
+cleanup and session independence:
+
+```sh
+cd examples/native-session
+pnpm dlx playwright@1.60.0 install chromium
+HOST=127.0.0.1 PORT=3391 SESSION_DRIVER=memory pnpm test:browser
+HOST=127.0.0.1 PORT=3391 SESSION_DRIVER=memory pnpm test:browser
+pnpm test:ui
+```
+
+On a clean Linux runner, install the matching browser and system libraries with
+`pnpm dlx playwright@1.60.0 install --with-deps chromium`. The browser suite drives the rendered
+login, support, customer and recovery forms with fictional test accounts. It covers keyboard form
+submission, fixed expiry, focused customer intent, stale-tab rejection, separate operator session
+cookies, sensitive-action denial, unavailable-store recovery and a narrow viewport. Captures are
+written to the ignored `tmp/browser/` directory. The suite does not cover every browser, assistive
+technology, theme override, contrast mode or zoom setting; do a manual pass for keyboard start/stop
+and recovery, screen-reader status announcements, visible focus, 200% zoom and narrow layouts.
+
 Useful focused consumer runs from the repository root:
 
 ```sh

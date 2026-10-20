@@ -27,7 +27,7 @@ export default class DemoController extends MasqueradeController {
         mode,
         customers,
         target,
-        beforeDeadline: mode.isMasquerading && Date.parse(mode.expiresAt) > Date.now(),
+        beforeDeadline: mode.isMasquerading && Date.parse(mode.expiresAt) > (await now()),
         targetAvailable: Boolean(target?.active),
         expiresText: mode.isMasquerading ? formatDeadline(mode.expiresAt) : undefined,
       })
@@ -51,7 +51,7 @@ export default class DemoController extends MasqueradeController {
   async customer(ctx: HttpContext) {
     noStore(ctx)
     const mode = await shareMasquerade(ctx)
-    if (!mode.isMasquerading || Date.parse(mode.expiresAt) <= Date.now()) {
+    if (!mode.isMasquerading || Date.parse(mode.expiresAt) <= (await now())) {
       return ctx.response.redirect().toPath('/support')
     }
     const actor = ctx.auth.use('web').getUserOrFail() as User
@@ -75,7 +75,7 @@ export default class DemoController extends MasqueradeController {
   async preference(ctx: HttpContext) {
     noStore(ctx)
     const mode = await shareMasquerade(ctx)
-    if (!mode.isMasquerading || Date.parse(mode.expiresAt) <= Date.now()) {
+    if (!mode.isMasquerading || Date.parse(mode.expiresAt) <= (await now())) {
       return ctx.response.redirect().toPath('/support')
     }
     const customer = ctx.auth.user as User
@@ -108,6 +108,14 @@ function customerBouncer(ctx: HttpContext) {
 function noStore(ctx: HttpContext) {
   ctx.response.header('Cache-Control', 'private, no-store')
   ctx.response.vary(['Accept', 'X-Masquerade-Context'])
+}
+
+async function now() {
+  if (process.env.NODE_ENV === 'test') {
+    const { masqueradeNow } = await import('#services/masquerade_test_boundary')
+    return masqueradeNow()
+  }
+  return Date.now()
 }
 
 function formatDeadline(value: string): string {
