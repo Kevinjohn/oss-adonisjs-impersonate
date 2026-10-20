@@ -11,7 +11,10 @@ dashboard response and logout redirect. Production-mode browser captures show th
 [previous render failure](../../docs/assets/review/dashboard_render_before.png) and the
 [working dashboard](../../docs/assets/review/dashboard_render_after.png), using fictional data.
 Both production error templates also render through the registered marketing layout; a functional
-regression test rejects unprocessed layout tags in their HTML.
+regression test rejects unprocessed layout tags in their HTML. Error layouts also support requests
+that have not run the router auth/session middleware: unknown URLs retain HTTP 404 and render the
+normal not-found page. The functional suite exercises this real HTTP path with production status
+rendering enabled, alongside direct rendering of both error templates without auth/session data.
 
 Use Node 24 and pnpm. From the repository root:
 
