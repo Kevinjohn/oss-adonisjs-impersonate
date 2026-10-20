@@ -13,6 +13,9 @@ dashboard response and logout redirect. Production-mode browser captures show th
 Both production error templates also render through the registered marketing layout; a functional
 regression test rejects unprocessed layout tags in their HTML.
 
+Flash alerts reveal after 80 ms and dismiss after five seconds by default. Set `autoDismiss: false`
+on `@alert.root` to keep an alert visible until its dismiss action is called.
+
 Use Node 24 and pnpm. From the repository root:
 
 ```sh
