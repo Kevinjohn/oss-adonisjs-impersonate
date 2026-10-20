@@ -1,3 +1,5 @@
+import type { MasqueradeErrorCode } from './errors.js'
+
 /** Canonical provider identifier and UTC ISO 8601 timestamp. */
 export type SubjectId = string
 export type Instant = string
@@ -95,6 +97,27 @@ export interface AuditEvent extends OwnerKey {
   reason?: string
 }
 export type ObserverEvent = Readonly<Omit<AuditEvent, 'reason'>>
+export type DiagnosticCategory =
+  'configuration' | 'store' | 'authority' | 'policy' | 'control' | 'observer'
+export type DiagnosticOperation =
+  | 'validate'
+  | 'open'
+  | 'read'
+  | 'compare_and_set'
+  | 'record_control_outcome'
+  | 'inspect_account'
+  | 'security_stamp'
+  | 'can_masquerade'
+  | 'can_use_request'
+  | 'start'
+  | 'stop'
+  | 'error_reporter'
+export interface DiagnosticEvent {
+  readonly category: DiagnosticCategory
+  readonly operation: DiagnosticOperation
+  readonly code: MasqueradeErrorCode
+  readonly transitionId?: string
+}
 /** An indeterminate commit may have succeeded; callers recover through status, never blind retry. */
 export type CasOutcome =
   | { status: 'applied'; transitionId: string }
@@ -172,7 +195,7 @@ export interface ServiceDependencies<User, Request> {
   emitter: { emit(name: string, event: ObserverEvent): unknown }
   logger: {
     info(event: ObserverEvent): unknown
-    error(event: { code: string; transitionId: string }): unknown
+    error(event: DiagnosticEvent): unknown
   }
   observerErrorHandler: (error: unknown) => unknown
 }
