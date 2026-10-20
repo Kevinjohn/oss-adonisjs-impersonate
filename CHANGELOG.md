@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Add stable field-aware setup diagnostics for invalid configuration and store contracts.
+
 Pass package errors to the host exception handler and retain generic JSON responses as the default.
 
 Return unavailable without writing a contradictory denial when idle-stop audit acknowledgement fails.
