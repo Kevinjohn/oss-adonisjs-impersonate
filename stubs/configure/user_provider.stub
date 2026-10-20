@@ -3,7 +3,7 @@
 }}}
 import { sessionUserProvider } from '@adonisjs/auth/session'
 
-/** Export this exact instance from config/auth.ts and reuse it for native authority. */
+/** Reuse this exact provider instance in the raw session guard and native authority. */
 export const userProvider = sessionUserProvider({
   model: () => import('#models/user'),
 })
