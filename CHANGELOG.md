@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Organize the README and documentation landing page around the demo, integration guides, and
+security and operations paths.
+
 Map supported package imports to generated API symbols and remove edit links from generated pages.
 
 Document the native-session support-mode journey with JSON controls, Edge adapters, business guards and recovery guidance.
