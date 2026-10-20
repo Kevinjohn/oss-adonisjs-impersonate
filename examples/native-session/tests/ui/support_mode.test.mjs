@@ -11,6 +11,7 @@ function page(expiresAt) {
     focused: false,
     focus() {
       this.focused = true
+      documentRef.activeElement = notice
     },
   }
   const button = { disabled: false }
@@ -69,6 +70,7 @@ test('a rendered page freezes its captured customer intent at the fixed deadline
   assert.equal(rendered.notice.hidden, false)
   assert.equal(rendered.notice.focused, true)
   assert.match(rendered.notice.textContent, /deadline has passed/)
+  assert.equal(rendered.documentRef.activeElement, rendered.notice)
 })
 
 test('a visible return checks raw status and freezes even when the token is unchanged', async () => {
