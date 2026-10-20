@@ -53,11 +53,12 @@ export function observe(dependencies: ObserverDependencies, event: AuditEvent): 
   invoke(() => dependencies.emitter?.emit(`masquerade:${event.kind}`, projection))
   invoke(() => dependencies.logger?.info(projection))
 }
-export function reportUnknown(dependencies: ObserverDependencies, _transitionId: string): void {
+export function reportUnknown(dependencies: ObserverDependencies, transitionId: string): void {
   const event: DiagnosticEvent = {
     category: 'store',
     operation: 'compare_and_set',
     code: 'E_MASQUERADE_UNAVAILABLE',
+    transitionId,
   }
   try {
     Promise.resolve(dependencies.logger?.error(event)).catch((error) =>

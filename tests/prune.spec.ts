@@ -235,6 +235,7 @@ test.group('pruneMasquerade', () => {
         category: 'store',
         operation: 'compare_and_set',
         code: 'E_MASQUERADE_UNAVAILABLE',
+        transitionId: f.store.events[1].id,
       },
     ])
   })
