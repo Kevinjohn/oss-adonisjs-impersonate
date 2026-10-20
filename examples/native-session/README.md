@@ -10,6 +10,8 @@ The authenticated dashboard renders its native logout form. The functional suite
 dashboard response and logout redirect. Production-mode browser captures show the
 [previous render failure](../../docs/assets/review/dashboard_render_before.png) and the
 [working dashboard](../../docs/assets/review/dashboard_render_after.png), using fictional data.
+Both production error templates also render through the registered marketing layout; a functional
+regression test rejects unprocessed layout tags in their HTML.
 
 Use Node 24 and pnpm. From the repository root:
 

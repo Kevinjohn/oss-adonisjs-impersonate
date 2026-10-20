@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-Fix the native-session example dashboard's logout form so authenticated pages render successfully.
+Fix the native-session example dashboard's logout form so authenticated pages render successfully,
+and render its production error pages through the registered marketing layout.
 
 Add a fail-closed configure scaffold, setup and security guides, a complete requirement ledger,
 and an isolated packed-consumer harness for the supported dependency floor and latest versions
