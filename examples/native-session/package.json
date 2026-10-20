@@ -12,6 +12,8 @@
     "build": "node ace build",
     "dev": "node ace serve --hmr",
     "test": "node ace test",
+    "test:browser": "node ace test browser",
+    "test:ui": "node --test tests/ui/*.test.mjs",
     "test:report": "MASQUERADE_CONTEXT_ENFORCEMENT=report node ace test report",
     "lint": "eslint .",
     "format": "prettier --write .",

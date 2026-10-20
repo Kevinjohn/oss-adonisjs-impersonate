@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Exercise the native-session support workspace in isolated browser journeys, including stale forms,
+account-wide sessions, expiry and recovery.
+
 Add a browser support workspace to the native-session example, with raw status and stop recovery,
 customer-scoped read and reversible preference, and a sensitive-action denial.
 
