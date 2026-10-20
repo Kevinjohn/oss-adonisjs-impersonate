@@ -37,7 +37,7 @@ export default defineConfig<User, HttpContext>({
     async canMasquerade() {
       return false
     },
-    // Optional request-local check. Remove this property if it is not needed.
+    // Optional check for starts and active admissions, not idle routes. Remove if not needed.
     async canUseRequest() {
       return false
     },

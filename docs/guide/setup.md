@@ -7,15 +7,27 @@ boundary and [custom authorities](custom-authorities.md) for the native authorit
 
 ## Generate the starter files
 
-Use Node 24 and pnpm. The configure command requires the AdonisJS assembler and Lucid. Install any
-missing dependency with the printed command, then rerun configure; the command does not install
-packages or run the generated migration:
+Use Node 24 and pnpm. This package version is not published yet. From the package checkout, build
+and pack the current source:
 
 ```sh
+pnpm build
+pnpm pack:fixture
+```
+
+This creates `tmp/native-session-package.tgz`. In the AdonisJS application, install that artifact
+before running its configure command (adjust the path to the package checkout):
+
+```sh
+pnpm add file:/path/to/oss-adonisjs-impersonate/tmp/native-session-package.tgz
 pnpm add -D @adonisjs/assembler
 pnpm add @adonisjs/lucid
 node ace configure adonisjs-masquerade --namespace=my_app --guard=web
 ```
+
+The last two install commands are needed only if those dependencies are absent. After this package
+is published, install the released package version instead of the local tarball. Configure itself
+does not install packages or run the generated migration.
 
 Choose a stable namespace for this identity domain and the name of the raw session guard. Configure
 checks the namespace and guard syntax, that `config/auth.ts` exists, and that the assembler code
@@ -50,32 +62,54 @@ This is a wiring fragment: keep your existing session options, including your cu
 provider, export and reuse that exact instance instead of creating a second provider. The
 `userProvider` imported by `sessionAuthority` below must be the same object used by `webGuard`.
 
-Add an effective wrapper beside the raw guard in your existing `config/auth.ts`:
+Add an effective wrapper beside the raw guard in your existing `config/auth.ts`. The example keeps
+an existing `members` guard with its own provider and remember-me setting. Keep that guard and its
+options unchanged in your application:
+
+```ts
+// Existing app/services/member_guard.ts; keep this separate guard and its options.
+import { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'
+
+export const memberProvider = sessionUserProvider({ model: () => import('#models/member') })
+export const memberGuard = sessionGuard({ useRememberMeTokens: false, provider: memberProvider })
+```
 
 ```ts
 import { defineConfig } from '@adonisjs/auth'
 import { effectiveSessionGuard } from 'adonisjs-masquerade/auth'
+import { memberGuard } from '#services/member_guard'
 import { webGuard } from '#services/web_guard'
+import type { InferAuthenticators, InferAuthEvents, Authenticators } from '@adonisjs/auth/types'
 
-// Keep your existing default choice, guards, imports, and type declarations.
-// Add web_effective and choose it as the default for business routes.
 const authConfig = defineConfig({
+  // Set the business default to the effective guard so ordinary auth uses the target when active.
   default: 'web_effective',
   guards: {
-    // Keep every existing guard and its options.
     web: webGuard,
+    members: memberGuard,
     web_effective: effectiveSessionGuard(webGuard),
   },
 })
 
 export default authConfig
+
+declare module '@adonisjs/auth/types' {
+  export interface Authenticators extends InferAuthenticators<typeof authConfig> {}
+}
+declare module '@adonisjs/core/types' {
+  interface EventsList extends InferAuthEvents<Authenticators> {}
+}
 ```
 
-The example shows only the changed portion of an existing auth config. Preserve its other guards,
-provider declarations, remember-me settings, session options, and module augmentation for
-`Authenticators` and auth events. Keep the raw guard for login, signup, logout, and package control
-routes; use the effective guard for ordinary business routes. Do not combine raw and effective
-guards on one business route.
+The existing second guard remains registered with its own provider, session options, and inferred
+types. Preserve any additional guards and configuration in the same way. The one intentional default
+change is to set `default` to `web_effective`; keep the raw `web` guard for login, signup, logout,
+and package control routes. Do not combine raw and effective guards on one business route.
+
+If your application already has a custom session provider, keep using that provider instance for
+`webGuard` and change the `provider` import in `config/masquerade.ts` to the same exported instance.
+Remove or leave unused the generated `masquerade_user_provider.ts`; do not create a second
+`sessionUserProvider`. The generated config's default import is shown in the next section.
 
 ## Configure persistent identity and policy
 
@@ -102,6 +136,9 @@ const nativeAdapter = sessionAuthority<User>({
   isActive: (user) => user.active,
 })
 
+// The generated native binding provider imports this named export at application boot.
+export { nativeAdapter }
+
 export default defineConfig<User, HttpContext>({
   authority: nativeAdapter.authority,
   policy: {
@@ -121,10 +158,12 @@ you choose a store other than the generated Lucid store, see [custom stores](cus
 reused. Use `incarnation: 'id'` only if the host guarantees account IDs are never reused. The
 incarnation must not change during ordinary security updates.
 
-`securityStamp` is a persisted security epoch, not a constant, timestamp, or partial security
-fingerprint. Advance it transactionally whenever the host wants all active modes for that account
-revoked: typically after password changes or resets, privilege changes, suspension or reactivation,
-and account-wide logout/revocation. Make the epoch visible to the provider's current user lookup.
+`securityStamp` must be a persisted security epoch, not a constant, a freshly generated timestamp on
+each lookup, or a partial security fingerprint. Advance it transactionally whenever the host wants
+all active modes for that account revoked: typically after password changes or resets, privilege
+changes, suspension or reactivation, and account-wide logout/revocation. Make the epoch visible to
+the provider's current user lookup. A persisted time value is valid if it remains stable between
+revocation events and changes reliably for each event.
 Ordinary logout of one session remains the host session credential flow; advance the epoch as part
 of logout-all when that action should also revoke every active mode. The host owns which events
 advance it. `isActive` must return the current account eligibility as a boolean; a deleted or
@@ -137,10 +176,13 @@ global denial: Masquerade invalidates the mode and rejects that request with con
 A thrown callback fails the request with unavailable (503) and leaves the mode unchanged.
 
 `canUseRequest` is optional. Add it only for request-local rules such as tenant or route access. It
-runs on each request admission with the request; `false` rejects only that request (403) and leaves
-the mode unchanged, so access may still work on another eligible route. A throw returns unavailable
-(503) and leaves the mode unchanged. If no request-local rule is needed, remove the generated
-`canUseRequest` property entirely; its generated `false` placeholder denies every request.
+runs during start and during active-mode admission, with the request in both cases. A `false` at
+start denies the start without creating a mode; a `false` during active-mode admission rejects only
+that request (403) and leaves the mode unchanged, so access may still work on another eligible
+route. It does not run for ordinary idle-route requests or every control route; keep ordinary host
+authorization and tenant checks in the host's route middleware and handlers. A throw returns
+unavailable (503) and leaves the mode unchanged. If no request-local rule is needed, remove the
+generated `canUseRequest` property entirely; its `false` placeholder denies every start.
 
 ## Wire auth middleware and routes
 
