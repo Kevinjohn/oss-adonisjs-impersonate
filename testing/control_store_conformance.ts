@@ -92,4 +92,69 @@ export async function assertControlStoreConformance(
   assert.equal(await store.pruneEvents({ before: '2027-01-01T00:00:00.000Z', limit: 2 }), 1)
   assert.deepEqual(await store.read(owner), update)
   assert.deepEqual(await store.expiredBatch({ now: '2027-01-01T00:00:00.000Z', limit: 2 }), [])
+  // Exercise all owner-key dimensions through writes, not only absent reads.
+  const owners = [
+    owner,
+    { ...owner, namespace: 'other' },
+    { ...owner, actorId: randomUUID() },
+    { ...owner, actorIncarnation: 'replacement' },
+  ]
+  const activeRows = []
+  for (const [index, activeOwner] of owners.entries()) {
+    const id = randomUUID()
+    const at = `2026-01-01T00:00:0${index}.000Z`
+    const active = {
+      ...row,
+      ...activeOwner,
+      revision: index === 0 ? 3 : 1,
+      revisionNonce: 'd'.repeat(32),
+      lastTransitionId: id,
+      updatedAt: at,
+      state: 'active' as const,
+      targetId: `target-${index}`,
+      targetIncarnation: 'target-v1',
+      actorStampHash: 'a'.repeat(64),
+      targetStampHash: 'b'.repeat(64),
+      reason: 'Support ticket 42',
+      startedAt: at,
+      expiresAt: index === 3 ? '2026-01-01T00:30:00.000Z' : '2026-01-01T00:15:00.000Z',
+    }
+    const activeResult = await store.compareAndSet({
+      owner: activeOwner,
+      expected: index === 0 ? 2 : null,
+      next: active,
+      event: {
+        ...event,
+        ...activeOwner,
+        id,
+        at,
+        kind: 'started',
+        outcomeCode: 'started',
+        revision: active.revision,
+        targetId: active.targetId,
+        targetIncarnation: active.targetIncarnation,
+        reason: active.reason,
+      },
+    })
+    assert.equal(activeResult.status, 'applied')
+    activeRows.push(active)
+  }
+  for (const active of activeRows) assert.deepEqual(await store.read(active), active)
+  assert.deepEqual(await store.expiredBatch({ now: '2026-01-01T00:14:59.999Z', limit: 2 }), [])
+  const expired = await store.expiredBatch({ now: '2026-01-01T00:15:00.000Z', limit: 2 })
+  assert.deepEqual(expired, activeRows.slice(0, 2))
+  expired[0].revision = 999
+  assert.deepEqual(
+    await store.expiredBatch({ now: '2026-01-01T00:15:00.000Z', limit: 10 }),
+    activeRows.slice(0, 3)
+  )
+  assert.deepEqual(
+    await store.expiredBatch({ now: '2026-01-01T00:30:00.000Z', limit: 10 }),
+    activeRows
+  )
+  assert.equal(await store.pruneEvents({ before: '2026-01-01T00:00:00.000Z', limit: 10 }), 0)
+  assert.equal(await store.pruneEvents({ before: '2026-01-01T00:00:02.000Z', limit: 1 }), 1)
+  assert.equal(await store.pruneEvents({ before: '2026-01-01T00:00:02.000Z', limit: 10 }), 1)
+  assert.equal(await store.pruneEvents({ before: '2027-01-01T00:00:00.000Z', limit: 10 }), 2)
+  for (const active of activeRows) assert.deepEqual(await store.read(active), active)
 }

@@ -10,7 +10,7 @@ importers:
     devDependencies:
       '@adonisjs/auth':
         specifier: ^10.0.0
-        version: 10.1.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2))(@adonisjs/session@8.3.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2)))
+        version: 10.1.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2))(@adonisjs/session@8.3.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2)))
       '@adonisjs/bouncer':
         specifier: ^4.0.0
         version: 4.0.1(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))
@@ -22,13 +22,13 @@ importers:
         version: 3.1.0(eslint@10.13.0(jiti@2.7.0)(supports-color@10.2.2))(prettier@3.9.10)(supports-color@10.2.2)(typescript@5.9.3)
       '@adonisjs/lucid':
         specifier: ^22.4.2
-        version: 22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2)
+        version: 22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2)
       '@adonisjs/prettier-config':
         specifier: ^1.4.5
         version: 1.5.0(prettier@3.9.10)
       '@adonisjs/session':
         specifier: ^8.1.0
-        version: 8.3.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2))
+        version: 8.3.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2))
       '@adonisjs/tsconfig':
         specifier: ^2.0.0
         version: 2.0.0
@@ -44,6 +44,9 @@ importers:
       '@release-it/conventional-changelog':
         specifier: ^10.0.5
         version: 10.0.6(conventional-commits-filter@5.0.0)(conventional-commits-parser@6.4.0)(release-it@19.2.4(@types/node@25.9.9)(supports-color@10.2.2))
+      '@types/luxon':
+        specifier: ^3.7.6
+        version: 3.7.6
       '@types/node':
         specifier: ^25.3.5
         version: 25.9.9
@@ -62,6 +65,9 @@ importers:
       eslint:
         specifier: ^10.0.3
         version: 10.13.0(jiti@2.7.0)(supports-color@10.2.2)
+      luxon:
+        specifier: ^3.7.2
+        version: 3.7.2
       pg:
         specifier: ^8.0.0
         version: 8.23.1
@@ -1537,6 +1543,9 @@ packages:
   '@types/linkify-it@5.0.0':
     resolution: {integrity: sha512-sVDA58zAw4eWAffKOaQH5/5j3XeayukzDk+ewSsnv3p4yJEZHCCzMDiZM8e0OUrRvmpGZ85jf4yDHkHsgBNr9Q==}
 
+  '@types/luxon@3.7.6':
+    resolution: {integrity: sha512-6KSjliQAXK8ZLgFQO4B7iE4Rpf/B3rItzCFuXezBY/XIAGxOdLd7vRNK9/StRPwiS/yJsVbB7HKpW46B8tcEuQ==}
+
   '@types/markdown-it@14.2.0':
     resolution: {integrity: sha512-NoQ2yGlLWj4wpxMs+TYmRKk3thDrQ97agr7sFqfLsAlvoS8SNQuTrlObhFqG9iugdTtgOE9jpJ6FNM4ZGsa5xQ==}
 
@@ -2908,6 +2917,10 @@ packages:
   lunr@2.3.9:
     resolution: {integrity: sha512-zTU3DaZaF3Rt9rhN3uBMGQD3dD2/vFQqnvZCDv4dl5iOzq2IZQqTxu90r4E5J+nP70J3ilqVCrbho2eWaeW8Ow==}
 
+  luxon@3.7.2:
+    resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
+    engines: {node: '>=12'}
+
   macos-release@3.5.1:
     resolution: {integrity: sha512-Lci/1in+elqZ589PXnfP/iwZXpwQifTM94WJRQwG2tZSdfY7NfB/aUaTARHrohWCgHlXoabeaeXRDOnF5X9JQw==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
@@ -4111,14 +4124,14 @@ snapshots:
       glob-parent: 6.0.2
       tempura: 0.4.1
 
-  '@adonisjs/auth@10.1.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2))(@adonisjs/session@8.3.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2)))':
+  '@adonisjs/auth@10.1.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2))(@adonisjs/session@8.3.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2)))':
     dependencies:
       '@adonisjs/core': 7.6.0(supports-color@10.2.2)(youch@4.1.1)
       '@adonisjs/presets': 3.0.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))
       basic-auth: 2.0.1
     optionalDependencies:
-      '@adonisjs/lucid': 22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2)
-      '@adonisjs/session': 8.3.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2))
+      '@adonisjs/lucid': 22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2)
+      '@adonisjs/session': 8.3.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2))
 
   '@adonisjs/bodyparser@11.0.4(@adonisjs/http-server@9.3.1(@adonisjs/application@9.1.1(@adonisjs/config@6.1.0)(@adonisjs/fold@11.1.0))(@adonisjs/events@10.2.0(@adonisjs/application@9.1.1(@adonisjs/config@6.1.0)(@adonisjs/fold@11.1.0))(@adonisjs/fold@11.1.0))(@adonisjs/fold@11.1.0)(@adonisjs/logger@7.1.1)(@boringnode/encryption@1.0.1)(youch@4.1.1))(supports-color@10.2.2)':
     dependencies:
@@ -4271,7 +4284,7 @@ snapshots:
       abstract-logging: 2.0.1
       pino: 10.4.0
 
-  '@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2)':
+  '@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2)':
     dependencies:
       '@adonisjs/core': 7.6.0(supports-color@10.2.2)(youch@4.1.1)
       '@adonisjs/presets': 3.0.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))
@@ -4289,6 +4302,8 @@ snapshots:
       pretty-hrtime: 1.0.3
       slash: 5.1.0
       tarn: 3.1.2
+    optionalDependencies:
+      luxon: 3.7.2
     transitivePeerDependencies:
       - better-sqlite3
       - mariadb
@@ -4316,13 +4331,13 @@ snapshots:
       '@poppinss/colors': 4.1.6
       string-width: 8.3.0
 
-  '@adonisjs/session@8.3.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2))':
+  '@adonisjs/session@8.3.0(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2))':
     dependencies:
       '@adonisjs/core': 7.6.0(supports-color@10.2.2)(youch@4.1.1)
       '@poppinss/macroable': 1.1.2
       '@poppinss/utils': 7.1.2
     optionalDependencies:
-      '@adonisjs/lucid': 22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2)
+      '@adonisjs/lucid': 22.4.2(@adonisjs/core@7.6.0(supports-color@10.2.2)(youch@4.1.1))(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2)
 
   '@adonisjs/tsconfig@2.0.0': {}
 
@@ -5393,6 +5408,8 @@ snapshots:
   '@types/json-schema@7.0.15': {}
 
   '@types/linkify-it@5.0.0': {}
+
+  '@types/luxon@3.7.6': {}
 
   '@types/markdown-it@14.2.0':
     dependencies:
@@ -6747,6 +6764,8 @@ snapshots:
   lru-cache@7.18.3: {}
 
   lunr@2.3.9: {}
+
+  luxon@3.7.2: {}
 
   macos-release@3.5.1: {}
 
