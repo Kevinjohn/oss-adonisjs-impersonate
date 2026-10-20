@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Reject malformed UTF-16 in provider identifiers, account incarnations and security stamps, and
+reject control-store transitions whose audit event does not match the committed owner and row.
+
 Add a fail-closed configure scaffold, setup and security guides, a complete requirement ledger,
 and an isolated packed-consumer harness for the supported dependency floor and latest versions
 on SQLite and PostgreSQL.

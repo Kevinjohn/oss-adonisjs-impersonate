@@ -1,6 +1,7 @@
 export function boundedString(value: unknown, bytes: number): value is string {
   return (
     typeof value === 'string' &&
+    value.isWellFormed() &&
     value.length > 0 &&
     Buffer.byteLength(value) <= bytes &&
     // Identifiers must not contain control characters.
