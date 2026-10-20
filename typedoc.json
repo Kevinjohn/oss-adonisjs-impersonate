@@ -12,9 +12,7 @@
     "testing/main.ts"
   ],
   "out": "docs/api",
-  "plugin": [
-    "typedoc-plugin-markdown"
-  ],
+  "plugin": ["typedoc-plugin-markdown"],
   "entryFileName": "index",
   "readme": "none",
   "excludePrivate": true,

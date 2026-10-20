@@ -1,5 +1,9 @@
 # Custom authorities
 
+The native adapter and its exported contract are documented under `adonisjs-masquerade/native`;
+shared package types such as `NativeAuthority` are available from `adonisjs-masquerade/types` in the
+[API entry-point map](../api-reference.md#supported-package-imports).
+
 The built-in native-session authority is the recommended integration. If you provide a custom
 `NativeAuthority`, its `securityStamp(user)` callback and the `securityStamp` returned by
 `inspectAccount(id)` must describe the same current security epoch for an account.

@@ -1,5 +1,9 @@
 # Pruning and retention operations
 
+The [API entry-point map](../api-reference.md#supported-package-imports) links the command loader
+under `adonisjs-masquerade/commands` and Lucid store lifecycle and schema exports under the optional
+`adonisjs-masquerade/stores/lucid` entry point.
+
 Masquerade does not start a background worker. Schedule `masquerade:prune` with the host
 application's existing scheduler so expired modes and retained audit events are processed over
 time.

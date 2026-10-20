@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Map supported package imports to generated API symbols and remove edit links from generated pages.
+
 Exercise the native-session support workspace in isolated browser journeys, including stale forms,
 account-wide sessions, expiry and recovery.
 
