@@ -32,20 +32,24 @@ The same rules as `CONTRIBUTING.md`; every change follows them.
 Each file does one thing and is named for it. This keeps the codebase easy to hold in your head,
 even if it means more files.
 
-1. One responsibility per file. If you need "and" to describe it, it is two files.
+1. One coherent responsibility per file. Independent reasons to change are a prompt to look for
+   separate files; related operations such as encoding/decoding or schema creation/teardown can
+   belong together.
 2. Name the file for the responsibility. A reader should guess what `src/context_token.ts` does
    without opening it.
 3. Split at a seam, not at a line count. A seam is a group of functions that share data or a
    purpose and that the rest of the file only calls. A file that just forwards calls is not a
    seam; leave it in place.
-4. Size is a prompt, not a rule. At about 800 lines, look for a seam. At about 1,500, split in the
-   next change that touches the file. A file kept large on purpose (a data table, generated code,
-   one long table-driven test) says why in a short comment at the top.
+4. Size can prompt investigation but never mandates a split. Investigate when a task requires
+   reading substantial unrelated context or an internal cluster has a smaller, useful interface.
+   State the proposed seam, reading benefit, added dependencies and regression risk. A second
+   caller is evidence of value, not a prerequisite. Keep ordered orchestration and atomic
+   operations together; explain a large file's cohesion when it is not obvious.
 5. Keep the entry point. The original file re-exports what its importers use, so nothing outside
    the directory changes.
 6. Move, do not edit. A split commit only moves code. Run the repository scripts before any
    further change.
 7. Tests follow the source. One spec per module or closely related pair. Shared fixtures go in
    `tests/helpers/` once. Do not rename tests while moving them.
-8. Small and cohesive is finished. Do not split a file that is under the first threshold and does
-   one thing.
+8. Small and cohesive is finished. Do not split a file that already does one thing. A small file
+   can still contain independent responsibilities worth separating.

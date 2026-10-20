@@ -1,4 +1,9 @@
-# Implementer handoff
+# Historical implementation handoff
+
+This is the original M0–M4 implementation brief. Those milestones are now recorded as complete
+in [M4-RESULT.md](../../M4-RESULT.md) and the [requirement ledger](requirement-ledger.md). The
+instructions below preserve the original sequence and stop conditions; they are not a current
+backlog. For maintenance, use the [source map](source-map.md) and [conventions](conventions.md).
 
 This page is for whoever builds the package. It is self-contained: read it, then the three
 documents it names, and start. Nothing below needs a decision from the owner until the point

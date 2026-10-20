@@ -4,24 +4,7 @@
 --}}
 @let(nav = [{ label: 'Dashboard', route: 'dashboard', icon: 'lucide:house' }])
 @let(pageTitle = $props.get('title'))
-<!DOCTYPE html>
-<html
-  lang="en-us"
-  data-theme="{{
-    request.plainCookie('app_theme', {
-      defaultValue: 'light',
-      encoded: false,
-    })
-  }}"
->
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ pageTitle ? `${pageTitle} - AdonisJS` : 'AdonisJS — Starter Kit' }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @stack('dumper')
-  </head>
-  <body>
+@layouts.document({ title: pageTitle ? `${pageTitle} - AdonisJS` : 'AdonisJS — Starter Kit' })
     <header class="header header--bar">
       <div class="header__inner">
         @!logo({ size: 28 })
@@ -51,6 +34,4 @@
     </nav>
 
     <div class="app-main">{{{ await $slots.main() }}}</div>
-    @include('partials/flash_alerts')
-  </body>
-</html>
+@end

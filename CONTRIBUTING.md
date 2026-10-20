@@ -70,7 +70,10 @@ The layout follows [SPEC-impersonation.md](SPEC-impersonation.md) section 2.
   `testing/` the memory store and conformance suite.
 - `tests/` mirrors the source: one spec per module. Shared fixtures live in `tests/helpers/`.
 
-[AGENTS.md](AGENTS.md#single-responsibility-principle-files) describes the file-size and file-splitting rules the codebase follows.
+[The maintainer source map](docs/maintainers/source-map.md) maps common tasks to their owning
+modules, contracts and focused tests. Start there before loading the implementation history.
+
+[AGENTS.md](AGENTS.md#single-responsibility-principle-files) describes the responsibility and file-splitting rules the codebase follows.
 [docs/maintainers/conventions.md](docs/maintainers/conventions.md) records where every convention
 comes from.
 

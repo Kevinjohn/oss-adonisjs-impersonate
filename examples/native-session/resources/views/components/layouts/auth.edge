@@ -1,21 +1,4 @@
-<!DOCTYPE html>
-<html
-  lang="en-us"
-  data-theme="{{
-    request.plainCookie('app_theme', {
-      defaultValue: 'light',
-      encoded: false,
-    })
-  }}"
->
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AdonisJS — Starter Kit</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @stack('dumper')
-  </head>
-  <body>
+@layouts.document()
     <div class="auth">
       <div class="auth__form-col">
         @!logo({ size: 28 })
@@ -46,6 +29,4 @@
         </div>
       </aside>
     </div>
-    @include('partials/flash_alerts')
-  </body>
-</html>
+@end

@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 import { defineConfig } from './define_config.js'
 import { contextToken, requireContext } from './context_token.js'
+import { admittedProjection, modeView } from './mode_projection.js'
 import { invalidInput, MasqueradeError, unavailable } from './errors.js'
 import { openControlStore } from './control_store.js'
 import { parseStartSelection, validateStartInputShape } from './start_input.js'
@@ -97,20 +98,6 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
     } catch {
       throw unavailable()
     }
-  }
-  private view(owner: OwnerKey, row: ModeRow | null): ModeView {
-    const token = contextToken(owner, row)
-    return Object.freeze(
-      row?.state === 'active'
-        ? {
-            isMasquerading: true,
-            contextToken: token,
-            targetId: row.targetId,
-            startedAt: row.startedAt,
-            expiresAt: row.expiresAt,
-          }
-        : { isMasquerading: false, contextToken: token }
-    )
   }
   private event(
     owner: OwnerKey,
@@ -233,7 +220,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
     const owner = this.owner(actor)
     const row = await this.read(owner)
     nextRevision(row)
-    return this.view(owner, row)
+    return modeView(owner, row)
   }
   async start(request: Request, input: StartInput): Promise<ModeView> {
     const actor = await this.actor(request)
@@ -295,7 +282,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
         revision: next.revision,
       })
       await this.commit(owner, row, next, event)
-      return this.view(owner, next)
+      return modeView(owner, next)
     } catch (error) {
       if (error instanceof UnknownCommit) throw error
       await this.outcome(
@@ -319,9 +306,9 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       nextRevision(row)
       if (!row || row.state === 'idle') {
         await this.outcome(owner, row, 'control_noop', 'idle')
-        return this.view(owner, row)
+        return modeView(owner, row)
       }
-      return this.view(owner, await this.clear(owner, row, 'stopped', 'stopped'))
+      return modeView(owner, await this.clear(owner, row, 'stopped', 'stopped'))
     } catch (error) {
       if (error instanceof UnknownCommit) throw error
       await this.outcome(
@@ -379,24 +366,6 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       effective = target!.subject
       await this.local(currentActor!.subject, effective, request)
     }
-    const context: ResolvedContext = Object.freeze({
-      ...owner,
-      effectiveId: effective.id,
-      effectiveIncarnation: effective.incarnation,
-      isMasquerading: row?.state === 'active',
-      contextToken: contextToken(owner, row),
-      ...(row?.state === 'active' ? { modeId: row.modeId } : {}),
-    })
-    const result = Object.freeze({
-      context,
-      view: this.view(owner, row),
-      actor: Object.freeze({ id: actor.id, incarnation: actor.incarnation, user: actor.user }),
-      effective: Object.freeze({
-        id: effective.id,
-        incarnation: effective.incarnation,
-        user: effective.user,
-      }),
-    })
-    return result
+    return admittedProjection(owner, row, actor, effective)
   }
 }

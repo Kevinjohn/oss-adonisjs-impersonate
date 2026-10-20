@@ -1,0 +1,212 @@
+import { test } from '@japa/runner'
+import { fixture } from './helpers/core.js'
+import { requestContext } from './helpers/http_context.js'
+import { errors } from '@adonisjs/auth'
+import { masqueradeContext } from '../http/context_middleware.js'
+import { allowMutation } from '../integration/route_metadata.js'
+
+test.group('masquerade HTTP boundary', () => {
+  test('rejects mixed native-effective and other guards before authentication or downstream fallback', async ({
+    assert,
+  }) => {
+    for (const guards of [
+      ['api', 'web_effective'],
+      ['web_effective', 'api'],
+      ['web_effective', 'default'],
+    ]) {
+      for (const missingNativeCredential of [false, true]) {
+        const f = fixture()
+        const service = await f.create()
+        const mode = await service.status({})
+        if (missingNativeCredential)
+          f.dependencies.authenticateActor = async () => {
+            throw new errors.E_UNAUTHORIZED_ACCESS('Native session missing', {
+              guardDriverName: 'session',
+            })
+          }
+        const before = f.state.authenticateCount
+        const { ctx, responseState } = requestContext(f, {
+          body: { _masqueradeContext: mode.contextToken },
+          routeMiddleware: [{ name: 'auth', args: { guards } }],
+        })
+        let downstreamCalls = 0
+        await masqueradeContext(ctx, async () => {
+          downstreamCalls++
+        })
+        assert.equal(responseState.status, 503)
+        assert.equal(downstreamCalls, 0)
+        assert.equal(f.state.authenticateCount, before)
+      }
+    }
+  })
+
+  test('defers native authentication rendering to named auth without retrying downstream errors', async ({
+    assert,
+  }) => {
+    const f = fixture()
+    f.dependencies.authenticateActor = async () => {
+      throw new errors.E_UNAUTHORIZED_ACCESS('Raw session missing', { guardDriverName: 'session' })
+    }
+    let reads = 0
+    f.store.read = async () => {
+      reads++
+      return null
+    }
+    const { ctx, responseState } = requestContext(f, { method: 'GET' })
+    let downstreamCalls = 0
+    await assert.rejects(
+      () =>
+        masqueradeContext(ctx, async () => {
+          downstreamCalls++
+          throw new errors.E_UNAUTHORIZED_ACCESS('Named auth chooses rendering', {
+            guardDriverName: 'session',
+          })
+        }),
+      'Named auth chooses rendering'
+    )
+    assert.equal(downstreamCalls, 1)
+    assert.equal(reads, 0)
+    assert.equal(responseState.headers.get('cache-control'), 'no-store')
+  })
+
+  test('requires context on idle unsafe routes in report mode and ignores query state', async ({
+    assert,
+  }) => {
+    const f = fixture()
+    f.config.contextEnforcement = 'report'
+    const { ctx, warnings } = requestContext(f, { body: {} })
+    let continued = false
+    await masqueradeContext(ctx, async () => {
+      continued = true
+    })
+    assert.isTrue(continued)
+    assert.equal((warnings[0] as { code: string }).code, 'E_MASQUERADE_CONTEXT_REQUIRED')
+  })
+
+  test('reports header and form token disagreement as stale context', async ({ assert }) => {
+    const f = fixture()
+    f.config.contextEnforcement = 'report'
+    const service = await f.create()
+    const mode = await service.status({})
+    const { ctx, warnings } = requestContext(f, {
+      body: { _masqueradeContext: mode.contextToken },
+      header: `1.${'a'.repeat(32)}`,
+    })
+    let continued = false
+    await masqueradeContext(ctx, async () => {
+      continued = true
+    })
+    assert.isTrue(continued)
+    assert.equal((warnings[0] as { code: string }).code, 'E_MASQUERADE_CONTEXT_CHANGED')
+  })
+
+  test('does not apply the control-body limit to covered business requests', async ({ assert }) => {
+    const f = fixture()
+    const service = await f.create()
+    const mode = await service.status({})
+    const payload = 'x'.repeat(9000)
+    const { ctx } = requestContext(f, {
+      body: { _masqueradeContext: mode.contextToken, payload },
+    })
+    let continued = false
+    await masqueradeContext(ctx, async () => {
+      continued = true
+    })
+    assert.isTrue(continued)
+  })
+
+  test('enforces mutations and preserves package error JSON and no-store headers', async ({
+    assert,
+  }) => {
+    const f = fixture()
+    const service = await f.create()
+    await f.start(service)
+    const mode = await service.status({})
+    const { ctx, responseState } = requestContext(f, {
+      body: { _masqueradeContext: mode.contextToken },
+    })
+    let continued = false
+    await masqueradeContext(ctx, async () => {
+      continued = true
+    })
+    assert.isFalse(continued)
+    assert.equal(responseState.status, 403)
+    assert.deepEqual(responseState.json, {
+      errors: [
+        { code: 'E_MASQUERADE_ACTION_BLOCKED', message: 'Action is blocked while masquerading' },
+      ],
+    })
+    assert.equal(responseState.headers.get('cache-control'), 'no-store')
+  })
+
+  test('passes safe read requests and permits explicitly marked mutations', async ({ assert }) => {
+    const f = fixture()
+    const service = await f.create()
+    await f.start(service)
+    const mode = await service.status({})
+    const token = mode.contextToken
+    const { ctx: read } = requestContext(f, { method: 'GET' })
+    let readContinued = false
+    await masqueradeContext(read, async () => {
+      readContinued = true
+    })
+    assert.isTrue(readContinued)
+
+    const { ctx: mutation } = requestContext(f, {
+      body: { _masqueradeContext: token },
+      routeMiddleware: [{ name: 'auth', args: [{ guards: ['web_effective'] }] }, allowMutation()],
+    })
+    let mutationContinued = false
+    await masqueradeContext(mutation, async () => {
+      mutationContinued = true
+    })
+    assert.isTrue(mutationContinued)
+  })
+
+  test('skips explicit raw-guard routes without reading masquerade state', async ({ assert }) => {
+    const f = fixture()
+    let storeReads = 0
+    const read = f.store.read.bind(f.store)
+    f.store.read = async (owner) => {
+      storeReads++
+      return read(owner)
+    }
+    const { ctx } = requestContext(f, {
+      routeMiddleware: [{ name: 'auth', args: { guards: ['web'] } }],
+    })
+    let runtimeCalls = 0
+    ;(
+      ctx as { containerResolver: { make(name: string): Promise<unknown> } }
+    ).containerResolver.make = async () => {
+      runtimeCalls++
+      return {
+        effectiveGuardName: 'web_effective',
+        effectiveGuardNames: ['web_effective'],
+      }
+    }
+    let continued = false
+    await masqueradeContext(ctx, async () => {
+      continued = true
+    })
+    assert.isTrue(continued)
+    assert.equal(runtimeCalls, 1)
+    assert.equal(storeReads, 0)
+  })
+
+  test('enforces routes using an alias of the effective session guard', async ({ assert }) => {
+    const f = fixture()
+    const service = await f.create()
+    await f.start(service)
+    const mode = await service.status({})
+    const { ctx, responseState } = requestContext(f, {
+      body: { _masqueradeContext: mode.contextToken },
+      routeMiddleware: [{ name: 'auth', args: { guards: ['web_alias'] } }],
+    })
+    let continued = false
+    await masqueradeContext(ctx, async () => {
+      continued = true
+    })
+    assert.isFalse(continued)
+    assert.equal(responseState.status, 403)
+  })
+})
