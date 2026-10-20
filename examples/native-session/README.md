@@ -1,10 +1,52 @@
-# Native session integration fixture
+# Native session demo
 
 This AdonisJS 7 hypermedia fixture is based on the official starter kit at commit
 [`449d77c`](https://github.com/adonisjs/starter-kits/commit/449d77cc25dd08e036f442d2d39b760d43ccfbd3).
 It consumes the built package tarball through native session authentication, Bouncer, Edge,
-controllers, middleware and a real Lucid store on SQLite or PostgreSQL. Accounts and application
-keys are fictional test data.
+controllers, middleware and a real Lucid store on SQLite or PostgreSQL. Its demo accounts and test
+credentials are fictional.
+
+## Run the local demo
+
+Prerequisites: Node.js 24 and pnpm. From a clean repository checkout, prepare the package tarball
+from this checkout before installing the example, then set up and start the SQLite app:
+
+```sh
+nvm use
+pnpm install
+pnpm build
+pnpm pack:fixture
+
+cd examples/native-session
+cp .env.example .env
+pnpm install --no-frozen-lockfile
+node ace generate:key
+node ace migration:run
+node ace demo:seed
+pnpm dev
+```
+
+The example installs the package tarball packed from this checkout. Its local integrity entry
+changes when the tarball is rebuilt, so this install refreshes that entry while keeping the locked
+dependency versions unchanged.
+
+Open <http://localhost:3333>, then sign in with one of these local-only credentials:
+
+| Account      | Email                       | Password                 | Demo capability                                   |
+| ------------ | --------------------------- | ------------------------ | ------------------------------------------------- |
+| Operator     | `operator@example.test`     | `demo-operator-2026`     | Can start masquerade; cannot mutate customer data |
+| Customer one | `customer-one@example.test` | `demo-customer-one-2026` | Active customer; can mutate demo data             |
+| Customer two | `customer-two@example.test` | `demo-customer-two-2026` | Active customer; can mutate demo data             |
+
+These reserved accounts are for local demonstration only. Signup creates ordinary non-operator
+accounts. `node ace demo:seed` can be run again safely: it refreshes these three addresses and does
+not remove other accounts. To remove only these accounts, their remember-me tokens and their
+masquerade rows, run `node ace demo:reset`. Both commands require `NODE_ENV` to be `development`
+or `test` and the local SQLite database; they refuse production and PostgreSQL. Reset does not
+drop tables or wipe unrelated accounts. Stop the server with Ctrl+C.
+
+`node ace generate:key` creates a unique application key in your local `.env`. The fixed keys in
+`.env.test` belong only to repeatable tests and are not suitable for an interactive app.
 
 The authenticated dashboard renders its native logout form. The functional suite covers the
 dashboard response and logout redirect. Production-mode browser captures show the
@@ -19,28 +61,19 @@ rendering enabled, alongside direct rendering of both error templates without au
 Flash alerts reveal after 80 ms and dismiss after five seconds by default. Set `autoDismiss: false`
 on `@alert.root` to keep an alert visible until its dismiss action is called.
 
-Use Node 24 and pnpm. From the repository root:
+## Validate the packed consumer
+
+After building and packing the package from the repository root as shown above, the consumer
+harness installs that tarball into isolated applications outside the checkout. It runs the declared
+peer floors and newest compatible versions against SQLite and PostgreSQL 16, and reports the
+package SHA-256, resolved dependencies and suite counts. It stops only a PostgreSQL server it
+started. To use an already managed server, set `CONSUMER_PG_EXTERNAL=1` and `DB_HOST`, `DB_PORT`,
+`DB_USER`, `DB_PASSWORD` and `DB_DATABASE`.
+
+Useful runs from the repository root:
 
 ```sh
-pnpm build
-pnpm pack:fixture
 pnpm test:consumer
-```
-
-The consumer harness installs the actual tarball into isolated applications outside the checkout.
-It runs the declared peer floors and the newest registry versions compatible with those peer
-ranges, each against SQLite and PostgreSQL 16. It prints the results JSON path, containing the
-package SHA-256, resolved dependencies/tooling, peer checks and suite counts. PostgreSQL uses the
-repository's local server scripts; only a server started by the harness is stopped by it. To use
-an already managed external server, set `CONSUMER_PG_EXTERNAL=1` and the `DB_HOST`, `DB_PORT`,
-`DB_USER`, `DB_PASSWORD` and `DB_DATABASE` variables.
-
-Useful focused runs:
-
-```sh
-pnpm test:consumer --profile=floor --database=sqlite
-pnpm test:consumer --profile=latest --database=pg
-pnpm test:consumer --package=tmp/native-session-package.tgz
 ```
 
 Each profile validates the packed root exports and optional-import boundary in a fresh process,
@@ -50,17 +83,23 @@ HTTP suites. Installed package peer manifests are checked independently of overr
 profile pins `@adonisjs/vite` to 6.0.1 because 6.0.2 requires Core 7.5; package peer floors remain
 unchanged.
 
-To run the working fixture directly after packing:
+To run the app tests after installing the example dependencies as shown above:
 
 ```sh
 cd examples/native-session
-cp .env.example .env
-pnpm install --frozen-lockfile
 pnpm lint
 pnpm typecheck
 SESSION_DRIVER=memory pnpm test functional
 SESSION_DRIVER=memory pnpm test:report
 pnpm test:credentials
+```
+
+Useful focused consumer runs from the repository root:
+
+```sh
+pnpm test:consumer --profile=floor --database=sqlite
+pnpm test:consumer --profile=latest --database=pg
+pnpm test:consumer --package=tmp/native-session-package.tgz
 ```
 
 The functional suite contains the four original identity proofs, ten context/action cases and
@@ -83,6 +122,16 @@ remember token. The short age is enabled only by `NATIVE_CREDENTIALS_SESSION=tru
 For PostgreSQL direct runs, set `DB_CLIENT=pg` plus the connection variables above. `DB_SCHEMA`
 optionally isolates fixture tables. SQLite remains the normal local default.
 
-Two intentionally mixed raw/effective guard routes are adversarial fail-closed cases and appear
-as route-report warnings; they are not recommended host wiring. Report mode runs in a separate
-process so it cannot weaken the enforce-mode cases.
+Route-report warnings for intentionally raw, alternate-guard and mixed-guard routes belong to the
+test-only suites; they are adversarial cases, not recommended host wiring. Report mode runs in a
+separate process so it cannot weaken the enforce-mode cases.
+
+The example keeps ordinary host wiring in `config/masquerade.ts`,
+`start/masquerade_control_routes.ts` and `start/routes.ts`: Lucid storage, native auth routes,
+and the raw-guard start/status/stop controls. The form and deliberate identity, alternate-guard,
+mutation and concurrency probes live in `start/test_routes.ts` and `start/member_routes.ts`;
+AdonisJS preloads them only when `NODE_ENV=test`, where the original test URLs remain available.
+Set `NODE_ENV=test` when running `node ace masquerade:routes` to include those routes in the
+coverage report. `app/services/masquerade_test_boundary.ts` and
+`app/services/fixture_control_store.ts` hold test-only failure injection and diagnostics. The
+admitted-stop-form endpoint is a concurrency probe and is not registered for an interactive app.
