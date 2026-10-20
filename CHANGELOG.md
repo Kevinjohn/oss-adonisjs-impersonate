@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Separate native-session application routes and configuration from explicitly enabled test probes.
+
 Add stable field-aware setup diagnostics for invalid configuration and store contracts.
 
 Preserve the native session unauthorized error when `getUserOrFail()` follows an unsuccessful
