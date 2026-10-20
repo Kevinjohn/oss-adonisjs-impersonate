@@ -1,0 +1,49 @@
+{{{
+  exports({ to: app.makePath('config/masquerade.ts') })
+}}}
+import app from '@adonisjs/core/services/app'
+import type { HttpContext } from '@adonisjs/core/http'
+import UserModel from '#models/user'
+import { Database } from '@adonisjs/lucid/database'
+import { defineConfig } from 'adonisjs-masquerade'
+import { sessionAuthority } from 'adonisjs-masquerade/native'
+import { LucidControlStore } from 'adonisjs-masquerade/stores/lucid'
+import { userProvider } from '#services/masquerade_user_provider'
+
+type User = InstanceType<typeof UserModel>
+
+function configureAccountIdentity(): never {
+  throw new Error('Configure immutable account incarnation and security stamp callbacks in config/masquerade.ts')
+}
+
+// The incarnation must change if an account ID can be deleted and reused.
+// The security stamp must change after privilege, password, suspension, and logout-all changes.
+// Replace these fail-closed callbacks with account-specific, stable implementations.
+const nativeAdapter = sessionAuthority<User>({
+  namespace: {{{ namespaceLiteral }}},
+  guard: {{{ guardLiteral }}},
+  provider: userProvider,
+  incarnation: () => configureAccountIdentity(),
+  securityStamp: () => configureAccountIdentity(),
+  isActive: () => false,
+})
+
+export { nativeAdapter }
+
+export default defineConfig<User, HttpContext>({
+  authority: nativeAdapter.authority,
+  policy: {
+    async canMasquerade() {
+      return false
+    },
+    async canUseRequest() {
+      return false
+    },
+  },
+  store: async () => {
+    const database = await app.container.make(Database)
+    return new LucidControlStore(database.connection())
+  },
+  contextEnforcement: 'report',
+  retention: 'host-managed',
+})

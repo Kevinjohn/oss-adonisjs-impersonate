@@ -1,4 +1,3 @@
-import { indexEntities } from '@adonisjs/core/generators'
 import { defineConfig } from '@adonisjs/core/app'
 
 export default defineConfig({
@@ -68,6 +67,7 @@ export default defineConfig({
   */
   preloads: [
     () => import('#start/routes'),
+    () => import('#start/member_routes'),
     () => import('#start/kernel'),
     () => import('#start/validator'),
     () => import('#start/view'),
@@ -92,6 +92,11 @@ export default defineConfig({
       {
         files: ['tests/functional/**/*.spec.ts'],
         name: 'functional',
+        timeout: 30000,
+      },
+      {
+        files: ['tests/credentials/**/*.spec.ts'],
+        name: 'credentials',
         timeout: 30000,
       },
       {
@@ -140,7 +145,6 @@ export default defineConfig({
   |
   */
   hooks: {
-    init: [indexEntities()],
     buildStarting: [() => import('@adonisjs/vite/build_hook')],
   },
 })

@@ -1,8 +1,24 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["index.ts", "auth/main.ts", "http/main.ts", "native/main.ts", "testing/main.ts"],
+  "entryPoints": [
+    "index.ts",
+    "auth/main.ts",
+    "http/main.ts",
+    "native/main.ts",
+    "stores/lucid.ts",
+    "providers/masquerade_provider.ts",
+    "commands/main.ts",
+    "testing/main.ts",
+    "src/errors.ts",
+    "commands/routes.ts",
+    "integration/route_metadata.ts",
+    "src/request_admission.ts",
+    "auth/effective_session_guard.ts"
+  ],
   "out": "docs/api",
-  "plugin": ["typedoc-plugin-markdown"],
+  "plugin": [
+    "typedoc-plugin-markdown"
+  ],
   "entryFileName": "index",
   "readme": "none",
   "excludePrivate": true,
@@ -10,5 +26,14 @@
   "hidePageHeader": true,
   "githubPages": false,
   "gitRevision": "main",
-  "treatWarningsAsErrors": true
+  "treatWarningsAsErrors": true,
+  "intentionallyNotExported": [
+    "MarkedMiddleware",
+    "RouteMetadata"
+  ],
+  "externalSymbolLinkMappings": {
+    "@adonisjs/ace": {
+      "CommandMetaData": "https://github.com/adonisjs/ace"
+    }
+  }
 }

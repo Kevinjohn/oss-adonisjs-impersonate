@@ -1,4 +1,5 @@
 import { defineConfig } from '@adonisjs/auth'
+import { memberGuard } from '#services/member_guard'
 import { webGuard } from '#services/web_guard'
 import { effectiveSessionGuard } from 'adonisjs-masquerade/auth'
 import type { InferAuthenticators, InferAuthEvents, Authenticators } from '@adonisjs/auth/types'
@@ -19,6 +20,7 @@ const authConfig = defineConfig({
      * Web guard uses session-based authentication for web requests.
      */
     web: webGuard,
+    members: memberGuard,
     web_effective: effectiveSessionGuard(webGuard),
   },
 })

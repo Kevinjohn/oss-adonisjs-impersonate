@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Add a fail-closed configure scaffold, setup and security guides, a complete requirement ledger,
+and an isolated packed-consumer harness for the supported dependency floor and latest versions
+on SQLite and PostgreSQL.
+
 Add the native session authority and effective guard, HTTP controls, route markers, context
 enforcement with a report mode, safe Edge helpers, and the `masquerade:routes` coverage report.
 

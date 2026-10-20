@@ -1,0 +1,45 @@
+# Integration notes for agents
+
+These notes help code agents integrate Masquerade into an existing AdonisJS application. The host
+application owns authorization, language, route policy, tenant context, rate limits, session
+provider configuration and user-facing controls.
+
+## Before editing the host application
+
+1. Read the [setup guide](docs/guide/setup.md) and [security guide](docs/guide/security.md).
+2. Read generated configure output and inspect every generated callback. Never replace a host's
+   user provider or guard without checking its current Auth configuration.
+3. Keep the exact same session user-provider instance in raw session auth and `sessionAuthority`.
+4. Configure an immutable account incarnation when IDs can be reused, and a security stamp that
+   changes for password, privilege, suspension and logout-all events.
+5. Replace deny-by-default placeholders with explicit host checks. Do not add an allow-all policy.
+
+## Request wiring
+
+- `masqueradeContext` belongs after `initialize_auth` and before `silent_auth`.
+- Effective business routes use the effective session guard exclusively. Login, signup, logout and
+  status/start/stop controls use the raw session guard.
+- Mount controls behind Shield CSRF and separate host limiter budgets for start and stop.
+- Every covered unsafe business request sends `X-Masquerade-Context` (fetch/Inertia) or the
+  `_masqueradeContext` hidden field. Do not refresh a token and replay the old action.
+- Review `node ace masquerade:routes` before release. Fix or consciously account for every raw
+  business route it flags; the report is a release gate, not an automatic registry.
+- Mark billing mutations and other security-sensitive actions with `sensitive()`. URL names do not
+  make a route sensitive automatically, and `allowMutation()` never overrides the marker.
+
+## Identity and operational boundaries
+
+Use the target for ordinary business Auth/Bouncer checks and the raw session guard for actor
+identity. Do not union permissions. A global eligibility or security-stamp change ends the mode;
+a request-local tenant denial rejects only that request. A valid native actor session may stop the
+mode despite eligibility, stamp, target, or policy changes.
+
+Logout of one session ends that credential only. Other valid sessions retain the account-wide
+mode. Expiry is fixed and non-sliding. Already-admitted requests and work handed to jobs or external
+systems cannot be recalled; propagate the safe actor/effective projection and reauthorize in the
+host worker where needed.
+
+Keep audit reasons bounded and free of secrets or unnecessary personal data. Successful start
+records the normalized reason; denied and invalid control attempts omit it. Never log credentials,
+stamps, request bodies or raw user objects. Review [retention and erasure guidance](docs/guide/security.md#jobs-external-effects-and-audit)
+before changing audit retention.

@@ -17,7 +17,10 @@ test('migration stub respects Lucid dry-run, creates once and rolls back both ta
       new URL('../stubs/migrations/create_masquerade_tables.stub', import.meta.url),
       'utf8'
     )
-    const source = stub
+    // The leading Core stub directive selects the generated filename; execute the migration body here.
+    assert.match(stub, /^\{\{\{[\s\S]*?exports\(\{ to:/)
+    const migrationBody = stub.replace(/^\{\{\{[\s\S]*?\}\}\}\r?\n/, '')
+    const source = migrationBody
       .replace(
         "'@adonisjs/lucid/schema'",
         JSON.stringify(import.meta.resolve('@adonisjs/lucid/schema'))

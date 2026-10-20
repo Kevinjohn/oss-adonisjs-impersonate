@@ -122,7 +122,7 @@ checklist, not as evidence.
 
 ## What to report back
 
-At the end of each milestone, open a pull request with:
+At the end of each milestone, record a reviewable handoff with:
 
 - the gate from the table above and how it was met, naming the test files;
 - any place where you chose between readings of the SPEC, and which you chose;

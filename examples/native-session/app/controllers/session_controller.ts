@@ -22,8 +22,8 @@ export default class SessionController {
     const { email, password } = await request.validateUsing(loginValidator)
     const user = await User.verifyCredentials(email, password)
 
-    await auth.use('web').login(user)
-    response.redirect().toRoute('dashboard')
+    await auth.use('web').login(user, request.input('remember') === 'on')
+    response.redirect().toPath('/dashboard')
   }
 
   /**
@@ -31,6 +31,6 @@ export default class SessionController {
    */
   async destroy({ auth, response }: HttpContext) {
     await auth.use('web').logout()
-    response.redirect().toRoute('session.create')
+    response.redirect().toPath('/login')
   }
 }

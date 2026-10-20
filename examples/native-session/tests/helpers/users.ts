@@ -36,6 +36,7 @@ export async function cleanUsers() {
     await db.from('masquerade_events').whereIn('actor_id', ownerIds).delete()
     await db.from('masquerade_modes').whereIn('actor_id', ownerIds).delete()
   }
+  await db.from('remember_me_tokens').whereIn('tokenable_id', ids).delete()
   await User.query().whereIn('id', ids).delete()
   createdIds.clear()
 }
