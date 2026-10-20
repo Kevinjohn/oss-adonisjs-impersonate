@@ -17,12 +17,16 @@ const demoEmails = [
   'customer-two@example.test',
 ]
 
+const usesPostgres = process.env.DB_CLIENT === 'pg'
+
 test.group('demo accounts', (group) => {
-  group.setup(() => testUtils.db().migrate())
-  group.each.teardown(async () => {
-    await resetDemoAccounts({ nodeEnv: 'test', dbClient: 'sqlite' })
-    await cleanUsers()
-  })
+  if (!usesPostgres) {
+    group.setup(() => testUtils.db().migrate())
+    group.each.teardown(async () => {
+      await resetDemoAccounts({ nodeEnv: 'test', dbClient: 'sqlite' })
+      await cleanUsers()
+    })
+  }
 
   test('seeds one operator and two customers idempotently without changing unrelated accounts', async ({
     assert,
@@ -60,7 +64,7 @@ test.group('demo accounts', (group) => {
     )
     const seededOperator = await User.findByOrFail('email', 'operator@example.test')
     assert.equal(verifiedOperator.id, seededOperator.id)
-  })
+  }).skip(usesPostgres, 'Demo account fixtures require SQLite')
 
   test('resets only the named demo accounts and their masquerade data', async ({ assert }) => {
     const { actor } = await createUsers()
@@ -145,7 +149,7 @@ test.group('demo accounts', (group) => {
       ),
       1
     )
-  })
+  }).skip(usesPostgres, 'Demo account fixtures require SQLite')
 
   test('runs reset through Ace using NODE_ENV instead of the console execution environment', async ({
     assert,
@@ -159,7 +163,7 @@ test.group('demo accounts', (group) => {
     assert.notEqual(productionReset.exitCode, 0)
     assert.include(productionReset.output, 'Demo commands are allowed only in development or test')
     assert.isNotNull(await User.findBy('email', 'operator@example.test'))
-  })
+  }).skip(usesPostgres, 'Demo account fixtures require SQLite')
 
   test('refuses reset in production or against PostgreSQL', ({ assert }) => {
     assert.throws(
