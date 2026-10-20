@@ -1,12 +1,14 @@
 import type { MasqueradeConfig } from './types.js'
 import { boundedString } from './bounded_string.js'
+import { MasqueradeSetupError } from './errors.js'
+import type { MasqueradeSetupErrorField } from './errors.js'
 
 /** Validate synchronously; resolving the store is deferred to service creation. */
 export function defineConfig<User, Request>(
   config: MasqueradeConfig<User, Request>
 ): MasqueradeConfig<User, Request> {
-  const fail = () => {
-    throw new TypeError('Invalid masquerade configuration')
+  const fail = (field: MasqueradeSetupErrorField): never => {
+    throw new MasqueradeSetupError('E_MASQUERADE_INVALID_CONFIGURATION', field)
   }
   if (
     !config ||
@@ -23,51 +25,53 @@ export function defineConfig<User, Request>(
         ].includes(key)
     )
   )
-    fail()
+    fail('config')
   const authority = config.authority
+  if (!authority) fail('authority')
   if (
-    !authority ||
     Object.keys(authority).some(
       (key) =>
         !['namespace', 'guard', 'incarnation', 'securityStamp', 'inspectAccount'].includes(key)
-    ) ||
-    !boundedString(authority.namespace, 128) ||
-    !/^[A-Za-z0-9][A-Za-z0-9_.:-]*$/.test(authority.namespace) ||
-    !boundedString(authority.guard, 128) ||
-    !(authority.incarnation === 'id' || typeof authority.incarnation === 'function') ||
-    typeof authority.securityStamp !== 'function' ||
-    typeof authority.inspectAccount !== 'function'
+    )
   )
-    fail()
+    fail('authority')
   if (
-    !config.policy ||
-    typeof config.policy.canMasquerade !== 'function' ||
-    Object.keys(config.policy).some((key) => !['canMasquerade', 'canUseRequest'].includes(key)) ||
-    (config.policy.canUseRequest !== undefined &&
-      typeof config.policy.canUseRequest !== 'function') ||
-    typeof config.store !== 'function'
+    !boundedString(authority.namespace, 128) ||
+    !/^[A-Za-z0-9][A-Za-z0-9_.:-]*$/.test(authority.namespace)
   )
-    fail()
+    fail('authority.namespace')
+  if (!boundedString(authority.guard, 128)) fail('authority.guard')
+  if (!(authority.incarnation === 'id' || typeof authority.incarnation === 'function'))
+    fail('authority.incarnation')
+  if (typeof authority.securityStamp !== 'function') fail('authority.securityStamp')
+  if (typeof authority.inspectAccount !== 'function') fail('authority.inspectAccount')
+
+  if (!config.policy) fail('policy')
+  if (typeof config.policy.canMasquerade !== 'function') fail('policy.canMasquerade')
+  if (Object.keys(config.policy).some((key) => !['canMasquerade', 'canUseRequest'].includes(key)))
+    fail('policy')
+  if (
+    config.policy.canUseRequest !== undefined &&
+    typeof config.policy.canUseRequest !== 'function'
+  )
+    fail('policy.canUseRequest')
+  if (typeof config.store !== 'function') fail('store')
   const max = config.maxDurationSeconds === undefined ? 3600 : config.maxDurationSeconds
   const duration = config.durationSeconds === undefined ? 900 : config.durationSeconds
-  if (
-    !Number.isInteger(max) ||
-    max < 60 ||
-    max > 3600 ||
-    !Number.isInteger(duration) ||
-    duration < 60 ||
-    duration > max
-  )
-    fail()
-  if (!['report', 'enforce'].includes(config.contextEnforcement)) fail()
+  if (!Number.isInteger(max) || max < 60 || max > 3600) fail('maxDurationSeconds')
+  if (!Number.isInteger(duration) || duration < 60 || duration > max) fail('durationSeconds')
+  if (!['report', 'enforce'].includes(config.contextEnforcement)) fail('contextEnforcement')
+  if (config.retention !== 'host-managed' && !config.retention) fail('retention')
   if (
     config.retention !== 'host-managed' &&
-    (!config.retention ||
-      Object.keys(config.retention).some((key) => key !== 'days') ||
-      !Number.isSafeInteger(config.retention.days) ||
-      config.retention.days < 1)
+    Object.keys(config.retention).some((key) => key !== 'days')
   )
-    fail()
+    fail('retention')
+  if (
+    config.retention !== 'host-managed' &&
+    (!Number.isSafeInteger(config.retention.days) || config.retention.days < 1)
+  )
+    fail('retention.days')
   return Object.freeze({
     authority: Object.freeze({
       namespace: authority.namespace,
