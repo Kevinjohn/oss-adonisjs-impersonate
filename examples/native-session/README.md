@@ -48,8 +48,23 @@ drop tables or wipe unrelated accounts. Stop the server with Ctrl+C.
 `node ace generate:key` creates a unique application key in your local `.env`. The fixed keys in
 `.env.test` belong only to repeatable tests and are not suitable for an interactive app.
 
-The authenticated dashboard renders its native logout form. The functional suite covers the
-dashboard response and logout redirect. Production-mode browser captures show the
+The authenticated dashboard links to `/support`. Sign in as the seeded operator, choose a customer,
+enter a reason and start support mode. The workspace keeps the signed-in operator distinct from the
+effective customer, shows the fixed deadline and account-wide scope, and offers a stop control.
+The customer page reads that customer's email and demo email-update preference. Changing the
+preference is reversible and uses the customer's Bouncer permission; the operator's own permission
+does not carry over. The sensitive-action example is blocked during support mode. Ordinary signup
+accounts can view the support entry but cannot start mode. The functional suite covers the
+dashboard response, logout redirect, full support journey and recovery paths.
+
+Forms include Shield CSRF and the context token captured when they were rendered. If another tab
+or session changes mode, an old form returns a context-changed page; return to `/support` and
+build a fresh action from the current page. A 503 after a control attempt may mean the outcome is
+unknown: check `/support` status before acting again. The raw operator workspace remains available
+if customer admission fails, so a valid operator can still inspect and stop mode. JSON clients
+continue to use the canonical `/masquerade` status/start/stop API and its normal error responses.
+
+Production-mode browser captures show the
 [previous render failure](../../docs/assets/review/dashboard_render_before.png) and the
 [working dashboard](../../docs/assets/review/dashboard_render_after.png), using fictional data.
 Both production error templates also render through the registered marketing layout; a functional
@@ -127,8 +142,10 @@ test-only suites; they are adversarial cases, not recommended host wiring. Repor
 separate process so it cannot weaken the enforce-mode cases.
 
 The example keeps ordinary host wiring in `config/masquerade.ts`,
-`start/masquerade_control_routes.ts` and `start/routes.ts`: Lucid storage, native auth routes,
-and the raw-guard start/status/stop controls. The form and deliberate identity, alternate-guard,
+`start/masquerade_control_routes.ts`, `start/demo_routes.ts` and `start/routes.ts`: Lucid storage,
+native auth routes, raw-guard start/status/stop controls and the browser adapter. HTML start/stop
+forms use the same service and actor-keyed limiter definitions as the canonical JSON routes. The
+form and deliberate identity, alternate-guard,
 mutation and concurrency probes live in `start/test_routes.ts` and `start/member_routes.ts`;
 AdonisJS preloads them only when `NODE_ENV=test`, where the original test URLs remain available.
 Set `NODE_ENV=test` when running `node ace masquerade:routes` to include those routes in the

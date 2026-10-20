@@ -6,3 +6,5 @@ Alpine.data('alert', alertData)
 Alpine.data('themeToggle', themeToggleData)
 
 Alpine.start()
+
+document.getElementById('support-error-title')?.focus()

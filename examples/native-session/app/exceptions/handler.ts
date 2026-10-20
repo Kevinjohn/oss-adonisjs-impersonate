@@ -1,6 +1,7 @@
 import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
+import { MasqueradeError } from 'adonisjs-masquerade'
 
 export default class HttpExceptionHandler extends ExceptionHandler {
   /**
@@ -34,6 +35,18 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    * response to the client
    */
   async handle(error: unknown, ctx: HttpContext) {
+    const path = ctx.request.url()
+    const acceptsHtml = ctx.request.header('accept')?.includes('text/html')
+    const supportPath = path === '/dashboard' || path === '/support' || path.startsWith('/support/')
+    const status =
+      error instanceof MasqueradeError ? error.status : (error as { status?: number })?.status
+    if (acceptsHtml && supportPath && [403, 409, 422, 428, 429, 503].includes(status ?? 0)) {
+      const details = supportErrorDetails(status!, error)
+      ctx.response.header('Cache-Control', 'private, no-store')
+      ctx.response.vary(['Accept', 'X-Masquerade-Context'])
+      ctx.response.status(status!)
+      return ctx.response.send(await ctx.view.render('pages/errors/support_recovery', details))
+    }
     return super.handle(error, ctx)
   }
 
@@ -45,5 +58,49 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    */
   async report(error: unknown, ctx: HttpContext) {
     return super.report(error, ctx)
+  }
+}
+
+function supportErrorDetails(status: number, error: unknown) {
+  const code = error instanceof MasqueradeError ? error.code : undefined
+  if (status === 503) {
+    return {
+      title: 'Support status is unavailable',
+      explanation:
+        'The last change may or may not have completed. Check current status before deciding what to do next. Do not resubmit the old form.',
+    }
+  }
+  if (status === 429) {
+    return {
+      title: 'Too many control attempts',
+      explanation:
+        'Wait before trying another control change. Check current status first; if a mode is active, its stop control remains on the operator page.',
+    }
+  }
+  if (status === 409 || status === 428) {
+    return {
+      title: 'Support context changed',
+      explanation:
+        'Another tab or session may have changed the mode, or its deadline passed. Check status and rebuild the action from the current customer page. The old action was not replayed.',
+    }
+  }
+  if (code === 'E_MASQUERADE_ACTION_BLOCKED') {
+    return {
+      title: 'Sensitive action blocked',
+      explanation:
+        'This action is unavailable while support mode is active. The customer preference can still be changed when the customer permits it.',
+    }
+  }
+  if (status === 422) {
+    return {
+      title: 'Check the support form',
+      explanation:
+        'The customer or reason was not valid. Check current status, then choose an eligible customer and enter a reason.',
+    }
+  }
+  return {
+    title: 'Access was denied',
+    explanation:
+      'The account or current customer cannot use this action. Check support status or stop the mode from the operator workspace.',
   }
 }

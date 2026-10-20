@@ -1,0 +1,130 @@
+@layouts.app({ title: 'Support workspace' })
+  @page({
+    title: 'Support workspace',
+    description: 'A small, local example of account-wide customer support mode.',
+  })
+    <div class="support-stack">
+      <section class="panel support-identity" aria-labelledby="operator-heading">
+        <div>
+          <p class="tag">Signed-in account</p>
+          <h2 id="operator-heading">{{ actor.fullName || actor.email }}</h2>
+          <p>{{ actor.email }}</p>
+        </div>
+        <span class="support-badge">{{ operator ? 'Operator' : 'Standard account' }}</span>
+      </section>
+      @if(!operator)
+        <section class="panel" aria-labelledby="standard-heading">
+          <h2 id="standard-heading">Operator access is required</h2>
+          <p class="support-copy">
+            This account cannot start support mode. Sign in with the seeded operator account to try this workspace. Ordinary signups remain standard accounts.
+          </p>
+        </section>
+      @elseif(usable)
+        <section class="panel support-mode" aria-labelledby="mode-heading" role="status">
+          <div class="support-mode__header">
+            <div>
+              <p class="tag">Support mode active</p>
+              <h2 id="mode-heading">Viewing as {{ target?.fullName || 'Customer account' }}</h2>
+              <p class="support-copy">
+                You are still signed in as
+                {{ actor.fullName || actor.email }}. Business pages use the customer’s permissions. This mode applies across every session and tab of your operator account.
+              </p>
+            </div>
+            <span class="support-badge support-badge--active">Active</span>
+          </div>
+          <p class="support-deadline">
+            Fixed deadline:
+            <time datetime="{{ mode.expiresAt }}">
+              {{ expiresText }}
+            </time>. The deadline does not extend when you browse.
+          </p>
+          <div class="support-actions">
+            <a class="btn btn--secondary" href="/support/customer">Open customer workspace</a>
+            @form({ route: 'demo.stop', method: 'POST' })
+              <input type="hidden" name="_masqueradeContext" value="{{ mode.contextToken }}" />
+              <button class="btn btn--primary" type="submit">Stop support mode</button>
+            @end
+          </div>
+        </section>
+      @elseif(mode.isMasquerading)
+        <section class="panel" aria-labelledby="expired-heading" role="status">
+          <p class="tag">Deadline reached</p>
+          <h2 id="expired-heading">This support mode is no longer usable</h2>
+          <p class="support-copy">
+            The fixed deadline was
+            <time datetime="{{ mode.expiresAt }}">
+              {{ expiresText }}
+            </time>. Check status again to see the current mode before choosing another customer.
+          </p>
+          <div class="support-actions">
+            <a class="btn btn--secondary" href="/support">Check current status</a>
+            @form({ route: 'demo.stop', method: 'POST' })
+              <input type="hidden" name="_masqueradeContext" value="{{ mode.contextToken }}" />
+              <button class="btn btn--primary" type="submit">Stop support mode</button>
+            @end
+          </div>
+        </section>
+      @else
+        <section class="panel" aria-labelledby="start-heading">
+          <p class="tag">Support mode idle</p>
+          <h2 id="start-heading">Choose a customer</h2>
+          <p class="support-copy">
+            Starting support mode changes the effective identity for all sessions of your operator account until you stop or the fixed deadline passes. The customer is not signed in.
+          </p>
+          @if(customers.length)
+            @form({ route: 'demo.start', method: 'POST', class: 'support-form' })
+              <input type="hidden" name="_masqueradeContext" value="{{ mode.contextToken }}" />
+              <div class="field">
+                <label class="field__label" for="targetId">Customer</label>
+                <select
+                  class="field__input"
+                  id="targetId"
+                  name="targetId"
+                  required
+                  aria-describedby="customer-hint"
+                >
+                  <option value="">Select a customer</option>
+                  @each(customer in customers)
+                    <option value="{{ customer.id }}">
+                      {{ customer.fullName || customer.email }}
+                      —
+                      {{ customer.email }}
+                    </option>
+                  @end
+                </select>
+                <p class="field__hint" id="customer-hint">
+                  Only active seeded customer accounts appear here.
+                </p>
+              </div>
+              <div class="field">
+                <label class="field__label" for="reason">Reason for access</label>
+                <textarea
+                  class="field__input support-reason"
+                  id="reason"
+                  name="reason"
+                  required
+                  minlength="1"
+                  maxlength="500"
+                  aria-describedby="reason-hint"
+                ></textarea>
+                <p class="field__hint" id="reason-hint">
+                  Required for the audit record. Up to 500 characters; do not enter secrets.
+                </p>
+              </div>
+              <button class="btn btn--primary" type="submit">Start support mode</button>
+            @end
+          @else
+            <p role="status" class="support-copy">
+              No eligible seeded customers are available. Run the local demo seed command, then refresh this page.
+            </p>
+          @end
+        </section>
+      @end
+      @if(operator)
+        <p class="support-footnote">
+          This page checks the raw operator account and current mode. If a customer becomes unavailable, return here to inspect status and stop.
+        </p>
+      @end
+    </div>
+  @end
+@end
