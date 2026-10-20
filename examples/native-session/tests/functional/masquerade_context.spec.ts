@@ -1,6 +1,8 @@
 import { test } from '@japa/runner'
 import type { ApiClient } from '@japa/api-client'
 import testUtils from '@adonisjs/core/services/test_utils'
+import db from '@adonisjs/lucid/services/db'
+import limiter from '@adonisjs/limiter/services/main'
 import emitter from '@adonisjs/core/services/emitter'
 import type { SessionGuardEvents } from '@adonisjs/auth/types/session'
 import {
@@ -20,6 +22,7 @@ declare module '@adonisjs/core/types' {
 test.group('real HTTP masquerade context and actions', (group) => {
   group.setup(() => testUtils.db().migrate())
   group.each.teardown(async () => {
+    await limiter.clear(['memory'])
     setMasqueradeStoreUnavailable(false)
     await cleanUsers()
   })
@@ -128,6 +131,35 @@ test.group('real HTTP masquerade context and actions', (group) => {
     denied.assertHeader('cache-control', 'no-store')
     const unchanged = await status(client, actor)
     assert.equal(unchanged.isMasquerading, false)
+  })
+
+  test('keeps independent start and stop budgets and leaves rejected requests outside package audit', async ({
+    client,
+    assert,
+  }) => {
+    const { actor, target } = await createUsers()
+    const idleStatus = await status(client, actor)
+    const started = await startMode(client, actor, target.id, idleStatus.contextToken)
+    started.assertStatus(200)
+    const activeToken = started.body().contextToken as string
+
+    const secondStart = await startMode(client, actor, target.id, activeToken)
+    secondStart.assertStatus(409)
+    const auditBeforeRateLimit = await eventCount(actor.id)
+
+    const rejectedStart = await startMode(client, actor, target.id, activeToken)
+    rejectedStart.assertStatus(429)
+    rejectedStart.assertHeader('retry-after')
+    assert.equal(await eventCount(actor.id), auditBeforeRateLimit)
+
+    const stopped = await client
+      .post('/masquerade/stop')
+      .withCsrfToken()
+      .header('Accept', 'application/json')
+      .header('X-Masquerade-Context', activeToken)
+      .json({})
+      .loginAs(actor)
+    stopped.assertStatus(200)
   })
 
   test('keeps idle unsafe requests under the raw actor Bouncer policy with a valid token', async ({
@@ -479,4 +511,13 @@ function idleTokenFor(namespace: string, actorId: number): string {
     .map((part) => `${Buffer.byteLength(part)}:${part}`)
     .join('')
   return `0.${createHash('sha256').update(parts).digest('hex')}`
+}
+
+async function eventCount(actorId: number) {
+  const result = await db
+    .from('masquerade_events')
+    .where('actor_id', String(actorId))
+    .count('* as total')
+    .first()
+  return Number(result?.total)
 }

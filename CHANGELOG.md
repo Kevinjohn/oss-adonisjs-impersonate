@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Attach independent actor-keyed rate limits to native-session start and stop controls.
+
 Expand native-session setup guidance for additive auth wiring, provider sharing, and policy callback lifecycle.
 
 Distinguish name-inferred host controls from positively recognized package controls in the route
