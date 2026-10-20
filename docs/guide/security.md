@@ -1,5 +1,7 @@
 # Security and operations
 
+For a practical status → start → customer work → stop journey, see [Use a support mode](usage.md).
+
 ## Actor, target and scope
 
 Masquerade is one server-side mode per `(namespace, actor ID, incarnation)`. It is visible to all

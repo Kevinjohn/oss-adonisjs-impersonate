@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Document the native-session support-mode journey with JSON controls, Edge adapters, business guards and recovery guidance.
+
 Add a browser support workspace to the native-session example, with raw status and stop recovery,
 customer-scoped read and reversible preference, and a sensitive-action denial.
 

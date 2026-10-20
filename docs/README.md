@@ -3,6 +3,7 @@
 Use these pages to install and operate the v1 native-session integration.
 
 - [Install and configure](guide/setup.md): `node ace configure`, callbacks and manual auth wiring.
+- [Use a support mode](guide/usage.md): status, start, customer business routes, stop and recovery.
 - [Custom authorities](guide/custom-authorities.md): keep custom security-stamp values coherent.
 - [Security and operations](guide/security.md): identity boundaries, routes, context tokens, sessions, audit and side effects.
 - [Route report](guide/route-report.md): understand coverage labels and review route handlers and guards.
