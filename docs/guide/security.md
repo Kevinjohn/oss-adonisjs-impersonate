@@ -112,6 +112,18 @@ is fixed and does not slide with activity. At the deadline, a business request t
 expiry or global invalidity is rejected and never continues as the actor. A fresh request sees the
 current state. A local tenant denial does not clear the shared mode.
 
+Expiry cleanup is lazy. `status()` is a read-only projection of the persisted row; it does not check
+the deadline, clear the row, advance its revision, or emit an expiry event. Until business admission
+or expiry cleanup performs the durable compare-and-swap transition, status can therefore return
+`isMasquerading: true` after `expiresAt`. For presentation, treat the mode as usable only when
+`isMasquerading` is true **and** `expiresAt` is strictly later than the current time. The boolean
+alone reports persisted state, not whether a new business request can still be admitted.
+
+When a business request is rejected with context changed because expiry was discovered, refresh
+status and the rendered context before presenting the current state. Do not automatically replay the
+rejected action: the user's intent may be stale, and a refreshed context token does not authorize
+that old intent. Ask the user to initiate a fresh action when appropriate.
+
 A nested start cannot replace, renew, or extend an active mode. Stop, then submit a fresh start with
 the newly rendered context. Every successful transition atomically updates the row and audit event.
 If the database loses the commit acknowledgement, the service returns 503 and logs the transition
@@ -141,7 +153,17 @@ personal data. Status, observer projections and operational logs never expose ra
 credentials, request bodies or user objects.
 
 Observers run after commit without delaying the response. Delivery is best effort. Rejected
-observers are sent to the emitter error handler and cannot reverse a committed transition.
+observers are sent to the emitter error handler and cannot reverse a committed transition. If the
+error handler throws or rejects, Masquerade makes a best-effort call to the configured logger's
+`error` method with only a bounded category, operation and stable error code. Synchronous logger
+throws and rejected logger promises are swallowed; this final report is not guaranteed to be
+delivered.
+
+Core operational diagnostics use the same bounded fields for store, authority, policy, control and
+configuration failures. They omit actor and target identifiers, reasons, stamps, request bodies,
+user objects and raw error values. A lost commit acknowledgement also logs its transition ID so an
+operator can correlate the uncertain transition with recovery status. The public error response
+remains generic.
 
 Retention belongs to the host. With `retention: { days: n }`, `masquerade:prune --batch-size=100`
 expires due modes and removes old events in bounded batches. Pruning is global across every
