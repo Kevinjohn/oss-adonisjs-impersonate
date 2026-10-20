@@ -67,7 +67,8 @@ export default defineConfig({
   */
   preloads: [
     () => import('#start/routes'),
-    () => import('#start/member_routes'),
+    { file: () => import('#start/member_routes'), environment: ['test'] },
+    { file: () => import('#start/test_routes'), environment: ['test'] },
     () => import('#start/kernel'),
     () => import('#start/validator'),
     () => import('#start/view'),

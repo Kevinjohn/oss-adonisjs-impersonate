@@ -3,7 +3,7 @@ import type { ApiClient } from '@japa/api-client'
 import testUtils from '@adonisjs/core/services/test_utils'
 import { cleanUsers, createUsers } from '#tests/helpers/users'
 import type User from '#models/user'
-import { masqueradeFixtureDiagnostics, resetMasqueradeReadCount } from '#config/masquerade'
+import { masqueradeFixtureDiagnostics, resetMasqueradeReadCount } from '#config/masquerade_test'
 
 test.group('effective session guard through the packed package', (group) => {
   group.setup(() => testUtils.db().migrate())

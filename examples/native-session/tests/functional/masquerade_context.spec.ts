@@ -8,7 +8,7 @@ import {
   resetMasqueradeReadCount,
   resetMasqueradeFixtureDiagnostics,
   setMasqueradeStoreUnavailable,
-} from '#config/masquerade'
+} from '#config/masquerade_test'
 import { cleanUsers, createUsers } from '#tests/helpers/users'
 import type User from '#models/user'
 import { createHash } from 'node:crypto'

@@ -83,6 +83,15 @@ remember token. The short age is enabled only by `NATIVE_CREDENTIALS_SESSION=tru
 For PostgreSQL direct runs, set `DB_CLIENT=pg` plus the connection variables above. `DB_SCHEMA`
 optionally isolates fixture tables. SQLite remains the normal local default.
 
-Two intentionally mixed raw/effective guard routes are adversarial fail-closed cases and appear
-as route-report warnings; they are not recommended host wiring. Report mode runs in a separate
-process so it cannot weaken the enforce-mode cases.
+Route-report warnings for intentionally raw, alternate-guard and mixed-guard routes belong to the
+test-only suites; they are adversarial cases, not recommended host wiring. Report mode runs in a
+separate process so it cannot weaken the enforce-mode cases.
+
+The example keeps ordinary host wiring in `config/masquerade.ts`,
+`start/masquerade_control_routes.ts` and `start/routes.ts`: Lucid storage, native auth routes,
+business form, and the raw-guard start/status/stop controls. Deliberate identity, alternate-guard,
+mutation and concurrency probes live in `start/test_routes.ts` and `start/member_routes.ts`;
+AdonisJS preloads them only in the test environment, where the original test URLs remain available.
+`config/masquerade_test.ts` and `app/services/fixture_control_store.ts` hold test-only failure
+injection and diagnostics. The admitted-stop-form endpoint is a concurrency probe and is not
+registered for an interactive app.

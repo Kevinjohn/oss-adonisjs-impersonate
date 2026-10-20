@@ -5,7 +5,6 @@ import NewAccount from '#controllers/new_account_controller'
 import router from '@adonisjs/core/services/router'
 
 import './masquerade_control_routes.js'
-import './test_routes.js'
 
 const controllers = { Session, NewAccount }
 
