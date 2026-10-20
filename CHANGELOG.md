@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Log bounded, privacy-safe diagnostics for core operational failures and control denials.
+
 Pass package errors to the host exception handler and retain generic JSON responses as the default.
 
 Return unavailable without writing a contradictory denial when idle-stop audit acknowledgement fails.

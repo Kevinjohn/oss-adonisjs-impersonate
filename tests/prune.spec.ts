@@ -207,7 +207,7 @@ test.group('pruneMasquerade', () => {
     assert.deepEqual(f.observed, [])
   })
 
-  test('an uncertain expiry commit reports correlation without emitting success or compensating', async ({
+  test('an uncertain expiry commit reports a safe diagnostic without emitting success or compensating', async ({
     assert,
   }) => {
     const f = fixture()
@@ -230,8 +230,12 @@ test.group('pruneMasquerade', () => {
       f.store.events.map((event) => event.kind),
       ['started', 'expired']
     )
-    assert.deepEqual(f.observed, [
-      { code: 'E_MASQUERADE_UNAVAILABLE', transitionId: f.store.events[1].id },
+    assert.deepEqual(f.diagnostics, [
+      {
+        category: 'store',
+        operation: 'compare_and_set',
+        code: 'E_MASQUERADE_UNAVAILABLE',
+      },
     ])
   })
 

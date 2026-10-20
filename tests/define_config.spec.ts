@@ -14,6 +14,20 @@ test('validates config synchronously and freezes copied configuration', ({ asser
   assert.equal(config.authority.namespace, 'test')
 })
 
+test('invalid service configuration logs a safe diagnostic and preserves startup failure', async ({
+  assert,
+}) => {
+  const f = fixture()
+  const invalid = { ...f.config, durationSeconds: 0 } as never
+  await assert.rejects(
+    () => createMasqueradeService(invalid, f.dependencies),
+    'Invalid masquerade configuration'
+  )
+  assert.deepEqual(f.diagnostics, [
+    { category: 'configuration', operation: 'validate', code: 'E_MASQUERADE_INVALID_INPUT' },
+  ])
+})
+
 for (const [name, patch] of Object.entries({
   unknown: { extra: true },
   policy: { policy: undefined },

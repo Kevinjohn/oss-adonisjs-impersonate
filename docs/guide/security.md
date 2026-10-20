@@ -137,7 +137,15 @@ personal data. Status, observer projections and operational logs never expose ra
 credentials, request bodies or user objects.
 
 Observers run after commit without delaying the response. Delivery is best effort. Rejected
-observers are sent to the emitter error handler and cannot reverse a committed transition.
+observers are sent to the emitter error handler and cannot reverse a committed transition. If the
+error handler throws or rejects, Masquerade makes a best-effort call to the configured logger's
+`error` method with only a bounded category, operation and stable error code. Synchronous logger
+throws and rejected logger promises are swallowed; this final report is not guaranteed to be
+delivered.
+
+Core operational diagnostics use the same bounded fields for store, authority, policy, control and
+configuration failures. They omit actor and target identifiers, reasons, stamps, request bodies,
+user objects and raw error values. The public error response remains generic.
 
 Retention belongs to the host. With `retention: { days: n }`, `masquerade:prune --batch-size=100`
 expires due modes and removes old events in bounded batches. Pruning is global across every
