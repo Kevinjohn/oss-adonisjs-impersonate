@@ -101,15 +101,6 @@ conflicting context is 409. Do not fetch a newer token and replay an old intent:
 the user's action under the current mode first.
 GET/HEAD/OPTIONS requests do not need the token, though active-mode policy still applies.
 
-## Expiry and status
-
-Status is a read-only view of persisted control state. A row whose `expiresAt` has passed can still
-be returned as active until admission or bounded cleanup performs the durable transition. Treat a
-mode as usable only while `expiresAt` is strictly later than the current time. Status must not
-clear the row, advance its revision, or append an expiry event. On a context-changed response,
-refresh the view and require the user to rebuild the action; never fetch a token and replay stale
-intent automatically.
-
 Start and stop always enforce their expected token. Business middleware may run in `report` while
 the host migrates forms; it logs would-be missing/stale errors and admits the request. Report mode
 is not a stale-form protection boundary. Inventory all rendered forms and clients, deploy token
