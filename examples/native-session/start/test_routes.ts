@@ -5,6 +5,13 @@ import router from '@adonisjs/core/services/router'
 import type User from '#models/user'
 
 router
+  .get('/business/form', async (ctx) => {
+    await shareMasquerade(ctx)
+    return ctx.view.render('pages/masquerade_form')
+  })
+  .use(middleware.auth({ guards: ['web_effective'] }))
+
+router
   .get('/business', async (ctx) => {
     const { auth } = ctx
     const actor = auth.use('web').user!

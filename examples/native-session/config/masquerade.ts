@@ -27,7 +27,7 @@ const config = defineConfig({
     const store = new LucidControlStore(database.connection())
     if (process.env.NODE_ENV !== 'test') return store
 
-    const { withFixtureControlStore } = await import('#config/masquerade_test')
+    const { withFixtureControlStore } = await import('#services/masquerade_test_boundary')
     return withFixtureControlStore(store)
   },
   contextEnforcement:

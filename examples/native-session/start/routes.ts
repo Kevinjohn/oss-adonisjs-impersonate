@@ -1,4 +1,3 @@
-import { shareMasquerade } from 'adonisjs-masquerade/http'
 import { middleware } from '#start/kernel'
 import Session from '#controllers/session_controller'
 import NewAccount from '#controllers/new_account_controller'
@@ -29,10 +28,3 @@ router
   .post('/logout', [controllers.Session, 'destroy'])
   .as('logout')
   .use(middleware.auth({ guards: ['web'] }))
-
-router
-  .get('/business/form', async (ctx) => {
-    await shareMasquerade(ctx)
-    return ctx.view.render('pages/masquerade_form')
-  })
-  .use(middleware.auth({ guards: ['web_effective'] }))
