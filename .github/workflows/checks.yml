@@ -11,22 +11,9 @@ permissions:
   contents: read
 
 jobs:
-  typecheck:
+  checks:
     # Push and pull request runs start once the repository is public, where hosted minutes are
     # free. Manual and release runs always start.
-    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-
-  checks:
     if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
     runs-on: ubuntu-latest
     strategy:
@@ -61,48 +48,33 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test:coverage
-
-  documentation:
-    if: ${{ github.event_name == 'pull_request' && !github.event.repository.private }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm docs:build
-
-  experience:
-    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
           cache-dependency-path: |
             pnpm-lock.yaml
             examples/native-session/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:recipe --database=sqlite
-      - run: pnpm test:built-exports
+      - name: Typecheck
+        if: ${{ matrix.database == 'better-sqlite3' }}
+        run: pnpm typecheck
+      - name: Check documented native-session recipe
+        if: ${{ matrix.database == 'better-sqlite3' }}
+        run: pnpm test:recipe --database=sqlite
+      - name: Test built package exports
+        if: ${{ matrix.database == 'better-sqlite3' }}
+        run: pnpm test:built-exports
+      - run: pnpm test:coverage
+      - name: Build documentation for pull requests
+        if: ${{ github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
+        run: pnpm docs:build
       - name: Install native-session example
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
         working-directory: examples/native-session
         run: pnpm install --no-frozen-lockfile
       - name: Install Chromium
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
         working-directory: examples/native-session
         run: pnpm dlx playwright@1.60.0 install --with-deps chromium
       - name: Run browser suite
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
         working-directory: examples/native-session
         env:
           HOST: 127.0.0.1

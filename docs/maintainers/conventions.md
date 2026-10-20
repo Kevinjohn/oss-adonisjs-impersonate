@@ -85,15 +85,16 @@ the same suite directly against your server; it does not start or stop that serv
 - The release workflow runs the packed native-session consumer matrix at floor/latest on SQLite and
   PostgreSQL before publishing. Private-repository push and pull-request checks remain gated, while
   manual and release-triggered checks run.
-- The pull-request workflow separates typechecking, c8-wrapped SQLite/PostgreSQL suites, and the
-  docs build. The native-session experience job runs the SQLite clean-host recipe and built-export
-  tests on each eligible check event, then installs the just-packed artifact in the example and
-  runs its browser suite twice on pull requests. That recipe's `pnpm build` invokes lint once; the
-  database script avoids the `pretest` lint hook. The release-only four-cell consumer matrix
-  retains floor/latest compatibility coverage. PR verification has read-only repository
-  permissions and never uploads or deploys Pages artifacts. Reusable checks retain the caller's
-  event context, so the release workflow's manual dispatch runs checks for private repositories
-  while their automatic push and pull-request checks remain gated.
+- The `checks` database matrix retains its SQLite and PostgreSQL status names. Both cells run the
+  c8-wrapped root suite; the SQLite cell runs typechecking, the clean-host recipe, and built-export
+  tests, then builds the docs and runs the example browser suite twice on pull requests. The
+  recipe's `pnpm build` invokes lint once; `test:coverage` avoids the `pretest` lint hook in both
+  database cells. Repositories that require these existing status names for branch protection
+  will continue to require the new SQLite steps in that context. The release-only four-cell
+  consumer matrix retains floor/latest compatibility coverage. PR verification has read-only
+  repository permissions and never uploads or deploys Pages artifacts. Reusable checks retain the
+  caller's event context, so the release workflow's manual dispatch runs checks for private
+  repositories while their automatic push and pull-request checks remain gated.
 - Do not publish, tag, merge, or rename as part of a release-candidate implementation task unless
   separately authorized by the owner.
 
