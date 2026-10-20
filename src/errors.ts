@@ -11,6 +11,49 @@ export const errorDetails = {
   E_MASQUERADE_UNAVAILABLE: [503, 'Masquerade is unavailable'],
 } as const
 export type MasqueradeErrorCode = keyof typeof errorDetails
+
+export type MasqueradeSetupErrorCode =
+  'E_MASQUERADE_INVALID_CONFIGURATION' | 'E_MASQUERADE_INVALID_STORE'
+
+export type MasqueradeSetupErrorField =
+  | 'config'
+  | 'authority'
+  | 'authority.namespace'
+  | 'authority.guard'
+  | 'authority.incarnation'
+  | 'authority.securityStamp'
+  | 'authority.inspectAccount'
+  | 'policy'
+  | 'policy.canMasquerade'
+  | 'policy.canUseRequest'
+  | 'store'
+  | 'store.testOnly'
+  | 'store.read'
+  | 'store.compareAndSet'
+  | 'store.recordControlOutcome'
+  | 'store.expiredBatch'
+  | 'store.pruneEvents'
+  | 'durationSeconds'
+  | 'maxDurationSeconds'
+  | 'contextEnforcement'
+  | 'retention'
+  | 'retention.days'
+
+/** Safe setup diagnostics for synchronous configuration and store contract failures. */
+export class MasqueradeSetupError extends TypeError {
+  constructor(
+    readonly code: MasqueradeSetupErrorCode,
+    readonly field: MasqueradeSetupErrorField
+  ) {
+    super(
+      code === 'E_MASQUERADE_INVALID_CONFIGURATION'
+        ? 'Invalid masquerade configuration'
+        : 'Invalid masquerade store for environment'
+    )
+    this.name = 'MasqueradeSetupError'
+  }
+}
+
 export class MasqueradeError extends Error {
   readonly status: number
   constructor(readonly code: MasqueradeErrorCode) {
