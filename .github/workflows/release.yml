@@ -11,8 +11,11 @@ jobs:
   checks:
     uses: ./.github/workflows/checks.yml
 
+  consumer:
+    uses: ./.github/workflows/consumer.yml
+
   release:
-    needs: checks
+    needs: [checks, consumer]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

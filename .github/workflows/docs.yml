@@ -6,10 +6,22 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      - 'auth/**'
+      - 'commands/**'
+      - 'http/**'
+      - 'integration/**'
+      - 'native/**'
+      - 'providers/**'
       - 'index.ts'
       - 'src/**'
-      - 'http/**'
+      - 'stores/**'
       - 'testing/**'
+      - 'stubs/**'
+      - 'configure.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig.json'
       - 'typedoc.json'
       - '.github/workflows/docs.yml'
 
