@@ -1,3 +1,5 @@
+import type { HttpContext } from '@adonisjs/core/http'
+
 export const errorDetails = {
   E_MASQUERADE_UNAUTHENTICATED: [401, 'Actor authentication required'],
   E_MASQUERADE_NOT_ALLOWED: [403, 'Masquerade is not allowed'],
@@ -15,6 +17,14 @@ export class MasqueradeError extends Error {
     super(errorDetails[code][1])
     this.name = 'MasqueradeError'
     this.status = errorDetails[code][0]
+  }
+
+  handle(_error: unknown, ctx: HttpContext): void {
+    ctx.response.header('Cache-Control', 'no-store')
+    ctx.response.vary(['Accept', 'X-Masquerade-Context'])
+    ctx.response.status(this.status).json({
+      errors: [{ code: this.code, message: this.message }],
+    })
   }
 }
 export function unavailable(): MasqueradeError {

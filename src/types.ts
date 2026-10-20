@@ -10,14 +10,16 @@ export interface Subject<User> {
 }
 export interface AccountSnapshot<User> {
   subject: Subject<User>
+  /** Current account epoch; must match `securityStamp(subject.user)` for the same account state. */
   securityStamp: string
   active: boolean
 }
 /**
  * Host-owned account inspection, separate from native credential authentication.
  * IDs are canonical provider IDs; incarnation identifies an immutable account lifetime.
- * inspectAccount returns current eligibility and stamp from the inspected account state;
- * a missing account is null, while operational failures reject. It never authenticates a target.
+ * securityStamp is captured at start; inspectAccount's snapshot stamp is checked on each active
+ * admission. Both values must represent the same current account epoch. A missing account is null,
+ * while operational failures reject. It never authenticates a target.
  */
 export interface NativeAuthority<User> {
   namespace: string
