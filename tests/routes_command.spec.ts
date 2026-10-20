@@ -69,6 +69,11 @@ test.group('masquerade:routes Ace command', () => {
         .as('admin.logout.export')
         .middleware(auth.auth({ guards: ['web'] }))
         .toJSON()
+      const exactHostNameCollision = router
+        .post('/reports/export', async () => {})
+        .as('logout')
+        .middleware(auth.auth({ guards: ['web'] }))
+        .toJSON()
       const unresolvedStringController = router
         .post('/legacy/masquerade/start', 'MasqueradeController.start')
         .middleware(auth.auth({ guards: ['web'] }))
@@ -100,6 +105,7 @@ test.group('masquerade:routes Ace command', () => {
             packageControl,
             reexportDoesNotProveControl,
             misleadingHostName,
+            exactHostNameCollision,
             unresolvedStringController,
             implicitDefault,
             explicitDefault,
@@ -120,6 +126,10 @@ test.group('masquerade:routes Ace command', () => {
       assert.include(report, 'RAW-GUARD BUSINESS')
       assert.include(report, '/masquerade/start [CONTROL MUTATION]')
       assert.include(report, '/business/start [RAW-GUARD BUSINESS MUTATION]')
+      assert.include(
+        report,
+        '/reports/export [POSSIBLE CONTROL MUTATION] (name-inferred; review handler)'
+      )
       assert.include(report, '/admin/logout/export [RAW-GUARD BUSINESS MUTATION]')
       assert.include(report, '/legacy/masquerade/start [RAW-GUARD BUSINESS MUTATION]')
       assert.include(report, 'unresolved handler')

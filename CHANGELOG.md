@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Distinguish name-inferred host controls from positively recognized package controls in the route
+coverage report.
+
 Add repeatable local demo setup with a fictional operator, two customers and a bounded reset
 command.
 
