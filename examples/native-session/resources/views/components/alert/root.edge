@@ -8,7 +8,7 @@
     .merge({
       role: 'alert',
       class: classes,
-      'x-data': 'alert',
+      'x-data': `alert({ autoDismiss: ${autoDismiss === false ? 'false' : 'true'} })`,
       'x-show': 'isVisible',
       'x-cloak': true,
     })

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Allow native-session flash alerts to opt out of the five-second auto-dismiss timeout while
+preserving their delayed reveal and manual dismissal behavior.
+
 Fix the native-session example dashboard's logout form so authenticated pages render successfully,
 and render its production error pages through the registered marketing layout.
 

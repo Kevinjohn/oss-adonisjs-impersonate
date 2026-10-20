@@ -1,4 +1,4 @@
-export default function alertData() {
+export default function alertData({ autoDismiss = true } = {}) {
   return {
     isVisible: false,
     dismiss() {
@@ -8,9 +8,11 @@ export default function alertData() {
       setTimeout(() => {
         this.isVisible = true
       }, 80)
-      setTimeout(() => {
-        this.dismiss()
-      }, 5000)
+      if (autoDismiss !== false) {
+        setTimeout(() => {
+          this.dismiss()
+        }, 5000)
+      }
     },
   }
 }
