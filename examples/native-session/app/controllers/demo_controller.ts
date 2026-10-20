@@ -11,26 +11,24 @@ export default class DemoController extends MasqueradeController {
   override async status(ctx: HttpContext): Promise<void> {
     noStore(ctx)
     const actor = ctx.auth.use('web').getUserOrFail() as User
-    if (!actor.masqueradeOperator) {
-      ctx.response.send(await ctx.view.render('pages/demo_workspace', { actor, operator: false }))
-      return
-    }
-
     const runtime = await ctx.containerResolver.make('masquerade.runtime')
     const mode = await runtime.service.status(ctx)
     const customerEmails = demoAccounts
       .filter((account) => !account.masqueradeOperator)
       .map((account) => account.email)
-    const customers = await User.query().whereIn('email', customerEmails).where('active', true)
+    const customers = actor.masqueradeOperator
+      ? await User.query().whereIn('email', customerEmails).where('active', true)
+      : []
     const target = mode.isMasquerading ? await User.find(mode.targetId) : null
     ctx.response.send(
       await ctx.view.render('pages/demo_workspace', {
         actor,
-        operator: true,
+        operator: actor.masqueradeOperator,
         mode,
         customers,
         target,
-        usable: mode.isMasquerading && Date.parse(mode.expiresAt) > Date.now(),
+        beforeDeadline: mode.isMasquerading && Date.parse(mode.expiresAt) > Date.now(),
+        targetAvailable: Boolean(target?.active),
         expiresText: mode.isMasquerading ? formatDeadline(mode.expiresAt) : undefined,
       })
     )

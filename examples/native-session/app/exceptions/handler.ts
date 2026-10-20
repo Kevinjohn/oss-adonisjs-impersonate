@@ -2,6 +2,7 @@ import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
 import { MasqueradeError } from 'adonisjs-masquerade'
+import { errors as limiterErrors } from '@adonisjs/limiter'
 
 export default class HttpExceptionHandler extends ExceptionHandler {
   /**
@@ -36,11 +37,15 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    */
   async handle(error: unknown, ctx: HttpContext) {
     const path = ctx.request.url()
-    const acceptsHtml = ctx.request.header('accept')?.includes('text/html')
+    const acceptsHtml = ctx.request.accepts(['html', 'json']) === 'html'
     const supportPath = path === '/dashboard' || path === '/support' || path.startsWith('/support/')
     const status =
       error instanceof MasqueradeError ? error.status : (error as { status?: number })?.status
     if (acceptsHtml && supportPath && [403, 409, 422, 428, 429, 503].includes(status ?? 0)) {
+      if (error instanceof limiterErrors.E_TOO_MANY_REQUESTS) {
+        const headers = error.headers || error.getDefaultHeaders()
+        for (const [name, value] of Object.entries(headers)) ctx.response.header(name, value)
+      }
       const details = supportErrorDetails(status!, error)
       ctx.response.header('Cache-Control', 'private, no-store')
       ctx.response.vary(['Accept', 'X-Masquerade-Context'])

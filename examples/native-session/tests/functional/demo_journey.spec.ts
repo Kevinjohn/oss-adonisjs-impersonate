@@ -56,6 +56,7 @@ test.group('support operator browser journey', (group) => {
     assert.include(customer.text(), 'Email updates')
     assert.include(customer.text(), 'Off')
     assert.include(customer.text(), activeToken)
+    assert.include(customer.text(), 'data-support-intent')
 
     const mutation = await client
       .post('/support/customer/preference')
@@ -122,6 +123,8 @@ test.group('support operator browser journey', (group) => {
     const control = await client.get('/support').header('Accept', 'text/html').loginAs(actor)
     control.assertStatus(200)
     assert.include(control.text(), 'Stop support mode')
+    assert.include(control.text(), 'This customer is unavailable')
+    assert.notInclude(control.text(), 'Review customer workspace')
     const stop = await client
       .post('/support/stop')
       .redirects(0)
@@ -130,6 +133,41 @@ test.group('support operator browser journey', (group) => {
       .form({ _masqueradeContext: activeToken })
       .loginAs(actor)
     stop.assertStatus(302)
+  })
+
+  test('keeps raw status and stop available after operator access is revoked', async ({
+    client,
+    assert,
+  }) => {
+    const { actor, target } = await createUsers()
+    const idle = await client.get('/masquerade').loginAs(actor)
+    const started = await client
+      .post('/masquerade/start')
+      .withCsrfToken()
+      .form({
+        targetId: String(target.id),
+        reason: 'Recovery after policy change',
+        _masqueradeContext: idle.body().contextToken,
+      })
+      .loginAs(actor)
+    started.assertStatus(200)
+    actor.masqueradeOperator = false
+    await actor.save()
+
+    const control = await client.get('/support').header('Accept', 'text/html').loginAs(actor)
+    control.assertStatus(200)
+    assert.include(control.text(), 'Operator access was removed')
+    assert.include(control.text(), 'Stop support mode')
+    assert.notInclude(control.text(), 'Review customer workspace')
+
+    const stopped = await client
+      .post('/support/stop')
+      .redirects(0)
+      .withCsrfToken()
+      .header('Accept', 'text/html')
+      .form({ _masqueradeContext: started.body().contextToken })
+      .loginAs(actor)
+    stopped.assertStatus(302)
   })
 
   test('recovers from a failed effective admission through raw status', async ({
@@ -226,5 +264,18 @@ test.group('support operator browser journey', (group) => {
       .loginAs(actor)
     limited.assertStatus(429)
     assert.include(limited.text(), 'Too many control attempts')
+    assert.isNotEmpty(limited.header('retry-after'))
+    assert.isNotEmpty(limited.header('x-ratelimit-limit'))
+    assert.isNotEmpty(limited.header('x-ratelimit-remaining'))
+    assert.isNotEmpty(limited.header('x-ratelimit-reset'))
+
+    const canonical = await client
+      .post('/masquerade/start')
+      .withCsrfToken()
+      .header('Accept', 'application/json')
+      .json({ targetId: String(target.id), reason: 'Another attempt', _masqueradeContext: token })
+      .loginAs(actor)
+    canonical.assertStatus(429)
+    assert.isNotEmpty(canonical.header('retry-after'))
   })
 })

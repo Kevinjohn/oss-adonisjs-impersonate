@@ -12,57 +12,69 @@
         </div>
         <span class="support-badge">{{ operator ? 'Operator' : 'Standard account' }}</span>
       </section>
-      @if(!operator)
-        <section class="panel" aria-labelledby="standard-heading">
-          <h2 id="standard-heading">Operator access is required</h2>
-          <p class="support-copy">
-            This account cannot start support mode. Sign in with the seeded operator account to try this workspace. Ordinary signups remain standard accounts.
-          </p>
-        </section>
-      @elseif(usable)
-        <section class="panel support-mode" aria-labelledby="mode-heading" role="status">
+      @if(mode.isMasquerading)
+        <section
+          class="panel support-mode"
+          aria-labelledby="mode-heading"
+          data-support-mode
+          data-context-token="{{ mode.contextToken }}"
+          data-expires-at="{{ mode.expiresAt }}"
+        >
           <div class="support-mode__header">
             <div>
-              <p class="tag">Support mode active</p>
-              <h2 id="mode-heading">Viewing as {{ target?.fullName || 'Customer account' }}</h2>
+              <p class="tag" data-mode-label>Support mode recorded</p>
+              <h2 id="mode-heading">Customer: {{ target?.fullName || 'Unavailable account' }}</h2>
               <p class="support-copy">
-                You are still signed in as
-                {{ actor.fullName || actor.email }}. Business pages use the customer’s permissions. This mode applies across every session and tab of your operator account.
+                The stored mode belongs to
+                {{ actor.fullName || actor.email }}
+                across this account’s sessions. Customer access is checked again when a business page opens.
               </p>
             </div>
-            <span class="support-badge support-badge--active">Active</span>
+            <span class="support-badge" data-mode-badge>Recorded</span>
           </div>
           <p class="support-deadline">
             Fixed deadline:
-            <time datetime="{{ mode.expiresAt }}">
-              {{ expiresText }}
-            </time>. The deadline does not extend when you browse.
+            <time datetime="{{ mode.expiresAt }}">{{ expiresText }}</time>.
           </p>
+          @if(!beforeDeadline)
+            <p class="support-copy" role="status">
+              The deadline has passed. Check status before choosing another customer.
+            </p>
+          @elseif(!targetAvailable)
+            <p class="support-copy" role="status">
+              This customer is unavailable. Use the stop control below to recover.
+            </p>
+          @elseif(!operator)
+            <p class="support-copy" role="status">
+              Operator access was removed. The stored mode can still be stopped here.
+            </p>
+          @else
+            <p class="support-copy">
+              This customer is present, but permission and eligibility are rechecked on the customer page.
+            </p>
+          @end
+
+          <p class="support-copy" role="status" aria-live="polite" data-mode-notice hidden></p>
           <div class="support-actions">
-            <a class="btn btn--secondary" href="/support/customer">Open customer workspace</a>
-            @form({ route: 'demo.stop', method: 'POST' })
-              <input type="hidden" name="_masqueradeContext" value="{{ mode.contextToken }}" />
-              <button class="btn btn--primary" type="submit">Stop support mode</button>
+            @if(beforeDeadline && targetAvailable && operator)
+              <a class="btn btn--secondary" href="/support/customer" data-support-intent>
+                Review customer workspace
+              </a>
             @end
-          </div>
-        </section>
-      @elseif(mode.isMasquerading)
-        <section class="panel" aria-labelledby="expired-heading" role="status">
-          <p class="tag">Deadline reached</p>
-          <h2 id="expired-heading">This support mode is no longer usable</h2>
-          <p class="support-copy">
-            The fixed deadline was
-            <time datetime="{{ mode.expiresAt }}">
-              {{ expiresText }}
-            </time>. Check status again to see the current mode before choosing another customer.
-          </p>
-          <div class="support-actions">
+
             <a class="btn btn--secondary" href="/support">Check current status</a>
             @form({ route: 'demo.stop', method: 'POST' })
               <input type="hidden" name="_masqueradeContext" value="{{ mode.contextToken }}" />
               <button class="btn btn--primary" type="submit">Stop support mode</button>
             @end
           </div>
+        </section>
+      @elseif(!operator)
+        <section class="panel" aria-labelledby="standard-heading">
+          <h2 id="standard-heading">Operator access is required</h2>
+          <p class="support-copy">
+            This account cannot start support mode. Sign in with the seeded operator account to try this workspace. Ordinary signups remain standard accounts.
+          </p>
         </section>
       @else
         <section class="panel" aria-labelledby="start-heading">

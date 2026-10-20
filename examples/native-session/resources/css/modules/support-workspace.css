@@ -102,8 +102,9 @@
 .support-error {
   max-width: 660px;
 }
-.support-error:focus {
-  outline: none;
+[data-support-intent][hidden],
+[data-mode-notice][hidden] {
+  display: none !important;
 }
 @media (max-width: 600px) {
   .support-identity,

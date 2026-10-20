@@ -4,22 +4,29 @@
     description: 'A customer-specific read and one reversible demo preference.',
   })
     <div class="support-stack">
-      <section class="panel support-mode" aria-labelledby="mode-heading" role="status">
+      <section
+        class="panel support-mode"
+        aria-labelledby="mode-heading"
+        data-support-mode
+        data-context-token="{{ mode.contextToken }}"
+        data-expires-at="{{ mode.expiresAt }}"
+      >
         <div class="support-mode__header">
           <div>
-            <p class="tag">Support mode active</p>
+            <p class="tag" data-mode-label>Support mode active</p>
             <h2 id="mode-heading">Viewing as {{ customer.fullName || customer.email }}</h2>
             <p class="support-copy">
               Signed in as
               {{ actor.fullName || actor.email }}. This is an account-wide mode; the customer has not signed in. Customer permissions govern this page.
             </p>
           </div>
-          <span class="support-badge support-badge--active">Active</span>
+          <span class="support-badge support-badge--active" data-mode-badge>Active</span>
         </div>
         <p class="support-deadline">
           Fixed deadline:
           <time datetime="{{ mode.expiresAt }}">{{ expiresText }}</time>
         </p>
+        <p class="support-copy" role="status" aria-live="polite" data-mode-notice hidden></p>
         <div class="support-actions">
           <a class="btn btn--secondary" href="/support">Status and customers</a>
           @form({ route: 'demo.stop', method: 'POST' })
@@ -51,7 +58,12 @@
           Change this local example preference using the customer’s mutation permission. Choose either value to reverse it.
         </p>
         @if(canEdit)
-          @form({ route: 'demo.preference', method: 'POST', class: 'support-form' })
+          @form({
+            route: 'demo.preference',
+            method: 'POST',
+            class: 'support-form',
+            'data-support-intent': true,
+          })
             <input type="hidden" name="_masqueradeContext" value="{{ mode.contextToken }}" />
             <div class="field">
               <label class="field__label" for="emailUpdates">Setting</label>
@@ -73,7 +85,7 @@
         <p class="support-copy">
           Try this action to see a denial. Support mode never permits this sensitive route, even when the customer can change the demo preference.
         </p>
-        @form({ route: 'demo.sensitive', method: 'POST' })
+        @form({ route: 'demo.sensitive', method: 'POST', 'data-support-intent': true })
           <input type="hidden" name="_masqueradeContext" value="{{ mode.contextToken }}" />
           <button class="btn btn--secondary" type="submit">Try sensitive action</button>
         @end
