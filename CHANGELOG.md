@@ -7,6 +7,11 @@ customer-scoped read and reversible preference, and a sensitive-action denial.
 
 Attach independent actor-keyed rate limits to native-session start and stop controls.
 
+Expand native-session setup guidance for additive auth wiring, provider sharing, and policy callback lifecycle.
+
+Distinguish name-inferred host controls from positively recognized package controls in the route
+coverage report.
+
 Add repeatable local demo setup with a fictional operator, two customers and a bounded reset
 command.
 
