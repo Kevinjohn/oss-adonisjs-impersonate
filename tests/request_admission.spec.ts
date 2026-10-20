@@ -72,3 +72,25 @@ test('internal admission freezes copied Subject shells and preserves native mode
   assert.equal(snapshot.context.actorId, 'a')
   assert.equal(snapshot.context.effectiveId, 'b')
 })
+
+test('the admitted mode view retains its token and deadline after another request stops', async ({
+  assert,
+}) => {
+  const f = fixture()
+  const service = await f.create()
+  const active = await f.start(service)
+  const internal = service as unknown as {
+    [admission](request: object): Promise<RequestAdmission<User>>
+  }
+  const request = {}
+  const admitted = await internal[admission](request)
+  assert.deepEqual(admitted.view, active)
+  await service.stop({}, { expectedContext: active.contextToken })
+  const repeated = await internal[admission](request)
+  assert.deepEqual(repeated.view, active)
+  assert.isTrue(Object.isFrozen(admitted.view))
+  const fresh = await internal[admission]({})
+  const status = await service.status({})
+  assert.deepEqual(fresh.view, status)
+  assert.notDeepEqual(fresh.view, active)
+})

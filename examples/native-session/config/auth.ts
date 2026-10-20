@@ -1,6 +1,6 @@
 import { defineConfig } from '@adonisjs/auth'
-import { effectiveGuard } from '#services/effective_guard'
 import { webGuard } from '#services/web_guard'
+import { effectiveSessionGuard } from 'adonisjs-masquerade/auth'
 import type { InferAuthenticators, InferAuthEvents, Authenticators } from '@adonisjs/auth/types'
 
 /**
@@ -19,12 +19,7 @@ const authConfig = defineConfig({
      * Web guard uses session-based authentication for web requests.
      */
     web: webGuard,
-    web_effective: {
-      resolver: async (_name, app) => {
-        const rawFactory = await webGuard.resolver('web', app)
-        return (ctx) => effectiveGuard(ctx, rawFactory)
-      },
-    },
+    web_effective: effectiveSessionGuard(webGuard),
   },
 })
 

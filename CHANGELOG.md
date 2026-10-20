@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+Add the native session authority and effective guard, HTTP controls, route markers, context
+enforcement with a report mode, safe Edge helpers, and the `masquerade:routes` coverage report.
+
 Add the Lucid control store for SQLite and PostgreSQL, a portable migration schema, and the
 `masquerade:prune` command for bounded expiry and audit retention housekeeping.
 

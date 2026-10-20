@@ -1,7 +1,6 @@
 import User from '#models/user'
-import { setTarget } from '#services/effective_guard'
-
-const actorIds = new Set<string>()
+import db from '@adonisjs/lucid/services/db'
+const createdIds = new Set<number>()
 
 export async function createUsers() {
   const suffix = crypto.randomUUID()
@@ -9,17 +8,34 @@ export async function createUsers() {
     email: `actor-${suffix}@example.test`,
     password: 'secret',
     fullName: 'Actor',
+    active: true,
+    canMutate: false,
+    masqueradeOperator: true,
+    securityStamp: 'actor-v1',
   })
+  createdIds.add(actor.id)
   const target = await User.create({
     email: `target-${suffix}@example.test`,
     password: 'secret',
     fullName: 'Target',
+    active: true,
+    canMutate: true,
+    masqueradeOperator: false,
+    securityStamp: 'target-v1',
   })
-  actorIds.add(String(actor.id))
+  createdIds.add(target.id)
   return { actor, target }
 }
 
-export function clearUserTargets() {
-  for (const actorId of actorIds) setTarget(actorId)
-  actorIds.clear()
+export async function cleanUsers() {
+  const ids = [...createdIds]
+  if (ids.length === 0) return
+
+  const ownerIds = ids.map(String)
+  if (await db.connection().schema.hasTable('masquerade_events')) {
+    await db.from('masquerade_events').whereIn('actor_id', ownerIds).delete()
+    await db.from('masquerade_modes').whereIn('actor_id', ownerIds).delete()
+  }
+  await User.query().whereIn('id', ids).delete()
+  createdIds.clear()
 }

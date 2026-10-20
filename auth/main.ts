@@ -1,2 +1,1 @@
-/** `adonisjs-masquerade/auth`: populated in the milestone named in DEVELOPMENT-PLAN.md. */
-export {}
+export { effectiveSessionGuard } from './define_config.js'
