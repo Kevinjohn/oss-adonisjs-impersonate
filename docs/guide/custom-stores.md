@@ -1,5 +1,10 @@
 # Custom control stores
 
+The [`API entry-point map`](../api-reference.md#supported-package-imports) links the
+`ControlStore` contract under `adonisjs-masquerade/types`, the built-in adapter under the optional
+`adonisjs-masquerade/stores/lucid` path, and the conformance helper under
+`adonisjs-masquerade/testing`.
+
 Masquerade stores one mode per owner and appends an audit event for each committed transition. The public `ControlStore` type is exported from `adonisjs-masquerade/types`; a reusable behavioral suite is exported from `adonisjs-masquerade/testing`.
 
 ## Contract

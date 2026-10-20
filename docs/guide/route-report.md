@@ -1,5 +1,9 @@
 # Review the route coverage report
 
+The [API entry-point map](../api-reference.md#supported-package-imports) links the report command
+under `adonisjs-masquerade/commands` and the `sensitive` and `allowMutation` markers under
+`adonisjs-masquerade/http`.
+
 Run the Ace report after routes and middleware have been registered:
 
 ```sh
