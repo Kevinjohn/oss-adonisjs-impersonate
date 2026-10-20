@@ -31,6 +31,26 @@ Use Node 24 and pnpm. Run repository scripts rather than bare tools. The standar
 commands. `pnpm test:consumer` records floor/latest dependency versions
 from actual package resolution and exercise SQLite/PostgreSQL consumers.
 
+`pnpm test:recipe --database=sqlite|pg|all` starts with the unwired
+`examples/recipe-host` template, installs the packed package in a disposable directory, runs
+`configure`, applies the marked literal setup and usage guide fragments, typechecks the host,
+and exercises native auth, Shield CSRF, status/start/effective read/allowed mutation/sensitive
+denial/stop. It compiles and executes the documented form-input helper. It checks that changing
+the documented control guard or middleware order breaks synchronization, then runs broken-host
+form-token and missing-context-middleware journeys to prove those request boundaries fail. The
+runner preserves the host's existing Session and
+Shield stack while inserting the documented context line, and it checks that the separate guard
+still works. It cleans the temporary host and its SQLite database, and drops its uniquely named
+PostgreSQL schema. It starts/stops the managed PostgreSQL server only when it owns the start;
+set `RECIPE_PG_EXTERNAL=1` and the standard `DB_*` connection variables for a disposable external
+PostgreSQL 16 server.
+
+This is executable integration evidence for the selected guide fragments and one API-client HTTP
+journey. It does not establish that an independent developer can follow the entire guide without
+assumptions, nor that the example's full HTML workflow works in this small host. Record a separate
+clean-room walkthrough for usability acceptance. `tests/docs_links.spec.ts` remains link and
+anchor evidence only.
+
 Use the bundled scripts to preserve flags and runtime setup. Do not add Docker support or use npm,
 npx, yarn, or yarn dlx. `better-sqlite3` requires the pinned Node 24 runtime.
 

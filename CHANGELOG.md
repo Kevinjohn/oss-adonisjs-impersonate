@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Add a fresh native-session host recipe check for the documented wiring and SQLite/PostgreSQL HTTP journey.
+
 Organize the README and documentation landing page around the demo, integration guides, and
 security and operations paths.
 

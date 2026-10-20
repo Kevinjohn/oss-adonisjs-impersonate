@@ -48,6 +48,8 @@ The raw session guard and `sessionAuthority` must share the same provider object
 `app/services/masquerade_user_provider.ts` exports one provider instance. Import it into the raw
 guard factory and use that same export in the generated `config/masquerade.ts`:
 
+<!-- host-recipe:web-guard -->
+
 ```ts
 // app/services/web_guard.ts
 import { sessionGuard } from '@adonisjs/auth/session'
@@ -68,6 +70,8 @@ Add an effective wrapper beside the raw guard in your existing `config/auth.ts`.
 an existing `members` guard with its own provider and remember-me setting. Keep that guard and its
 options unchanged in your application:
 
+<!-- host-recipe:member-guard -->
+
 ```ts
 // Existing app/services/member_guard.ts; keep this separate guard and its options.
 import { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'
@@ -75,6 +79,8 @@ import { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'
 export const memberProvider = sessionUserProvider({ model: () => import('#models/member') })
 export const memberGuard = sessionGuard({ useRememberMeTokens: false, provider: memberProvider })
 ```
+
+<!-- host-recipe:auth-config -->
 
 ```ts
 import { defineConfig } from '@adonisjs/auth'
@@ -122,6 +128,8 @@ persistent fields owned by your User model. This example assumes the host model 
 non-reused numeric `id`, an immutable `accountIncarnation` string, a boolean `active`, a boolean
 `masqueradeOperator`, and a persisted string `securityEpoch` that the host advances when
 account-wide revocation is required:
+
+<!-- host-recipe:identity-policy -->
 
 ```ts
 // Relevant part of config/masquerade.ts
@@ -191,6 +199,8 @@ generated `canUseRequest` property entirely; its `false` placeholder denies ever
 Add the generated context middleware to `router.use` after Auth initialization and before
 `silent_auth` or any later middleware that calls `auth.check()`. Preserve all other host middleware
 and their order:
+
+<!-- host-recipe:kernel-order -->
 
 ```ts
 // start/kernel.ts: router middleware excerpt
