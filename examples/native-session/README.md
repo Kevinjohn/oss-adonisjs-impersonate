@@ -6,7 +6,33 @@ It consumes the built package tarball through native session authentication, Bou
 controllers, middleware and a real Lucid store on SQLite or PostgreSQL. Its demo accounts and test
 credentials are fictional.
 
-## Run the local demo
+## One-command demo
+
+Prerequisites: Node.js 24 and pnpm. From the repository root, run:
+
+```sh
+nvm use
+pnpm demo
+```
+
+The launcher installs the root dependencies from the frozen lockfile, builds and packs this
+checkout, installs the local tarball using the example's integrity procedure, creates `.env` and
+an application key only when needed, runs SQLite migrations and the guarded fictional seed, then
+starts the app on loopback. It defaults to <http://127.0.0.1:3333>; set `PORT` in this example's
+`.env` to choose another free local port. It refuses production or non-SQLite configuration and
+preserves existing settings, keys and unrelated example data. Stop with Ctrl+C.
+
+Sign in with the fictional local operator account:
+
+| Account  | Email                   | Password             |
+| -------- | ----------------------- | -------------------- |
+| Operator | `operator@example.test` | `demo-operator-2026` |
+
+From the dashboard, open the support workspace, choose a customer, enter a reason and start
+support mode. Open the customer page to read the customer's email and reversible email-update
+preference, change that preference, then return to the workspace and stop support mode.
+
+## Local setup
 
 Prerequisites: Node.js 24 and pnpm. From a clean repository checkout, prepare the package tarball
 from this checkout before installing the example, then set up and start the SQLite app:
@@ -19,7 +45,27 @@ pnpm pack:fixture
 
 cd examples/native-session
 cp .env.example .env
-pnpm install --no-frozen-lockfile
+```
+
+Before installing, refresh the single local tarball integrity entry in the example lockfile to
+match the package you just packed. This keeps the resolved dependency versions unchanged:
+
+```sh
+node --input-type=module <<'NODE'
+import { createHash } from 'node:crypto'
+import { readFile, writeFile } from 'node:fs/promises'
+
+const lockPath = 'pnpm-lock.yaml'
+const lock = await readFile(lockPath, 'utf8')
+const tarball = await readFile('../../tmp/native-session-package.tgz')
+const integrity = `sha512-${createHash('sha512').update(tarball).digest('base64')}`
+const entry = /(  adonisjs-masquerade@file:\.\.\/\.\.\/tmp\/native-session-package\.tgz:\n    resolution: \{integrity: )sha512-[A-Za-z0-9+/=]+(, tarball: file:\.\.\/\.\.\/tmp\/native-session-package\.tgz\s*\})/g
+if ([...lock.matchAll(entry)].length !== 1) throw new Error('Expected one local package entry in pnpm-lock.yaml')
+await writeFile(lockPath, lock.replace(entry, `$1${integrity}$2`))
+NODE
+
+pnpm install --frozen-lockfile
+# Set APP_URL=http://127.0.0.1:3333 in .env; the template value is not interpolated by dotenv.
 node ace generate:key
 node ace migration:run
 node ace demo:seed
@@ -27,8 +73,8 @@ pnpm dev
 ```
 
 The example installs the package tarball packed from this checkout. Its local integrity entry
-changes when the tarball is rebuilt, so this install refreshes that entry while keeping the locked
-dependency versions unchanged.
+changes when the tarball is rebuilt; the command above refreshes only that entry and keeps all
+locked dependency versions unchanged.
 
 Open <http://localhost:3333>, then sign in with one of these local-only credentials:
 

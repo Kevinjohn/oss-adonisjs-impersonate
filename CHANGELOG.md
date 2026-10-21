@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a one-command launcher for the fictional native-session demo, preserving existing local configuration and data.
+
 Add documentation, native-session recipe, and browser checks to pull-request validation.
 
 Organize the README and documentation landing page around the demo, integration guides, and

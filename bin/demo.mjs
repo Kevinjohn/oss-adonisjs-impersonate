@@ -1,0 +1,362 @@
+#!/usr/bin/env node
+import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import { createServer } from 'node:net'
+import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const example = path.join(root, 'examples/native-session')
+const envPath = path.join(example, '.env')
+const envExamplePath = path.join(example, '.env.example')
+const exampleLockPath = path.join(example, 'pnpm-lock.yaml')
+const tarballPath = path.join(root, 'tmp/native-session-package.tgz')
+const reservedEmails = [
+  'operator@example.test',
+  'customer-one@example.test',
+  'customer-two@example.test',
+]
+const reservedPasswords = ['demo-operator-2026', 'demo-customer-one-2026', 'demo-customer-two-2026']
+const children = new Set()
+let interruptedBy = null
+let cleanupPromise = null
+
+function parseEnv(source, filePath) {
+  const result = new Map()
+  for (const [index, rawLine] of source.split(/\r?\n/).entries()) {
+    const line = rawLine.trim()
+    if (!line || line.startsWith('#')) continue
+    const match = /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line)
+    if (!match) {
+      throw new Error(
+        `${filePath}:${index + 1} is malformed; expected NAME=value. Fix it and retry.`
+      )
+    }
+    let value = match[2].trim()
+    if (value.startsWith('"') || value.startsWith("'")) {
+      const quote = value[0]
+      if (value.at(-1) !== quote || value.length < 2) {
+        throw new Error(
+          `${filePath}:${index + 1} has an unterminated quoted value. Fix it and retry.`
+        )
+      }
+      value = value.slice(1, -1)
+      if (quote === '"')
+        value = value
+          .replace(/\\n/g, '\n')
+          .replace(/\\r/g, '\r')
+          .replace(/\\"/g, '"')
+          .replace(/\\\\/g, '\\')
+    } else {
+      value = value.replace(/\s+#.*$/, '').trim()
+    }
+    result.set(match[1], value)
+  }
+  return result
+}
+
+async function effectiveEnv() {
+  let source
+  let createdEnv = false
+  try {
+    source = await readFile(envPath, 'utf8')
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+    await copyFile(envExamplePath, envPath)
+    source = await readFile(envPath, 'utf8')
+    createdEnv = true
+  }
+
+  const fileValues = parseEnv(source, envPath)
+  const environment = { ...Object.fromEntries(fileValues), ...process.env }
+  if (environment.NODE_ENV === 'production') {
+    throw new Error(
+      'The demo refuses NODE_ENV=production. Set NODE_ENV=development in examples/native-session/.env and retry.'
+    )
+  }
+  if (environment.NODE_ENV === 'test') {
+    throw new Error(
+      'The demo requires NODE_ENV=development. Change examples/native-session/.env and retry.'
+    )
+  }
+  if (environment.DB_CLIENT && environment.DB_CLIENT !== 'sqlite') {
+    throw new Error(
+      `The demo requires SQLite, but DB_CLIENT=${environment.DB_CLIENT}. Remove it or set DB_CLIENT=sqlite before retrying.`
+    )
+  }
+  const port = Number(environment.PORT ?? '3333')
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(
+      `PORT must be a valid TCP port from 1 to 65535; found ${environment.PORT ?? ''}.`
+    )
+  }
+  environment.PORT = String(port)
+  if (createdEnv && fileValues.get('APP_URL') === 'http://${HOST}:${PORT}') {
+    environment.APP_URL = `http://127.0.0.1:${port}`
+    source = source.replace(/^APP_URL=.*$/m, `APP_URL=${environment.APP_URL}`)
+    await writeFile(envPath, source)
+  }
+  try {
+    if (!environment.APP_URL) throw new Error('missing')
+    const appUrl = new URL(environment.APP_URL)
+    if (!['http:', 'https:'].includes(appUrl.protocol)) throw new Error('unsupported protocol')
+  } catch {
+    throw new Error(
+      `APP_URL in ${envPath} must be a valid http or https URL. Correct the existing setting and retry.`
+    )
+  }
+  return {
+    environment,
+    needsKey:
+      !environment.APP_KEY || environment.APP_KEY === 'replace_me_with_node_ace_generate_key',
+  }
+}
+
+function signalOwnedProcesses(signal = 'SIGTERM') {
+  for (const child of children) {
+    if (child.exitCode !== null || child.signalCode !== null) continue
+    try {
+      if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, signal)
+      else child.kill(signal)
+    } catch (error) {
+      if (error.code !== 'ESRCH') throw error
+    }
+  }
+}
+
+function cleanupOwnedProcesses() {
+  if (cleanupPromise) return cleanupPromise
+  if ([...children].every((child) => child.exitCode !== null || child.signalCode !== null)) {
+    cleanupPromise = Promise.resolve()
+    return cleanupPromise
+  }
+  cleanupPromise = new Promise((resolve) => {
+    signalOwnedProcesses('SIGTERM')
+    const timer = setTimeout(() => {
+      signalOwnedProcesses('SIGKILL')
+      resolve()
+    }, 1800)
+    const poll = setInterval(() => {
+      if ([...children].every((child) => child.exitCode !== null || child.signalCode !== null)) {
+        clearTimeout(timer)
+        clearInterval(poll)
+        resolve()
+      }
+    }, 40)
+  })
+  return cleanupPromise
+}
+
+function run(command, args, options = {}) {
+  if (interruptedBy) return Promise.reject(new Error(`Interrupted by ${interruptedBy}`))
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd ?? root,
+      env: options.env ?? process.env,
+      stdio: 'inherit',
+      detached: process.platform !== 'win32',
+      shell: false,
+    })
+    children.add(child)
+    child.once('error', (error) => {
+      children.delete(child)
+      reject(error)
+    })
+    child.once('exit', (code, signal) => {
+      children.delete(child)
+      if (interruptedBy) reject(new Error(`Interrupted by ${interruptedBy}`))
+      else if (code === 0) resolve()
+      else
+        reject(
+          new Error(
+            `${path.basename(command)} ${args.join(' ')} exited ${signal ? `on ${signal}` : `with code ${code}`}.`
+          )
+        )
+    })
+  })
+}
+
+async function portIsAvailable(port) {
+  return new Promise((resolve, reject) => {
+    const server = createServer()
+    server.once('error', (error) => {
+      if (error.code === 'EADDRINUSE') resolve(false)
+      else reject(error)
+    })
+    server.listen({ host: '127.0.0.1', port, exclusive: true }, () => {
+      server.close((error) => (error ? reject(error) : resolve(true)))
+    })
+  })
+}
+
+async function refreshLocalTarballIntegrity() {
+  const [lockfile, tarball] = await Promise.all([
+    readFile(exampleLockPath, 'utf8').catch(() => {
+      throw new Error(
+        'The native-session example is missing pnpm-lock.yaml; restore it before retrying.'
+      )
+    }),
+    readFile(tarballPath).catch(() => {
+      throw new Error(
+        'The local package tarball was not created. Run `pnpm pack:fixture` from the repository root and retry.'
+      )
+    }),
+  ])
+  const integrity = `sha512-${createHash('sha512').update(tarball).digest('base64')}`
+  const localResolution =
+    /(  adonisjs-masquerade@file:\.\.\/\.\.\/tmp\/native-session-package\.tgz:\n    resolution: \{integrity: )sha512-[A-Za-z0-9+/=]+(, tarball: file:\.\.\/\.\.\/tmp\/native-session-package\.tgz\s*\})/g
+  const matches = [...lockfile.matchAll(localResolution)]
+  if (matches.length !== 1) {
+    throw new Error(
+      `Expected one local adonisjs-masquerade tarball integrity entry in ${exampleLockPath}, found ${matches.length}. Restore the example lockfile before retrying.`
+    )
+  }
+  const updated = lockfile.replace(localResolution, `$1${integrity}$2`)
+  if (updated !== lockfile) await writeFile(exampleLockPath, updated)
+}
+
+async function waitForDemo(port, serverChild, getSpawnError) {
+  const url = `http://127.0.0.1:${port}/`
+  const deadline = Date.now() + 30000
+  while (Date.now() < deadline) {
+    if (interruptedBy) throw new Error(`Interrupted by ${interruptedBy}`)
+    if (getSpawnError())
+      throw new Error(
+        `Could not start the demo server: ${getSpawnError().message}. Check that pnpm is installed and on PATH.`
+      )
+    if (serverChild.exitCode !== null || serverChild.signalCode !== null) {
+      throw new Error(
+        'The demo server exited before becoming ready. Run `pnpm demo` again and inspect the server error above.'
+      )
+    }
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(1200), redirect: 'manual' })
+      const body = await response.text()
+      if (
+        response.status === 200 &&
+        body.includes('Server ready') &&
+        body.includes('Welcome to the power of a Hypermedia app.')
+      )
+        return url
+    } catch {
+      // The server may still be starting or the port may have briefly reset.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  throw new Error(
+    'The demo server did not return its expected application page within 30 seconds. Check the server output, then retry `pnpm demo`.'
+  )
+}
+
+async function startServer(environment) {
+  const child = spawn('pnpm', ['dev'], {
+    cwd: example,
+    env: { ...environment, HOST: '127.0.0.1' },
+    stdio: 'inherit',
+    detached: process.platform !== 'win32',
+    shell: false,
+  })
+  children.add(child)
+  const exitPromise = new Promise((resolve, reject) => {
+    child.once('error', reject)
+    child.once('exit', (code, signal) => resolve({ code, signal }))
+  })
+  let spawnError
+  child.once('error', (error) => {
+    spawnError = error
+    children.delete(child)
+  })
+  child.once('exit', () => children.delete(child))
+  const url = await waitForDemo(environment.PORT, child, () => spawnError)
+  console.log(`\nDemo ready: ${url}`)
+  console.log('Sign in with the fictional local operator account:')
+  console.log(`  ${reservedEmails[0]} / ${reservedPasswords[0]}`)
+  console.log(
+    'After starting support mode, open the customer page, change its reversible preference, then stop support mode.'
+  )
+  console.log('Press Ctrl+C to stop the demo.')
+  const result = await exitPromise
+  if (!interruptedBy && result.code !== 0) throw new Error('The demo server stopped unexpectedly.')
+}
+
+async function ensureFiles() {
+  await access(path.join(root, 'pnpm-lock.yaml')).catch(() => {
+    throw new Error(
+      'Run this command from a complete repository checkout containing pnpm-lock.yaml.'
+    )
+  })
+  await access(envExamplePath).catch(() => {
+    throw new Error(
+      `The native-session example is missing its configuration template: ${envExamplePath}`
+    )
+  })
+  await mkdir(path.dirname(tarballPath), { recursive: true })
+}
+
+async function main() {
+  await ensureFiles()
+  let { environment, needsKey } = await effectiveEnv()
+  if (environment.NODE_ENV !== 'development') {
+    throw new Error(
+      `The demo requires NODE_ENV=development; found ${environment.NODE_ENV ?? 'unset'}. Set it in examples/native-session/.env and retry.`
+    )
+  }
+  if (!(await portIsAvailable(Number(environment.PORT)))) {
+    throw new Error(
+      `Port ${environment.PORT} is already in use on 127.0.0.1. Stop its owner or choose another PORT in examples/native-session/.env, then retry.`
+    )
+  }
+
+  const pnpm = 'pnpm'
+  await run(pnpm, ['install', '--frozen-lockfile'])
+  await run(pnpm, ['build'])
+  await run(pnpm, ['pack:fixture'])
+  await refreshLocalTarballIntegrity()
+  await run(pnpm, ['install', '--frozen-lockfile'], { cwd: example })
+
+  if (needsKey) {
+    await run(process.execPath, ['ace', 'generate:key'], {
+      cwd: example,
+      env: { ...environment, HOST: '127.0.0.1' },
+    })
+    const refreshed = await effectiveEnv()
+    environment = refreshed.environment
+    if (refreshed.needsKey)
+      throw new Error(
+        'AdonisJS did not write APP_KEY to examples/native-session/.env. Run `node ace generate:key` there, then retry.'
+      )
+  }
+  if (
+    environment.NODE_ENV !== 'development' ||
+    (environment.DB_CLIENT && environment.DB_CLIENT !== 'sqlite')
+  ) {
+    throw new Error(
+      'The effective demo configuration changed during setup. Restore development with SQLite in examples/native-session/.env, then retry.'
+    )
+  }
+
+  const childEnv = { ...environment, HOST: '127.0.0.1' }
+  await run(process.execPath, ['ace', 'migration:run'], { cwd: example, env: childEnv })
+  await run(process.execPath, ['ace', 'demo:seed'], { cwd: example, env: childEnv })
+  await startServer(childEnv)
+}
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    if (interruptedBy) return
+    interruptedBy = signal
+    cleanupOwnedProcesses().finally(() => {
+      process.exitCode = signal === 'SIGINT' ? 130 : 143
+    })
+  })
+}
+
+main().catch(async (error) => {
+  await cleanupOwnedProcesses()
+  if (interruptedBy) process.exitCode = interruptedBy === 'SIGINT' ? 130 : 143
+  else {
+    console.error(`Demo setup failed: ${error.message}`)
+    process.exitCode = 1
+  }
+})

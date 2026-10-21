@@ -21,9 +21,9 @@ permissions.
 
 ### Try it
 
-Run the [fictional native-session demo](examples/native-session/README.md). Its setup guide builds
-the package from this checkout, seeds one operator and two customers, and starts the working
-application. The support workspace shows the signed-in operator separately from the effective
+With Node 24 and pnpm installed, run `pnpm demo` from this checkout to build, seed and start the
+[fictional native-session demo](examples/native-session/README.md#one-command-demo). For setup
+failures or a manual launch, use the [explicit setup instructions](examples/native-session/README.md#local-setup). The support workspace shows the signed-in operator separately from the effective
 customer, the fixed deadline, and the stop control.
 
 ### Integrate it
