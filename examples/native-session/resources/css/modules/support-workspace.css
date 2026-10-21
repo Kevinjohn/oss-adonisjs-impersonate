@@ -116,6 +116,9 @@
 [data-mode-notice][hidden] {
   display: none !important;
 }
+#json-client [hidden] {
+  display: none !important;
+}
 @media (max-width: 600px) {
   .support-identity,
   .support-mode__header,

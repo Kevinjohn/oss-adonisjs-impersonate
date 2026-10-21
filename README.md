@@ -15,7 +15,9 @@ valid integrated sessions for the operator account, has a fixed duration, and ca
 stopped. The package does not create customer credentials or combine actor and customer
 permissions.
 
-**Status: pre-release candidate.** Version `0.0.0` is not published.
+**Status: early alpha for local self-testing.** Version `0.0.0` is not published, and there is no
+registry package for this baseline. Select and rebuild a tagged baseline as described in the
+[setup guide](docs/guide/setup.md#generate-the-starter-files).
 
 ## Choose a path
 
@@ -39,6 +41,10 @@ customer, the fixed deadline, and the stop control.
   session provider, and wire the raw and effective guards and protected routes.
 - [Use a support mode](docs/guide/usage.md): follow the complete status, start, customer-work,
   stop, and recovery recipes for JSON controls and Edge forms.
+- [Session JSON client](docs/guide/clients/json.md): try the runnable browser client alongside
+  the Edge demo, with native session cookies and context-bound actions.
+- [Inertia React](docs/guide/clients/react.md): launch the runnable React example with native
+  session authentication and context-bound support forms.
 - [Supported package imports](docs/api-reference.md#supported-package-imports): find each public
   entry point and its API reference.
 

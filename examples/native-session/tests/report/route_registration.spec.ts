@@ -14,6 +14,13 @@ test.group('test-only route registration boundary', () => {
     ])
 
     assert.include(normal, '/masquerade/start')
+    assert.match(normal, /\/support\/json \[RAW-GUARD BUSINESS READ\]/)
+    assert.match(normal, /\/support\/json\/customer \[BUSINESS READ\]/)
+    assert.match(
+      normal,
+      /\/support\/json\/customer\/preference \[BUSINESS MUTATION\] \(allowMutation\)/
+    )
+    assert.match(normal, /\/support\/json\/customer\/sensitive \[BUSINESS MUTATION\] \(sensitive\)/)
     assert.notInclude(normal, '/business/form')
     assert.notInclude(normal, '/business/mutate')
     assert.notInclude(normal, '/members/status')

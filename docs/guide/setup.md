@@ -17,6 +17,26 @@ pnpm build
 pnpm pack:fixture
 ```
 
+For a repeatable local alpha self-test, build from the annotated tag selected for the baseline. The
+tag identifies the source revision; the package manifest remains `0.0.0`, and no registry version
+is provided. After the tag is available, replace `alpha-1` below with the exact tag named in the
+repository's maintainer verification record. Create a clean worktree so the selected source and
+lockfile stay fixed:
+
+```sh
+git fetch origin --tags
+git worktree add --detach ../masquerade-alpha-1 alpha-1
+cd ../masquerade-alpha-1
+nvm use
+pnpm install --frozen-lockfile
+pnpm build
+pnpm pack:fixture
+```
+
+Use another unused worktree path if `../masquerade-alpha-1` already exists. Re-run the build and
+pack commands after changing the selected source; compare the resulting tarball hash when checking
+that two installations use the same artifact.
+
 This creates `tmp/native-session-package.tgz`. In the AdonisJS application, install that artifact
 before running its configure command (adjust the path to the package checkout):
 
@@ -27,9 +47,9 @@ pnpm add @adonisjs/lucid
 node ace configure adonisjs-masquerade --namespace=my_app --guard=web
 ```
 
-The last two install commands are needed only if those dependencies are absent. After this package
-is published, install the released package version instead of the local tarball. Configure itself
-does not install packages or run the generated migration.
+The last two install commands are needed only if those dependencies are absent. Alpha self-testing
+uses the local tarball; there is no registry version corresponding to this baseline. Configure
+itself does not install packages or run the generated migration.
 
 Choose a stable namespace for this identity domain and the name of the raw session guard. Configure
 checks the namespace and guard syntax, that `config/auth.ts` exists, and that the assembler code

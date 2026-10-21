@@ -25,6 +25,10 @@ with real application screenshots.
   session provider, and wire callbacks, middleware, and host-protected routes.
 - [Use a support mode](guide/usage.md): follow the complete status, start, customer-work, stop, and
   Edge form recipes.
+- [Session JSON client](guide/clients/json.md): run same-origin fetch controls and customer
+  actions with session cookies, CSRF, captured context, and deliberate recovery.
+- [Inertia React](guide/clients/react.md): run the React support workflow with captured form
+  context, refreshed customer pages, and deliberate recovery.
 - [Supported package imports](api-reference.md#supported-package-imports): map public package
   entry points to their API references.
 
@@ -39,7 +43,9 @@ with real application screenshots.
 - [Route coverage review](guide/route-report.md): inspect the effective and raw routes in the host
   application.
 
-The package is a pre-release candidate and has not been published. The accepted v1 boundaries are
+The package is an early alpha for local self-testing and has not been published to a package
+registry. Build the selected tagged baseline and install its local tarball as described in the
+[setup guide](guide/setup.md#generate-the-starter-files). The accepted v1 boundaries are
 in the [development plan](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/DEVELOPMENT-PLAN.md),
 the [technical specification](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/SPEC-impersonation.md),
 and the [product requirements](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/PRD-impersonation.md).
