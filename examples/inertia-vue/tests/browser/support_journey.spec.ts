@@ -3,7 +3,10 @@ import { mock } from 'node:test'
 import testUtils from '@adonisjs/core/services/test_utils'
 import User from '#models/user'
 import { demoAccounts, resetDemoAccounts, seedDemoAccounts } from '#services/demo_accounts'
-import { setMasqueradeStoreUnavailable } from '#services/masquerade_test_boundary'
+import {
+  setCustomerRequestsUnavailable,
+  setMasqueradeStoreUnavailable,
+} from '#services/masquerade_test_boundary'
 
 test.group('Inertia Vue browser journey', (group) => {
   group.setup(async () => {
@@ -13,11 +16,13 @@ test.group('Inertia Vue browser journey', (group) => {
   })
   group.each.setup(async () => {
     setMasqueradeStoreUnavailable(false)
+    setCustomerRequestsUnavailable(false)
     await resetDemoAccounts()
     await seedDemoAccounts()
   })
   group.each.teardown(async () => {
     setMasqueradeStoreUnavailable(false)
+    setCustomerRequestsUnavailable(false)
     await resetDemoAccounts()
   })
 
@@ -324,8 +329,30 @@ test.group('Inertia Vue browser journey', (group) => {
     await page.goto(`${base()}/support/customer`)
     await page.waitForURL('**/support/recovery')
     await page.getByRole('link', { name: 'Check current status' }).click()
+    await page.getByRole('button', { name: 'Start support mode' }).waitFor()
+    assert.notInclude(await page.locator('main').innerText(), 'customer-one@example.test')
+
+    target.active = true
+    await target.save()
+    await page.goto(`${base()}/support`)
+    await selectCustomer(page, 1)
+    await page.getByLabel('Reason for support').fill('Transient request failure')
+    await page.getByRole('button', { name: 'Start support mode' }).click()
+    await page.waitForURL('**/support/customer')
+    setCustomerRequestsUnavailable(true)
+    await page.goto(`${base()}/support/customer`)
+    await page.waitForURL('**/support/recovery')
+    assert.include(await page.locator('main').innerText(), 'may or may not have completed')
+    await page.getByRole('link', { name: 'Check current status' }).click()
     await page.getByRole('button', { name: 'Stop support mode' }).waitFor()
-    assert.include(await page.locator('main').innerText(), 'no longer available')
+    assert.include(await page.locator('main').innerText(), 'Customer One')
+    setCustomerRequestsUnavailable(false)
+    await page.getByRole('button', { name: 'Stop support mode' }).click()
+    await page.getByRole('button', { name: 'Start support mode' }).waitFor()
+    await selectCustomer(page, 1)
+    await page.getByLabel('Reason for support').fill('Store recovery test')
+    await page.getByRole('button', { name: 'Start support mode' }).click()
+    await page.waitForURL('**/support/customer')
 
     setMasqueradeStoreUnavailable(true)
     await page.goto(`${base()}/support`)

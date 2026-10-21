@@ -3,6 +3,7 @@ import { sessionAuthority } from 'adonisjs-masquerade/native'
 import { LucidControlStore } from 'adonisjs-masquerade/stores/lucid'
 import app from '@adonisjs/core/services/app'
 import { Database } from '@adonisjs/lucid/database'
+import type { HttpContext } from '@adonisjs/core/http'
 import type User from '#models/user'
 import { userProvider } from '#services/web_guard'
 
@@ -22,7 +23,18 @@ export default defineConfig({
   policy: {
     canMasquerade: ({ actor, target }) =>
       Boolean(actor.user.masqueradeOperator) && Boolean(target.user.active),
-    canUseRequest: ({ actor, target }) => Boolean(actor.user.active) && Boolean(target.user.active),
+    canUseRequest: async ({ actor, target, request }) => {
+      if (process.env.NODE_ENV === 'test') {
+        const { areCustomerRequestsUnavailable } =
+          await import('#services/masquerade_test_boundary')
+        if (
+          areCustomerRequestsUnavailable() &&
+          (request as HttpContext).request.url() === '/support/customer'
+        )
+          throw new Error('fixture customer request unavailable')
+      }
+      return Boolean(actor.user.active) && Boolean(target.user.active)
+    },
   },
   store: async () => {
     const database = await app.container.make(Database)

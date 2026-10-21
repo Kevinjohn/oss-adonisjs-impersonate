@@ -2,6 +2,7 @@ import type { ControlStore } from 'adonisjs-masquerade/types'
 import type { LucidControlStore } from 'adonisjs-masquerade/stores/lucid'
 
 let storeUnavailable = false
+let customerRequestsUnavailable = false
 
 export class FixtureControlStore implements ControlStore {
   constructor(private readonly store: LucidControlStore) {}
@@ -33,4 +34,12 @@ export function withFixtureControlStore(store: LucidControlStore) {
 
 export function setMasqueradeStoreUnavailable(value: boolean) {
   storeUnavailable = value
+}
+
+export function setCustomerRequestsUnavailable(value: boolean) {
+  customerRequestsUnavailable = value
+}
+
+export function areCustomerRequestsUnavailable() {
+  return customerRequestsUnavailable
 }
