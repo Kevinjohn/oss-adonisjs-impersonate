@@ -5,11 +5,11 @@ customer's ordinary application view. The operator stays signed in, while the cu
 permissions decide what the support session can read or change. This gives support a way to reproduce
 an issue in context without asking for the customer's password or creating a customer login.
 
-This walkthrough follows the working [fictional native-session demo](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/main/examples/native-session). It uses AdonisJS 7, Auth 10 and Session 8. The demo uses a seeded operator and two fictional customers; its local-only credentials and setup are in the [demo README](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/README.md).
+This walkthrough follows the working [fictional native-session demo](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session). It uses AdonisJS 7, Auth 10 and Session 8. The demo uses a seeded operator and two fictional customers; its local-only credentials and setup are in the [demo README](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session/README.md).
 
 ## Try the support journey
 
-Start the demo using its [local setup instructions](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/README.md), then sign in as the seeded operator and open the support workspace. In this example, Customer One asks for help understanding email-update preferences.
+Start the demo using its [local setup instructions](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session/README.md), then sign in as the seeded operator and open the support workspace. In this example, Customer One asks for help understanding email-update preferences.
 
 ![The signed-in operator's support workspace with a customer chooser and reason field.](../assets/walkthrough/support_workspace.png)
 
@@ -45,6 +45,8 @@ The native session guard continues to authenticate the operator on every request
 
 Mode is stored server-side for the actor account and shared by valid integrated sessions. The default deadline is 15 minutes, with a one-hour maximum; an application may choose shorter limits. Later requests do not extend the deadline. Stopping or expiry ends the mode for the account, while logging out one browser session does not stop other sessions. Already admitted requests and side effects handed to other systems cannot be undone by stopping.
 
-## Continue with the delivered Edge integration
+## Explore the delivered clients
 
-For the package integration steps, see [Install and configure](setup.md), then [Use a support mode](usage.md) for the host-rendered Edge controls and JSON control API. The [Security and operations guide](security.md) covers authorization, expiry, account-wide behavior, recovery and side effects. The running [native-session demo source and setup](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/main/examples/native-session) provides the complete Edge journey.
+For an existing application, start with [Install and configure](setup.md) and follow [Use a support mode](usage.md). Its [Edge form recipe](usage.md#edge-forms-and-host-redirects) matches the journey above; the [native-session demo](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session) is runnable and includes the fictional accounts.
+
+For a same-origin browser client, follow the [JSON client guide](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/docs/guide/clients/json.md) and try it in the same [native-session example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session) at `/support/json`. For React and Inertia, follow the [React client guide](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/65ffd34a0a32dd28f4248fa8d9de8317357c1e4c/docs/guide/clients/react.md) and run its [Inertia example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/65ffd34a0a32dd28f4248fa8d9de8317357c1e4c/examples/inertia-react). The [Security and operations guide](security.md) explains authorization, expiry, account-wide behavior, recovery and side effects.
