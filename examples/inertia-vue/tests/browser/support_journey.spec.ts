@@ -343,6 +343,7 @@ test.group('Inertia Vue browser journey', (group) => {
       releaseIdentity()
       releaseWorkspace()
       mock.timers.reset()
+      await page.unrouteAll({ behavior: 'ignoreErrors' })
       await context.close()
     }
   })
