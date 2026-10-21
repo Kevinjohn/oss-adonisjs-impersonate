@@ -1,0 +1,1545 @@
+diff --git a/.env.test b/.env.test
+index 28d2da0..badfa47 100644
+--- a/.env.test
++++ b/.env.test
+@@ -0,0 +1,5 @@
++NODE_ENV=test
++HOST=127.0.0.1
++PORT=3378
++LOG_LEVEL=error
++APP_KEY=inertia_vue_test_key_01234567890123456789
+diff --git a/adonisrc.ts b/adonisrc.ts
+index 9e8fb97..47c86af 100644
+--- a/adonisrc.ts
++++ b/adonisrc.ts
+@@ -33 +33 @@ export default defineConfig({
+-    () => import('adonisjs-masquerade/commands')
++    () => import('adonisjs-masquerade/commands'),
+@@ -62 +62 @@ export default defineConfig({
+-    () => import('#providers/api_provider'),
++    () => import('@adonisjs/limiter/limiter_provider'),
+@@ -64 +64,2 @@ export default defineConfig({
+-    () => import('adonisjs-masquerade/providers/masquerade_provider')
++    () => import('adonisjs-masquerade/providers/masquerade_provider'),
++    () => import('#providers/api_provider'),
+diff --git a/app/controllers/demo_controller.ts b/app/controllers/demo_controller.ts
+new file mode 100644
+index 0000000..f63b877
+--- /dev/null
++++ b/app/controllers/demo_controller.ts
+@@ -0,0 +1,164 @@
++import User from '#models/user'
++import { demoAccounts } from '#services/demo_accounts'
++import { controlInput } from '#services/support_control_input'
++import { Bouncer } from '@adonisjs/bouncer'
++import type { HttpContext } from '@adonisjs/core/http'
++import db from '@adonisjs/lucid/services/db'
++import type { MasqueradeRuntime } from 'adonisjs-masquerade/providers/masquerade_provider'
++
++export default class DemoController {
++  async workspace(ctx: HttpContext) {
++    noStore(ctx)
++    const actor = ctx.auth.use('web').getUserOrFail() as User
++    const runtime = await getRuntime(ctx)
++    const status = await runtime.service.status(ctx)
++    const customers = actor.masqueradeOperator
++      ? await User.query()
++          .whereIn(
++            'email',
++            demoAccounts.filter((account) => !account.masqueradeOperator).map(({ email }) => email)
++          )
++          .where('active', true)
++      : []
++    const target = status.isMasquerading ? await User.find(status.targetId) : null
++    const mode = publicMode(status)
++    prepareHistory(ctx)
++    return ctx.inertia.render('support/workspace', {
++      actor: label(actor),
++      operator: Boolean(actor.masqueradeOperator),
++      mode,
++      customers: customers.map(label),
++      target: target ? label(target) : null,
++      beforeDeadline: mode.isMasquerading && Date.parse(mode.expiresAt!) > Date.now(),
++      targetAvailable: Boolean(target?.active),
++    })
++  }
++
++  async identity(ctx: HttpContext) {
++    noStore(ctx)
++    const runtime = await getRuntime(ctx)
++    const status = await runtime.service.status(ctx)
++    return ctx.response.json({ mode: publicMode(status) })
++  }
++
++  async start(ctx: HttpContext) {
++    noStore(ctx)
++    const runtime = await getRuntime(ctx)
++    await runtime.service.start(ctx, controlInput(ctx, 'start'))
++    ctx.session.flash('supportClearHistory', true)
++    return ctx.response.redirect().toPath('/support/customer')
++  }
++
++  async stop(ctx: HttpContext) {
++    noStore(ctx)
++    const runtime = await getRuntime(ctx)
++    await runtime.service.stop(ctx, controlInput(ctx, 'stop'))
++    ctx.session.flash('supportClearHistory', true)
++    return ctx.response.redirect().toPath('/support')
++  }
++
++  async customer(ctx: HttpContext) {
++    noStore(ctx)
++    const runtime = await getRuntime(ctx)
++    const admitted = await runtime.admit(ctx)
++    const mode = admitted.view
++    if (!mode.isMasquerading || Date.parse(mode.expiresAt) <= Date.now()) {
++      return ctx.response.redirect().toPath('/support')
++    }
++    const actor = ctx.auth.use('web').getUserOrFail() as User
++    const customer = ctx.auth.user as User
++    await customerBouncer(ctx).authorize(
++      Bouncer.ability((user: User) => user.active && user.id === customer.id)
++    )
++    const preference = await db.from('demo_preferences').where('user_id', customer.id).first()
++    prepareHistory(ctx)
++    const props = {
++      actor: label(actor),
++      customer: label(customer),
++      mode: {
++        isMasquerading: true as const,
++        targetId: mode.targetId,
++        expiresAt: mode.expiresAt,
++        contextToken: mode.contextToken,
++      },
++      emailUpdates: Boolean(preference?.email_updates),
++      canEdit: await customerBouncer(ctx).allows(
++        Bouncer.ability((user: User) => user.active && user.canMutate && user.id === customer.id)
++      ),
++    }
++    const delayMs = process.env.NODE_ENV === 'test' ? Number(ctx.request.input('delayMs', 0)) : 0
++    if (Number.isFinite(delayMs) && delayMs > 0) {
++      await new Promise((resolve) => setTimeout(resolve, Math.min(delayMs, 3000)))
++    }
++    return ctx.inertia.render('support/customer', props)
++  }
++
++  async preference(ctx: HttpContext) {
++    noStore(ctx)
++    const runtime = await getRuntime(ctx)
++    const admitted = await runtime.admit(ctx)
++    if (!admitted.view.isMasquerading || Date.parse(admitted.view.expiresAt) <= Date.now()) {
++      return ctx.response.redirect().toPath('/support')
++    }
++    const customer = ctx.auth.user as User
++    await customerBouncer(ctx).authorize(
++      Bouncer.ability((user: User) => user.active && user.canMutate && user.id === customer.id)
++    )
++    const value = ctx.request.input('emailUpdates')
++    if (value !== '0' && value !== '1')
++      return ctx.response.badRequest('Choose on or off for email updates.')
++    await db
++      .table('demo_preferences')
++      .insert({ user_id: customer.id, email_updates: value === '1' })
++      .onConflict('user_id')
++      .merge()
++    ctx.session.flash('success', 'Customer email preference saved.')
++    return ctx.response.redirect().toPath('/support/customer')
++  }
++
++  async sensitive(ctx: HttpContext) {
++    return ctx.response.forbidden('Sensitive account actions are unavailable in support mode.')
++  }
++
++  async recovery(ctx: HttpContext) {
++    noStore(ctx)
++    const message = ctx.session.flashMessages.get('supportRecovery') as string | undefined
++    prepareHistory(ctx)
++    return ctx.inertia.render('support/recovery', {
++      message: message ?? 'Check current support status before creating a new action.',
++    })
++  }
++}
++
++async function getRuntime(ctx: HttpContext) {
++  return (await ctx.containerResolver.make('masquerade.runtime')) as MasqueradeRuntime<User>
++}
++
++function label(user: User) {
++  return { id: user.id, fullName: user.fullName ?? user.email, email: user.email }
++}
++
++function publicMode(mode: Awaited<ReturnType<MasqueradeRuntime<User>['service']['status']>>) {
++  return mode.isMasquerading
++    ? {
++        isMasquerading: true as const,
++        targetId: mode.targetId,
++        expiresAt: mode.expiresAt,
++        contextToken: mode.contextToken,
++      }
++    : { isMasquerading: false as const, contextToken: mode.contextToken }
++}
++
++function prepareHistory(ctx: HttpContext) {
++  if (ctx.session.flashMessages.get('supportClearHistory')) ctx.inertia.clearHistory()
++  ctx.inertia.encryptHistory()
++}
++
++function customerBouncer(ctx: HttpContext) {
++  return new Bouncer<User>(() => (ctx.auth.user as User | undefined) ?? null)
++}
++
++function noStore(ctx: HttpContext) {
++  ctx.response.header('Cache-Control', 'private, no-store')
++  ctx.response.vary(['Accept', 'X-Masquerade-Context'])
++}
+diff --git a/app/controllers/masquerade_controller.ts b/app/controllers/masquerade_controller.ts
+new file mode 100644
+index 0000000..be6d8c7
+--- /dev/null
++++ b/app/controllers/masquerade_controller.ts
+@@ -0,0 +1,3 @@
++import { MasqueradeController } from 'adonisjs-masquerade/http'
++
++export default class FixtureMasqueradeController extends MasqueradeController {}
+diff --git a/app/exceptions/handler.ts b/app/exceptions/handler.ts
+index 75d7d9e..87e504e 100644
+--- a/app/exceptions/handler.ts
++++ b/app/exceptions/handler.ts
+@@ -3,0 +4,2 @@ import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/h
++import { MasqueradeError } from 'adonisjs-masquerade'
++import { errors as limiterErrors } from '@adonisjs/limiter'
+@@ -6,4 +7,0 @@ export default class HttpExceptionHandler extends ExceptionHandler {
+-  /**
+-   * In debug mode, the exception handler will display verbose errors
+-   * with pretty printed stack traces.
+-   */
+@@ -11,6 +8,0 @@ export default class HttpExceptionHandler extends ExceptionHandler {
+-
+-  /**
+-   * Status pages are used to display a custom HTML pages for certain error
+-   * codes. You might want to enable them in production only, but feel
+-   * free to enable them in development as well.
+-   */
+@@ -18,5 +9,0 @@ export default class HttpExceptionHandler extends ExceptionHandler {
+-
+-  /**
+-   * Status pages is a collection of error code range and a callback
+-   * to return the HTML contents to send as a response.
+-   */
+@@ -28,4 +14,0 @@ export default class HttpExceptionHandler extends ExceptionHandler {
+-  /**
+-   * The method is used for handling errors and returning
+-   * response to the client
+-   */
+@@ -32,0 +16,31 @@ export default class HttpExceptionHandler extends ExceptionHandler {
++    const status =
++      error instanceof MasqueradeError ? error.status : (error as { status?: number })?.status
++    if (
++      ctx.request.url().startsWith('/support') &&
++      [403, 409, 422, 428, 429, 503].includes(status ?? 0)
++    ) {
++      if (error instanceof limiterErrors.E_TOO_MANY_REQUESTS) {
++        for (const [name, value] of Object.entries(error.headers || error.getDefaultHeaders())) {
++          ctx.response.header(name, value)
++        }
++      }
++      ctx.response.header('Cache-Control', 'private, no-store')
++      const message =
++        status === 503
++          ? 'The previous change may or may not have completed. Check raw status before acting again.'
++          : status === 409 || status === 428
++            ? 'The support context changed. The old action was rejected. Check status and create a new action.'
++            : status === 429
++              ? 'Too many attempts. Wait, then check current status.'
++              : status === 422
++                ? 'Check the customer and reason, then create a new action.'
++                : 'This action is unavailable for the current account or support mode.'
++      if (ctx.request.header('X-Inertia')) {
++        ctx.session.flash('supportRecovery', message)
++        return ctx.inertia.location('/support/recovery')
++      }
++      if (ctx.request.header('accept')?.includes('text/html')) {
++        ctx.session.flash('supportRecovery', message)
++        return ctx.response.redirect().toPath('/support/recovery')
++      }
++    }
+@@ -35,10 +48,0 @@ export default class HttpExceptionHandler extends ExceptionHandler {
+-
+-  /**
+-   * The method is used to report error to the logging service or
+-   * the a third party error monitoring service.
+-   *
+-   * @note You should not attempt to send a response from this method.
+-   */
+-  async report(error: unknown, ctx: HttpContext) {
+-    return super.report(error, ctx)
+-  }
+diff --git a/app/middleware/inertia_middleware.ts b/app/middleware/inertia_middleware.ts
+index 8f24fc9..9968efb 100644
+--- a/app/middleware/inertia_middleware.ts
++++ b/app/middleware/inertia_middleware.ts
+@@ -3 +2,0 @@ import type { NextFn } from '@adonisjs/core/types/http'
+-import UserTransformer from '#transformers/user_transformer'
+@@ -4,0 +4 @@ import BaseInertiaMiddleware from '@adonisjs/inertia/inertia_middleware'
++import type User from '#models/user'
+@@ -17,0 +18 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
++    const user = auth?.use('web').user as User | undefined
+@@ -30 +31 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
+-      user: ctx.inertia.always(auth?.user ? UserTransformer.transform(auth.user) : undefined),
++      user: ctx.inertia.always(user ? { fullName: user.fullName, email: user.email } : undefined),
+diff --git a/app/middleware/silent_auth_middleware.ts b/app/middleware/silent_auth_middleware.ts
+index 3e46f40..f94948f 100644
+--- a/app/middleware/silent_auth_middleware.ts
++++ b/app/middleware/silent_auth_middleware.ts
+@@ -0,0 +1 @@
++import type User from '#models/user'
+@@ -4,6 +4,0 @@ import type { NextFn } from '@adonisjs/core/types/http'
+-/**
+- * Silent auth middleware can be used as a global middleware to silent check
+- * if the user is logged-in or not.
+- *
+- * The request continues as usual, even when the user is not logged-in.
+- */
+@@ -12,2 +7,8 @@ export default class SilentAuthMiddleware {
+-    await ctx.auth.check()
+-
++    await ctx.auth.use('web').check()
++    const context = ctx as HttpContext & {
++      silentAuthSnapshot?: { guard?: string; userId?: number }
++    }
++    context.silentAuthSnapshot = {
++      guard: ctx.auth.authenticatedViaGuard,
++      userId: (ctx.auth.user as User | undefined)?.id,
++    }
+diff --git a/app/models/user.ts b/app/models/user.ts
+index fc048e9..f6241f5 100644
+--- a/app/models/user.ts
++++ b/app/models/user.ts
+@@ -6 +6,8 @@ import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
+-export default class User extends compose(UserSchema, withAuthFinder(hash)) {
++export default class User extends compose(
++  UserSchema,
++  withAuthFinder(() => hash.use())
++) {
++  declare active: boolean
++  declare canMutate: boolean
++  declare masqueradeOperator: boolean
++  declare securityStamp: string
+diff --git a/app/services/demo_accounts.ts b/app/services/demo_accounts.ts
+new file mode 100644
+index 0000000..db7ae08
+--- /dev/null
++++ b/app/services/demo_accounts.ts
+@@ -0,0 +1,87 @@
++import User from '#models/user'
++import db from '@adonisjs/lucid/services/db'
++
++export const demoAccounts = [
++  {
++    email: 'operator@example.test',
++    fullName: 'Demo Operator',
++    password: 'demo-operator-2026',
++    active: true,
++    canMutate: false,
++    masqueradeOperator: true,
++    securityStamp: 'demo-operator-v1',
++  },
++  {
++    email: 'customer-one@example.test',
++    fullName: 'Customer One',
++    password: 'demo-customer-one-2026',
++    active: true,
++    canMutate: true,
++    masqueradeOperator: false,
++    securityStamp: 'demo-customer-one-v1',
++  },
++  {
++    email: 'customer-two@example.test',
++    fullName: 'Customer Two',
++    password: 'demo-customer-two-2026',
++    active: true,
++    canMutate: true,
++    masqueradeOperator: false,
++    securityStamp: 'demo-customer-two-v1',
++  },
++] as const
++
++const demoEmails = demoAccounts.map(({ email }) => email)
++
++export async function seedDemoAccounts(
++  environment = {
++    nodeEnv: process.env.NODE_ENV,
++    dbClient: process.env.DB_CLIENT,
++  }
++) {
++  assertDemoEnvironmentAllowed(environment)
++  await db.transaction(async (trx) => {
++    for (const account of demoAccounts) {
++      await User.updateOrCreate({ email: account.email }, { ...account }, { client: trx })
++    }
++  })
++}
++
++export async function resetDemoAccounts(
++  environment = {
++    nodeEnv: process.env.NODE_ENV,
++    dbClient: process.env.DB_CLIENT,
++  }
++) {
++  assertDemoEnvironmentAllowed(environment)
++  await db.transaction(async (trx) => {
++    const users = await trx.from('users').whereIn('email', demoEmails).select('id')
++    const ids = users.map(({ id }) => String(id))
++    if (!ids.length) return
++    await trx.from('masquerade_events').whereIn('actor_id', ids).delete()
++    await trx.from('masquerade_modes').whereIn('actor_id', ids).delete()
++    await trx
++      .from('demo_preferences')
++      .whereIn(
++        'user_id',
++        users.map(({ id }) => id)
++      )
++      .delete()
++    await trx
++      .from('users')
++      .whereIn(
++        'id',
++        users.map(({ id }) => id)
++      )
++      .delete()
++  })
++}
++
++export function assertDemoEnvironmentAllowed(environment: { nodeEnv?: string; dbClient?: string }) {
++  if (environment.nodeEnv !== 'development' && environment.nodeEnv !== 'test') {
++    throw new Error('Demo commands are allowed only in development or test environments.')
++  }
++  if (environment.dbClient && environment.dbClient !== 'sqlite') {
++    throw new Error('Demo commands are allowed only with the local SQLite database.')
++  }
++}
+diff --git a/app/services/support_control_input.ts b/app/services/support_control_input.ts
+new file mode 100644
+index 0000000..ba986b7
+--- /dev/null
++++ b/app/services/support_control_input.ts
+@@ -0,0 +1,34 @@
++import type { HttpContext } from '@adonisjs/core/http'
++import type { StartInput, StopInput } from 'adonisjs-masquerade/types'
++
++/** Preserve the context token that accompanied the original form intent. */
++export function controlInput(ctx: HttpContext, action: 'start'): StartInput
++export function controlInput(ctx: HttpContext, action: 'stop'): StopInput
++export function controlInput(ctx: HttpContext, action: 'start' | 'stop'): StartInput | StopInput {
++  const body = ctx.request.body()
++  const keys =
++    action === 'start'
++      ? ['targetId', 'reason', '_masqueradeContext', '_csrf']
++      : ['_masqueradeContext', '_csrf']
++  if (
++    !body ||
++    typeof body !== 'object' ||
++    Array.isArray(body) ||
++    Object.keys(body).some((key) => !keys.includes(key))
++  ) {
++    return { __invalidHttpInput: true } as unknown as StartInput
++  }
++  const header = ctx.request.header('X-Masquerade-Context')
++  const hidden = body._masqueradeContext
++  const expectedContext =
++    header !== undefined && hidden !== undefined && header !== hidden
++      ? `0.${'0'.repeat(32)}`
++      : (header ?? hidden)
++  if (action === 'stop')
++    return { expectedContext: typeof expectedContext === 'string' ? expectedContext : '' }
++  return {
++    targetId: body.targetId as StartInput['targetId'],
++    reason: body.reason as StartInput['reason'],
++    expectedContext: typeof expectedContext === 'string' ? expectedContext : '',
++  }
++}
+diff --git a/app/services/web_guard.ts b/app/services/web_guard.ts
+new file mode 100644
+index 0000000..9967375
+--- /dev/null
++++ b/app/services/web_guard.ts
+@@ -0,0 +1,8 @@
++import { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'
++
++export const userProvider = sessionUserProvider({ model: () => import('#models/user') })
++
++export const webGuard = sessionGuard({
++  useRememberMeTokens: false,
++  provider: userProvider,
++})
+diff --git a/app/types/inertia_pages.ts b/app/types/inertia_pages.ts
+new file mode 100644
+index 0000000..feeabd3
+--- /dev/null
++++ b/app/types/inertia_pages.ts
+@@ -0,0 +1,26 @@
++type PublicUser = { id: number; fullName: string; email: string }
++type PublicMode =
++  | { isMasquerading: false; contextToken: string }
++  | { isMasquerading: true; contextToken: string; targetId: string; expiresAt: string }
++
++declare module '@adonisjs/inertia/types' {
++  interface InertiaPages {
++    'support/workspace': {
++      actor: PublicUser
++      operator: boolean
++      mode: PublicMode
++      customers: PublicUser[]
++      target: PublicUser | null
++      beforeDeadline: boolean
++      targetAvailable: boolean
++    }
++    'support/customer': {
++      actor: PublicUser
++      customer: PublicUser
++      mode: Extract<PublicMode, { isMasquerading: true }>
++      emailUpdates: boolean
++      canEdit: boolean
++    }
++    'support/recovery': { message: string }
++  }
++}
+diff --git a/commands/demo_reset.ts b/commands/demo_reset.ts
+new file mode 100644
+index 0000000..11b2d2d
+--- /dev/null
++++ b/commands/demo_reset.ts
+@@ -0,0 +1,13 @@
++import { BaseCommand } from '@adonisjs/core/ace'
++import { resetDemoAccounts } from '#services/demo_accounts'
++
++export default class DemoResetCommand extends BaseCommand {
++  static commandName = 'demo:reset'
++  static description = 'Remove the fictional local demo accounts'
++  static options = { startApp: true }
++
++  async run() {
++    await resetDemoAccounts()
++    this.logger.info('Removed the fictional local demo accounts.')
++  }
++}
+diff --git a/commands/demo_seed.ts b/commands/demo_seed.ts
+new file mode 100644
+index 0000000..b3e7abe
+--- /dev/null
++++ b/commands/demo_seed.ts
+@@ -0,0 +1,19 @@
++import { BaseCommand } from '@adonisjs/core/ace'
++import { demoAccounts, seedDemoAccounts } from '#services/demo_accounts'
++
++export default class DemoSeedCommand extends BaseCommand {
++  static commandName = 'demo:seed'
++  static description = 'Create or refresh the fictional local demo accounts'
++  static options = { startApp: true }
++
++  async run() {
++    await seedDemoAccounts()
++    this.logger.info('Seeded local demo accounts:')
++    for (const { email, password, masqueradeOperator } of demoAccounts) {
++      this.logger.info(
++        `  ${email} / ${password}${masqueradeOperator ? ' (operator)' : ' (customer)'}`
++      )
++    }
++    this.logger.info('These credentials are for local demonstration only.')
++  }
++}
+diff --git a/config/auth.ts b/config/auth.ts
+index 9369a53..a89edbc 100644
+--- a/config/auth.ts
++++ b/config/auth.ts
+@@ -2 +2 @@ import { defineConfig } from '@adonisjs/auth'
+-import { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'
++import { effectiveSessionGuard } from 'adonisjs-masquerade/auth'
+@@ -3,0 +4 @@ import type { InferAuthenticators, InferAuthEvents, Authenticators } from '@adon
++import { webGuard } from '#services/web_guard'
+@@ -9 +10 @@ const authConfig = defineConfig({
+-  default: 'web',
++  default: 'web_effective',
+@@ -15,10 +16,2 @@ const authConfig = defineConfig({
+-    web: sessionGuard({
+-      /**
+-       * Enable persistent login using remember-me tokens.
+-       */
+-      useRememberMeTokens: false,
+-
+-      provider: sessionUserProvider({
+-        model: () => import('#models/user'),
+-      }),
+-    }),
++    web: webGuard,
++    web_effective: effectiveSessionGuard(webGuard),
+diff --git a/config/database.ts b/config/database.ts
+index df87cb9..435c65d 100644
+--- a/config/database.ts
++++ b/config/database.ts
+@@ -21 +21 @@ const dbConfig = defineConfig({
+-        filename: app.tmpPath('db.sqlite3'),
++        filename: app.tmpPath(app.inTest ? 'test.sqlite3' : 'db.sqlite3'),
+@@ -49 +49 @@ const dbConfig = defineConfig({
+-     * Install package to switch: npm install pg
++     * Install package to switch: pnpm add pg
+@@ -73 +73 @@ const dbConfig = defineConfig({
+-     * Install package to switch: npm install mysql2
++     * Install package to switch: pnpm add mysql2
+@@ -97 +97 @@ const dbConfig = defineConfig({
+-     * Install package to switch: npm install tedious
++     * Install package to switch: pnpm add tedious
+@@ -121 +121 @@ const dbConfig = defineConfig({
+-     * Install package to switch: npm install @libsql/client
++     * Install package to switch: pnpm add @libsql/client
+diff --git a/config/limiter.ts b/config/limiter.ts
+new file mode 100644
+index 0000000..411a77c
+--- /dev/null
++++ b/config/limiter.ts
+@@ -0,0 +1,6 @@
++import { defineConfig, stores } from '@adonisjs/limiter'
++
++export default defineConfig({
++  default: 'memory',
++  stores: { memory: stores.memory({}) },
++})
+diff --git a/config/masquerade.ts b/config/masquerade.ts
+index 7214976..8d75ec9 100644
+--- a/config/masquerade.ts
++++ b/config/masquerade.ts
+@@ -1,4 +0,0 @@
+-import app from '@adonisjs/core/services/app'
+-import type { HttpContext } from '@adonisjs/core/http'
+-import UserModel from '#models/user'
+-import { Database } from '@adonisjs/lucid/database'
+@@ -8,7 +4,4 @@ import { LucidControlStore } from 'adonisjs-masquerade/stores/lucid'
+-import { userProvider } from '#services/masquerade_user_provider'
+-
+-type User = InstanceType<typeof UserModel>
+-
+-function configureAccountIdentity(): never {
+-  throw new Error('Configure immutable account incarnation and security stamp callbacks in config/masquerade.ts')
+-}
++import app from '@adonisjs/core/services/app'
++import { Database } from '@adonisjs/lucid/database'
++import type User from '#models/user'
++import { userProvider } from '#services/web_guard'
+@@ -16,6 +9,3 @@ function configureAccountIdentity(): never {
+-// The incarnation must change if an account ID can be deleted and reused.
+-// The security stamp must change after privilege, password, suspension, and logout-all changes.
+-// Replace these fail-closed callbacks with account-specific, stable implementations.
+-const nativeAdapter = sessionAuthority<User>({
+-  namespace: "vue_validation",
+-  guard: "web",
++const native = sessionAuthority({
++  namespace: 'vue_validation',
++  guard: 'web',
+@@ -23,3 +13,3 @@ const nativeAdapter = sessionAuthority<User>({
+-  incarnation: () => configureAccountIdentity(),
+-  securityStamp: () => configureAccountIdentity(),
+-  isActive: () => false,
++  incarnation: 'id',
++  securityStamp: (user: User) => user.securityStamp,
++  isActive: (user: User) => Boolean(user.active),
+@@ -28 +18 @@ const nativeAdapter = sessionAuthority<User>({
+-export { nativeAdapter }
++export const nativeAdapter = native
+@@ -30,2 +20,2 @@ export { nativeAdapter }
+-export default defineConfig<User, HttpContext>({
+-  authority: nativeAdapter.authority,
++export default defineConfig({
++  authority: native.authority,
+@@ -33,8 +23,3 @@ export default defineConfig<User, HttpContext>({
+-    // Required global check: start receives reason/request; active admission does not.
+-    async canMasquerade() {
+-      return false
+-    },
+-    // Optional check for starts and active admissions, not idle routes. Remove if not needed.
+-    async canUseRequest() {
+-      return false
+-    },
++    canMasquerade: ({ actor, target }) =>
++      Boolean(actor.user.masqueradeOperator) && Boolean(target.user.active),
++    canUseRequest: ({ actor, target }) => Boolean(actor.user.active) && Boolean(target.user.active),
+@@ -46 +31 @@ export default defineConfig<User, HttpContext>({
+-  contextEnforcement: 'report',
++  contextEnforcement: 'enforce',
+@@ -48 +33 @@ export default defineConfig<User, HttpContext>({
+-})
+\ No newline at end of file
++})
+diff --git a/database/migrations/1761885935169_add_support_fields.ts b/database/migrations/1761885935169_add_support_fields.ts
+new file mode 100644
+index 0000000..e654640
+--- /dev/null
++++ b/database/migrations/1761885935169_add_support_fields.ts
+@@ -0,0 +1,21 @@
++import { BaseSchema } from '@adonisjs/lucid/schema'
++
++export default class extends BaseSchema {
++  protected tableName = 'users'
++  async up() {
++    this.schema.alterTable(this.tableName, (table) => {
++      table.boolean('active').notNullable().defaultTo(true)
++      table.boolean('masquerade_operator').notNullable().defaultTo(false)
++      table.boolean('can_mutate').notNullable().defaultTo(false)
++      table.string('security_stamp', 128).notNullable().defaultTo('initial')
++    })
++  }
++  async down() {
++    this.schema.alterTable(this.tableName, (table) => {
++      table.dropColumn('security_stamp')
++      table.dropColumn('can_mutate')
++      table.dropColumn('masquerade_operator')
++      table.dropColumn('active')
++    })
++  }
++}
+diff --git a/database/migrations/1761885935174_create_demo_preferences.ts b/database/migrations/1761885935174_create_demo_preferences.ts
+new file mode 100644
+index 0000000..1178dfa
+--- /dev/null
++++ b/database/migrations/1761885935174_create_demo_preferences.ts
+@@ -0,0 +1,13 @@
++import { BaseSchema } from '@adonisjs/lucid/schema'
++
++export default class extends BaseSchema {
++  async up() {
++    this.schema.createTable('demo_preferences', (table) => {
++      table.integer('user_id').primary().references('users.id').onDelete('CASCADE')
++      table.boolean('email_updates').notNullable().defaultTo(false)
++    })
++  }
++  async down() {
++    this.schema.dropTable('demo_preferences')
++  }
++}
+diff --git a/database/schema.ts b/database/schema.ts
+index b99c87b..20998c1 100644
+--- a/database/schema.ts
++++ b/database/schema.ts
+@@ -9,0 +10,105 @@ import { DateTime } from 'luxon'
++export class DemoPreferenceSchema extends BaseModel {
++  static $columns = ['emailUpdates', 'userId'] as const
++  $columns = DemoPreferenceSchema.$columns
++  @column()
++  declare emailUpdates: boolean
++  @column({ isPrimary: true })
++  declare userId: number
++}
++
++export class MasqueradeEventSchema extends BaseModel {
++  static $columns = [
++    'actorId',
++    'actorIncarnation',
++    'at',
++    'authorityNamespace',
++    'id',
++    'kind',
++    'modeId',
++    'outcomeCode',
++    'reason',
++    'revision',
++    'targetId',
++    'targetIncarnation',
++  ] as const
++  $columns = MasqueradeEventSchema.$columns
++  @column()
++  declare actorId: string
++  @column()
++  declare actorIncarnation: string
++  @column()
++  declare at: string
++  @column()
++  declare authorityNamespace: string
++  @column({ isPrimary: true })
++  declare id: string
++  @column()
++  declare kind: string
++  @column()
++  declare modeId: string | null
++  @column()
++  declare outcomeCode: string
++  @column()
++  declare reason: string | null
++  @column()
++  declare revision: bigint | number
++  @column()
++  declare targetId: string | null
++  @column()
++  declare targetIncarnation: string | null
++}
++
++export class MasqueradeModeSchema extends BaseModel {
++  static $columns = [
++    'actorId',
++    'actorIncarnation',
++    'actorStampHash',
++    'authorityNamespace',
++    'expiresAt',
++    'lastTransitionId',
++    'modeId',
++    'reason',
++    'revision',
++    'revisionNonce',
++    'startedAt',
++    'state',
++    'targetId',
++    'targetIncarnation',
++    'targetStampHash',
++    'updatedAt',
++  ] as const
++  $columns = MasqueradeModeSchema.$columns
++  @column()
++  declare actorId: string
++  @column()
++  declare actorIncarnation: string
++  @column()
++  declare actorStampHash: string | null
++  @column()
++  declare authorityNamespace: string
++  @column()
++  declare expiresAt: string | null
++  @column()
++  declare lastTransitionId: string
++  @column()
++  declare modeId: string
++  @column()
++  declare reason: string | null
++  @column()
++  declare revision: bigint | number
++  @column()
++  declare revisionNonce: string
++  @column()
++  declare startedAt: string | null
++  @column()
++  declare state: string
++  @column()
++  declare targetId: string | null
++  @column()
++  declare targetIncarnation: string | null
++  @column()
++  declare targetStampHash: string | null
++  @column.dateTime({ autoCreate: true, autoUpdate: true })
++  declare updatedAt: DateTime
++}
++
+@@ -11 +116,12 @@ export class UserSchema extends BaseModel {
+-  static $columns = ['createdAt', 'email', 'fullName', 'id', 'password', 'updatedAt'] as const
++  static $columns = [
++    'active',
++    'canMutate',
++    'createdAt',
++    'email',
++    'fullName',
++    'id',
++    'masqueradeOperator',
++    'password',
++    'securityStamp',
++    'updatedAt',
++  ] as const
+@@ -12,0 +129,4 @@ export class UserSchema extends BaseModel {
++  @column()
++  declare active: boolean
++  @column()
++  declare canMutate: boolean
+@@ -20,0 +141,2 @@ export class UserSchema extends BaseModel {
++  @column()
++  declare masqueradeOperator: boolean
+@@ -22,0 +145,2 @@ export class UserSchema extends BaseModel {
++  @column()
++  declare securityStamp: string
+diff --git a/inertia/app.ts b/inertia/app.ts
+index 27dcc28..91220f7 100644
+--- a/inertia/app.ts
++++ b/inertia/app.ts
+@@ -7,0 +8 @@ import { resolvePageComponent } from '@adonisjs/inertia/helpers'
++import { installSupportHistoryRecovery } from './support_history'
+@@ -27,0 +29,2 @@ createInertiaApp({
++
++installSupportHistoryRecovery()
+diff --git a/inertia/components/context_form.vue b/inertia/components/context_form.vue
+new file mode 100644
+index 0000000..1db4228
+--- /dev/null
++++ b/inertia/components/context_form.vue
+@@ -0,0 +1,23 @@
++<script setup lang="ts">
++import { Form } from '@adonisjs/inertia/vue'
++import type { routes } from '@generated/registry'
++
++type RouteName = keyof typeof routes
++
++const props = defineProps<{
++  route: RouteName
++  context: string
++  submitLabel: string
++  method?: 'post'
++}>()
++
++// Capture the token at form creation. A later props refresh cannot rebind this intent.
++const originalContext = props.context
++</script>
++
++<template>
++  <Form v-slot="{ processing }" :route="route" :method="method ?? 'post'">
++    <input type="hidden" name="_masqueradeContext" :value="originalContext" />
++    <slot :processing="processing" />
++  </Form>
++</template>
+diff --git a/inertia/components/support_banner.vue b/inertia/components/support_banner.vue
+new file mode 100644
+index 0000000..6ee090b
+--- /dev/null
++++ b/inertia/components/support_banner.vue
+@@ -0,0 +1,23 @@
++<script setup lang="ts">
++defineProps<{
++  actor: { fullName: string; email: string }
++  customer: { fullName: string; email: string }
++  expiresAt: string
++}>()
++</script>
++
++<template>
++  <aside class="support-banner" role="status" aria-live="polite">
++    <strong>Support mode is active</strong>
++    <span
++      >Operator {{ actor.fullName }} ({{ actor.email }}) is viewing {{ customer.fullName }} ({{
++        customer.email
++      }}).</span
++    >
++    <span
++      >Scope: this account across all devices. Ends
++      <time :datetime="expiresAt">{{ new Date(expiresAt).toLocaleString() }}</time
++      >.</span
++    >
++  </aside>
++</template>
+diff --git a/inertia/css/app.css b/inertia/css/app.css
+index 91d30de..5a37824 100644
+--- a/inertia/css/app.css
++++ b/inertia/css/app.css
+@@ -908,0 +909,89 @@ input {
++
++.support-page {
++  width: min(100% - 32px, 760px);
++  margin: 32px auto;
++  display: grid;
++  gap: 18px;
++}
++.page-header {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  flex-wrap: wrap;
++  gap: 12px;
++}
++.eyebrow {
++  color: var(--muted);
++  font-size: 12px;
++  letter-spacing: 0.08em;
++  text-transform: uppercase;
++}
++.panel,
++.support-banner {
++  min-width: 0;
++  padding: 20px;
++  border: 1px solid var(--line-2);
++  border-radius: var(--r-lg);
++  background: var(--card);
++  display: grid;
++  gap: 12px;
++  overflow-wrap: anywhere;
++}
++.support-banner {
++  border-color: #e8b94d;
++  background: #fff8df;
++  color: #302608;
++}
++.support-page form {
++  display: grid;
++  gap: 10px;
++  min-width: 0;
++}
++.support-page input,
++.support-page select,
++.support-page textarea {
++  width: 100%;
++  min-width: 0;
++  min-height: 42px;
++  padding: 9px 11px;
++  border: 1px solid var(--line-2);
++  border-radius: var(--r);
++  background: var(--field);
++  color: var(--ink);
++  font: inherit;
++}
++.support-page textarea {
++  min-height: 88px;
++  resize: vertical;
++}
++.support-page button {
++  width: fit-content;
++  max-width: 100%;
++  padding: 9px 14px;
++  border-radius: var(--r);
++  background: var(--btn);
++  color: var(--btn-fg);
++  overflow-wrap: anywhere;
++}
++.support-page button:disabled {
++  opacity: 0.55;
++  cursor: wait;
++}
++.support-page :focus-visible {
++  outline: 3px solid #346fe3;
++  outline-offset: 2px;
++}
++.support-page a {
++  text-decoration: underline;
++  text-underline-offset: 2px;
++}
++@media (max-width: 400px) {
++  .support-page {
++    width: calc(100% - 24px);
++    margin: 16px auto;
++  }
++  .panel,
++  .support-banner {
++    padding: 16px;
++  }
++}
+diff --git a/inertia/pages/home.vue b/inertia/pages/home.vue
+index 2373921..27e2d4c 100644
+--- a/inertia/pages/home.vue
++++ b/inertia/pages/home.vue
+@@ -2 +1,0 @@
+-import { ArrowUpRight } from 'lucide-vue-next'
+@@ -16 +15 @@ import MarketingLayout from '~/layouts/marketing.vue'
+-        <div class="pc-lead">Welcome to the power of a full-stack Vue app.</div>
++        <div class="pc-lead">A safe support workflow, from operator to customer and back.</div>
+@@ -19,2 +18,2 @@ import MarketingLayout from '~/layouts/marketing.vue'
+-          Powered by Inertia and Vue, this setup blends server-driven routing with rich client-side
+-          interactivity that feels seamless, fast, and cohesive.
++          This runnable AdonisJS 7 example keeps the operator in the native session while the
++          effective guard reads a fictional customer's data under the customer's permissions.
+@@ -24 +23,2 @@ import MarketingLayout from '~/layouts/marketing.vue'
+-          This page is simply proof the engine started. Everything from here is yours to build.
++          Sign in with the local demo operator to choose a customer, change a reversible preference,
++          and stop support mode.
+@@ -29,21 +29,3 @@ import MarketingLayout from '~/layouts/marketing.vue'
+-            <a class="lrow" href="https://docs.adonisjs.com" target="_blank" rel="noreferrer">
+-              <span class="lrow__bullet" />
+-              <span class="lrow__title">Documentation</span>
+-              <span class="lrow__desc">Guides & API reference</span>
+-              <span class="lrow__arrow"><ArrowUpRight :size="16" /></span>
+-            </a>
+-          </li>
+-          <li>
+-            <a class="lrow" href="https://plus.adonisjs.com" target="_blank" rel="noreferrer">
+-              <span class="lrow__bullet" />
+-              <span class="lrow__title">AdonisJS Plus</span>
+-              <span class="lrow__desc">Feature packs and Flow AI</span>
+-              <span class="lrow__arrow"><ArrowUpRight :size="16" /></span>
+-            </a>
+-          </li>
+-          <li>
+-            <a
+-              class="lrow"
+-              href="https://discord.com/invite/vDcEjq6"
+-              target="_blank"
+-              rel="noreferrer"
++            <a class="lrow" href="/login"
++              ><span class="lrow__bullet" /><span class="lrow__title">Sign in</span
++              ><span class="lrow__desc">Open the demo support workspace</span></a
+@@ -51,5 +32,0 @@ import MarketingLayout from '~/layouts/marketing.vue'
+-              <span class="lrow__bullet" />
+-              <span class="lrow__title">Discord</span>
+-              <span class="lrow__desc">Meet fellow AdonisJS developers</span>
+-              <span class="lrow__arrow"><ArrowUpRight :size="16" /></span>
+-            </a>
+diff --git a/inertia/pages/support/customer.vue b/inertia/pages/support/customer.vue
+new file mode 100644
+index 0000000..ce6cd5e
+--- /dev/null
++++ b/inertia/pages/support/customer.vue
+@@ -0,0 +1,73 @@
++<script setup lang="ts">
++import { Head } from '@inertiajs/vue3'
++import { Link } from '@adonisjs/inertia/vue'
++import ContextForm from '~/components/context_form.vue'
++import SupportBanner from '~/components/support_banner.vue'
++import { useIdentityFreshness } from './use_identity_freshness'
++
++const props = defineProps<{
++  actor: { id: number; fullName: string; email: string }
++  customer: { id: number; fullName: string; email: string }
++  mode: { isMasquerading: true; contextToken: string; targetId: string; expiresAt: string }
++  emailUpdates: boolean
++  canEdit: boolean
++}>()
++const { ready } = useIdentityFreshness(props.mode, props.mode.expiresAt)
++</script>
++
++<template>
++  <Head title="Customer details" />
++  <main v-if="ready" class="support-page" data-identity="current">
++    <h1>Customer details</h1>
++    <SupportBanner :actor="actor" :customer="customer" :expires-at="mode.expiresAt" />
++    <section class="panel">
++      <h2>{{ customer.fullName }}</h2>
++      <p>Email: {{ customer.email }}</p>
++      <p>
++        Account-wide support access is active until
++        <time :datetime="mode.expiresAt">{{ new Date(mode.expiresAt).toLocaleString() }}</time
++        >.
++      </p>
++      <p>
++        Customer email updates: <strong>{{ emailUpdates ? 'On' : 'Off' }}</strong>
++      </p>
++      <ContextForm
++        v-if="canEdit"
++        route="demo.preference"
++        :context="mode.contextToken"
++        submit-label="Save preference"
++      >
++        <template #default="{ processing }">
++          <label for="email-updates">Email updates</label>
++          <select
++            id="email-updates"
++            name="emailUpdates"
++            :value="emailUpdates ? '1' : '0'"
++            :disabled="processing"
++          >
++            <option value="1">On</option>
++            <option value="0">Off</option>
++          </select>
++          <button type="submit" :disabled="processing">Save preference</button>
++        </template>
++      </ContextForm>
++      <p v-else role="alert">This customer cannot change preferences.</p>
++      <ContextForm
++        route="demo.sensitive"
++        :context="mode.contextToken"
++        submit-label="Try sensitive account action"
++      >
++        <template #default="{ processing }"
++          ><button type="submit" :disabled="processing">
++            Try sensitive account action
++          </button></template
++        >
++      </ContextForm>
++      <Link href="/support">Return to operator workspace</Link>
++    </section>
++  </main>
++  <main v-else class="support-page" data-identity-pending="true" aria-live="polite">
++    <h1>Checking current support access</h1>
++    <p>Customer details stay hidden until the current account mode is confirmed.</p>
++  </main>
++</template>
+diff --git a/inertia/pages/support/recovery.vue b/inertia/pages/support/recovery.vue
+new file mode 100644
+index 0000000..1cc6192
+--- /dev/null
++++ b/inertia/pages/support/recovery.vue
+@@ -0,0 +1,20 @@
++<script setup lang="ts">
++import { Head } from '@inertiajs/vue3'
++import { Link } from '@adonisjs/inertia/vue'
++import { onMounted, ref } from 'vue'
++defineProps<{ message: string }>()
++const heading = ref<HTMLHeadingElement>()
++onMounted(() => heading.value?.focus())
++</script>
++
++<template>
++  <Head title="Support action needs review" />
++  <main class="support-page">
++    <h1 ref="heading" tabindex="-1">Support action needs review</h1>
++    <section class="panel" role="alert">
++      <p>{{ message }}</p>
++      <p>The previous form was not replayed. Check current status before creating a new action.</p>
++      <Link href="/support">Check current status</Link>
++    </section>
++  </main>
++</template>
+diff --git a/inertia/pages/support/use_identity_freshness.ts b/inertia/pages/support/use_identity_freshness.ts
+new file mode 100644
+index 0000000..cf97fc8
+--- /dev/null
++++ b/inertia/pages/support/use_identity_freshness.ts
+@@ -0,0 +1,73 @@
++import { router } from '@inertiajs/vue3'
++import { onBeforeUnmount, onMounted, ref } from 'vue'
++
++type Mode = { isMasquerading: boolean; targetId: string; contextToken: string }
++
++export function useIdentityFreshness(mode: Mode, expiresAt: string) {
++  const ready = ref(false)
++  let generation = 0
++  let controller: AbortController | undefined
++  let timer: ReturnType<typeof setTimeout> | undefined
++  let expired = false
++
++  function expireIfDue() {
++    if (expired || Date.now() < Date.parse(expiresAt)) return expired
++    expired = true
++    generation++
++    controller?.abort()
++    ready.value = false
++    router.visit('/support', { replace: true })
++    return true
++  }
++
++  async function validate() {
++    if (expireIfDue()) return
++    const current = ++generation
++    controller?.abort()
++    controller = new AbortController()
++    ready.value = false
++    try {
++      const response = await fetch('/support/identity', {
++        cache: 'no-store',
++        credentials: 'same-origin',
++        headers: { Accept: 'application/json' },
++        signal: controller.signal,
++      })
++      if (!response.ok) throw new Error('Unable to check the current support identity')
++      const { mode: latest } = (await response.json()) as { mode: Mode }
++      if (current !== generation) return
++      if (expireIfDue()) return
++      if (
++        !latest.isMasquerading ||
++        latest.targetId !== mode.targetId ||
++        latest.contextToken !== mode.contextToken
++      ) {
++        router.visit('/support', { replace: true })
++        return
++      }
++      ready.value = true
++    } catch {
++      if (current === generation) router.visit('/support/recovery', { replace: true })
++    }
++  }
++
++  function onVisibilityChange() {
++    if (document.visibilityState === 'visible') void validate()
++  }
++
++  onMounted(() => {
++    void validate()
++    document.addEventListener('visibilitychange', onVisibilityChange)
++    const remaining = Date.parse(expiresAt) - Date.now()
++    timer = setTimeout(expireIfDue, Math.max(0, remaining))
++  })
++
++  onBeforeUnmount(() => {
++    generation++
++    controller?.abort()
++    if (timer) clearTimeout(timer)
++    document.removeEventListener('visibilitychange', onVisibilityChange)
++  })
++
++  return { ready }
++}
+diff --git a/inertia/pages/support/workspace.vue b/inertia/pages/support/workspace.vue
+new file mode 100644
+index 0000000..c2ede72
+--- /dev/null
++++ b/inertia/pages/support/workspace.vue
+@@ -0,0 +1,95 @@
++<script setup lang="ts">
++import { Head } from '@inertiajs/vue3'
++import { Form } from '@adonisjs/inertia/vue'
++import { Link } from '@adonisjs/inertia/vue'
++import SupportBanner from '~/components/support_banner.vue'
++import ContextForm from '~/components/context_form.vue'
++
++type UserLabel = { id: number; fullName: string; email: string }
++type Mode = { isMasquerading: boolean; contextToken: string; targetId?: string; expiresAt?: string }
++const props = defineProps<{
++  actor: UserLabel
++  operator: boolean
++  mode: Mode
++  customers: UserLabel[]
++  target: UserLabel | null
++  beforeDeadline: boolean
++  targetAvailable: boolean
++}>()
++</script>
++
++<template>
++  <Head title="Support workspace" />
++  <main class="support-page">
++    <header class="page-header">
++      <div>
++        <p class="eyebrow">Account support</p>
++        <h1>Support workspace</h1>
++      </div>
++      <Form route="session.destroy"><button type="submit">Log out</button></Form>
++    </header>
++    <p>
++      Signed in as <strong>{{ actor.fullName }}</strong> ({{ actor.email }}).
++    </p>
++
++    <SupportBanner
++      v-if="mode.isMasquerading && target && beforeDeadline"
++      :actor="actor"
++      :customer="target"
++      :expires-at="mode.expiresAt!"
++    />
++    <section v-if="mode.isMasquerading" class="panel">
++      <h2>Current support session</h2>
++      <p v-if="targetAvailable && target && beforeDeadline">
++        Viewing {{ target.fullName }} ({{ target.email }}).
++      </p>
++      <p v-else role="alert">
++        The customer is no longer available. Customer pages are blocked. You can stop support mode
++        here.
++      </p>
++      <p v-if="mode.expiresAt">
++        Fixed deadline:
++        <time :datetime="mode.expiresAt">{{ new Date(mode.expiresAt).toLocaleString() }}</time>
++      </p>
++      <ContextForm route="demo.stop" :context="mode.contextToken" submit-label="Stop support mode">
++        <template #default="{ processing }"
++          ><button type="submit" :disabled="processing">Stop support mode</button></template
++        >
++      </ContextForm>
++      <Link v-if="targetAvailable && beforeDeadline" href="/support/customer"
++        >Open customer details</Link
++      >
++    </section>
++
++    <section v-else class="panel">
++      <h2>Start support mode</h2>
++      <p v-if="!operator" role="alert">This account cannot start support mode.</p>
++      <ContextForm
++        route="demo.start"
++        :context="mode.contextToken"
++        submit-label="Start support mode"
++      >
++        <template #default="{ processing }">
++          <label for="customer">Customer</label>
++          <select id="customer" name="targetId" required :disabled="!operator || processing">
++            <option value="" disabled selected>Choose an eligible customer</option>
++            <option v-for="customer in customers" :key="customer.id" :value="customer.id">
++              {{ customer.fullName }} — {{ customer.email }}
++            </option>
++          </select>
++          <label for="reason">Reason for support</label>
++          <textarea
++            id="reason"
++            name="reason"
++            required
++            minlength="1"
++            maxlength="500"
++            :disabled="!operator || processing"
++          />
++          <button type="submit" :disabled="!operator || processing">Start support mode</button>
++        </template>
++      </ContextForm>
++    </section>
++    <p><Link href="/">Home</Link></p>
++  </main>
++</template>
+diff --git a/inertia/support_history.ts b/inertia/support_history.ts
+new file mode 100644
+index 0000000..efb0773
+--- /dev/null
++++ b/inertia/support_history.ts
+@@ -0,0 +1,38 @@
++import { router } from '@inertiajs/vue3'
++
++const visitedKey = 'support-page-visited'
++
++/** Keep encrypted support pages from resurfacing through restored browser history. */
++export function installSupportHistoryRecovery() {
++  if (typeof window === 'undefined') return
++  let redirecting = false
++  router.on('navigate', (event) => {
++    if (event.detail.page.url.startsWith('/support/customer')) {
++      sessionStorage.setItem(visitedKey, 'true')
++    }
++  })
++  window.addEventListener('popstate', () => {
++    if (
++      !sessionStorage.getItem(visitedKey) ||
++      window.location.pathname === '/support' ||
++      redirecting
++    )
++      return
++    redirecting = true
++    router.visit('/support', {
++      replace: true,
++      onFinish: () => {
++        redirecting = false
++      },
++    })
++  })
++  window.addEventListener('pageshow', (event) => {
++    if (
++      event.persisted &&
++      sessionStorage.getItem(visitedKey) &&
++      window.location.pathname !== '/support'
++    ) {
++      router.visit('/support', { replace: true })
++    }
++  })
++}
+diff --git a/inertia/types.ts b/inertia/types.ts
+index 3262974..afc099a 100644
+--- a/inertia/types.ts
++++ b/inertia/types.ts
+@@ -2,0 +3,27 @@ import type { Data } from '@generated/data'
++type PublicUser = { id: number; fullName: string; email: string }
++type PublicMode =
++  | { isMasquerading: false; contextToken: string }
++  | { isMasquerading: true; contextToken: string; targetId: string; expiresAt: string }
++
++declare module '@adonisjs/inertia/types' {
++  interface InertiaPages {
++    'support/workspace': {
++      actor: PublicUser
++      operator: boolean
++      mode: PublicMode
++      customers: PublicUser[]
++      target: PublicUser | null
++      beforeDeadline: boolean
++      targetAvailable: boolean
++    }
++    'support/customer': {
++      actor: PublicUser
++      customer: PublicUser
++      mode: Extract<PublicMode, { isMasquerading: true }>
++      emailUpdates: boolean
++      canEdit: boolean
++    }
++    'support/recovery': { message: string }
++  }
++}
++
+diff --git a/start/demo_routes.ts b/start/demo_routes.ts
+new file mode 100644
+index 0000000..beec953
+--- /dev/null
++++ b/start/demo_routes.ts
+@@ -0,0 +1,49 @@
++import { allowMutation, sensitive } from 'adonisjs-masquerade/http'
++import { middleware } from '#start/kernel'
++import router from '@adonisjs/core/services/router'
++import { startMasqueradeLimiter, stopMasqueradeLimiter } from '#start/masquerade_control_limiter'
++
++router
++  .group(() => {
++    router
++      .get('/', [() => import('#controllers/demo_controller'), 'workspace'])
++      .as('demo.workspace')
++    router
++      .get('/identity', [() => import('#controllers/demo_controller'), 'identity'])
++      .as('demo.identity')
++    router
++      .post('/start', [() => import('#controllers/demo_controller'), 'start'])
++      .as('demo.start')
++      .use(startMasqueradeLimiter)
++    router
++      .post('/stop', [() => import('#controllers/demo_controller'), 'stop'])
++      .as('demo.stop')
++      .use(stopMasqueradeLimiter)
++  })
++  .prefix('/support')
++  .use(middleware.auth({ guards: ['web'] }))
++
++router
++  .get('/support/recovery', [() => import('#controllers/demo_controller'), 'recovery'])
++  .as('demo.recovery')
++  .use(middleware.auth({ guards: ['web'] }))
++
++router
++  .get('/support/customer', [() => import('#controllers/demo_controller'), 'customer'])
++  .as('demo.customer')
++  .use(middleware.auth({ guards: ['web_effective'] }))
++
++router
++  .post('/support/customer/preference', [
++    () => import('#controllers/demo_controller'),
++    'preference',
++  ])
++  .as('demo.preference')
++  .use(allowMutation())
++  .use(middleware.auth({ guards: ['web_effective'] }))
++
++router
++  .post('/support/customer/sensitive', [() => import('#controllers/demo_controller'), 'sensitive'])
++  .as('demo.sensitive')
++  .use(sensitive())
++  .use(middleware.auth({ guards: ['web_effective'] }))
+diff --git a/start/kernel.ts b/start/kernel.ts
+index d07fa88..5fca6f0 100644
+--- a/start/kernel.ts
++++ b/start/kernel.ts
+@@ -28,0 +29 @@ router.use([
++  () => import('#middleware/masquerade_context_middleware'),
+diff --git a/start/masquerade_control_limiter.ts b/start/masquerade_control_limiter.ts
+new file mode 100644
+index 0000000..8788c0f
+--- /dev/null
++++ b/start/masquerade_control_limiter.ts
+@@ -0,0 +1,19 @@
++import limiter from '@adonisjs/limiter/services/main'
++import type { HttpLimiter } from '@adonisjs/limiter'
++import type User from '#models/user'
++
++export const startMasqueradeLimiter = limiter.define('masquerade_start', (ctx) => {
++  const actor = ctx.auth.use('web').getUserOrFail() as User
++  return limiter
++    .allowRequests(10)
++    .every('1 minute')
++    .usingKey(String(actor.id)) as unknown as HttpLimiter<any>
++})
++
++export const stopMasqueradeLimiter = limiter.define('masquerade_stop', (ctx) => {
++  const actor = ctx.auth.use('web').getUserOrFail() as User
++  return limiter
++    .allowRequests(10)
++    .every('1 minute')
++    .usingKey(String(actor.id)) as unknown as HttpLimiter<any>
++})
+diff --git a/start/masquerade_control_routes.ts b/start/masquerade_control_routes.ts
+new file mode 100644
+index 0000000..3e1021e
+--- /dev/null
++++ b/start/masquerade_control_routes.ts
+@@ -0,0 +1,20 @@
++import { middleware } from '#start/kernel'
++import router from '@adonisjs/core/services/router'
++import { startMasqueradeLimiter, stopMasqueradeLimiter } from '#start/masquerade_control_limiter'
++
++router
++  .group(() => {
++    router
++      .get('/', [() => import('#controllers/masquerade_controller'), 'status'])
++      .as('masquerade.status')
++    router
++      .post('/start', [() => import('#controllers/masquerade_controller'), 'start'])
++      .as('masquerade.start')
++      .use(startMasqueradeLimiter)
++    router
++      .post('/stop', [() => import('#controllers/masquerade_controller'), 'stop'])
++      .as('masquerade.stop')
++      .use(stopMasqueradeLimiter)
++  })
++  .prefix('/masquerade')
++  .use(middleware.auth({ guards: ['web'] }))
+diff --git a/start/routes.ts b/start/routes.ts
+index 2df89d7..3573ff3 100644
+--- a/start/routes.ts
++++ b/start/routes.ts
+@@ -12,0 +13,2 @@ import router from '@adonisjs/core/services/router'
++import './masquerade_control_routes.js'
++import './demo_routes.js'
+@@ -31 +33 @@ router
+-  .use(middleware.auth())
++  .use(middleware.auth({ guards: ['web'] }))

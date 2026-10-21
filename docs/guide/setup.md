@@ -163,7 +163,8 @@ const nativeAdapter = sessionAuthority<User>({
   provider: userProvider,
   incarnation: (user) => user.accountIncarnation,
   securityStamp: (user) => user.securityEpoch,
-  isActive: (user) => user.active,
+  // Normalize database boolean representations to the strict boolean expected by the package.
+  isActive: (user) => Boolean(user.active),
 })
 
 // The generated native binding provider imports this named export at application boot.
@@ -176,14 +177,19 @@ export default defineConfig<User, HttpContext>({
       actor.user.masqueradeOperator && target.user.active && actor.id !== target.id,
     // Add canUseRequest only when the application needs a request-local rule.
   },
-  // Keep the generated store, contextEnforcement, and retention settings,
-  // or change them deliberately for this host.
+  // Keep the generated store and retention settings. Enforce only after every
+  // unsafe business form and client sends its captured context token.
+  contextEnforcement: 'enforce',
 })
 ```
 
-This is a configuration fragment; retain the generated imports and other options such as `store`,
-`contextEnforcement`, and `retention`. Replace the sample model fields and policy with your own. If
-you choose a store other than the generated Lucid store, see [custom stores](custom-stores.md).
+This is a configuration fragment; retain the generated imports, store, and retention settings. Set
+`contextEnforcement` to `enforce` when business forms carry a captured context token: the generated
+`report` setting logs stale tokens but allows the request to continue. Enforcement rejects every
+covered unsafe business request without the token with 428, including when no one is
+impersonating. An application with existing unsafe forms or clients on effective-guard routes keeps
+the generated `report` until each one sends the token, as described in
+[context tokens and browser clients](security.md#context-tokens-and-browser-clients). Replace the sample model fields and policy with your own. If you choose a store other than the generated Lucid store, see [custom stores](custom-stores.md).
 `incarnation` must be stable for one account's lifetime and different if a deleted ID can be
 reused. Use `incarnation: 'id'` only if the host guarantees account IDs are never reused. The
 incarnation must not change during ordinary security updates.
@@ -257,7 +263,8 @@ migration process, for example `node ace migration:run`. Follow [pruning and ret
 operations](operations.md) for scheduling and retention; this setup guide does not duplicate that
 operational recipe.
 
-After wiring is complete, run the application checks and test with separate actor sessions. Begin
-with `contextEnforcement: 'report'` while covered forms and clients are being updated to send the
-current context token; switch to `'enforce'` after that migration is complete. See [security](security.md)
-for token handling and the actor/effective identity boundary.
+After wiring is complete, run the application checks and test with separate actor sessions. Use
+`contextEnforcement: 'enforce'` once business forms and clients send their captured context token;
+in `report`, stale mutations are logged and allowed through. A temporary `report` phase is only for
+updating existing forms and clients and must end with enforcement enabled after their warnings stop. See [security](security.md) for token
+handling and the actor/effective identity boundary.
