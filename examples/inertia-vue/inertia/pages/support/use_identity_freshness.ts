@@ -8,8 +8,20 @@ export function useIdentityFreshness(mode: Mode, expiresAt: string) {
   let generation = 0
   let controller: AbortController | undefined
   let timer: ReturnType<typeof setTimeout> | undefined
+  let expired = false
+
+  function expireIfDue() {
+    if (expired || Date.now() < Date.parse(expiresAt)) return expired
+    expired = true
+    generation++
+    controller?.abort()
+    ready.value = false
+    router.visit('/support', { replace: true })
+    return true
+  }
 
   async function validate() {
+    if (expireIfDue()) return
     const current = ++generation
     controller?.abort()
     controller = new AbortController()
@@ -24,6 +36,7 @@ export function useIdentityFreshness(mode: Mode, expiresAt: string) {
       if (!response.ok) throw new Error('Unable to check the current support identity')
       const { mode: latest } = (await response.json()) as { mode: Mode }
       if (current !== generation) return
+      if (expireIfDue()) return
       if (
         !latest.isMasquerading ||
         latest.targetId !== mode.targetId ||
@@ -46,13 +59,7 @@ export function useIdentityFreshness(mode: Mode, expiresAt: string) {
     void validate()
     document.addEventListener('visibilitychange', onVisibilityChange)
     const remaining = Date.parse(expiresAt) - Date.now()
-    timer = setTimeout(
-      () => {
-        ready.value = false
-        router.visit('/support', { replace: true })
-      },
-      Math.max(0, remaining)
-    )
+    timer = setTimeout(expireIfDue, Math.max(0, remaining))
   })
 
   onBeforeUnmount(() => {

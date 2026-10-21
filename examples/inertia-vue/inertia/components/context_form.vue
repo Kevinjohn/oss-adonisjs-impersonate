@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { Form } from '@adonisjs/inertia/vue'
+import type { routes } from '@generated/registry'
+
+type RouteName = keyof typeof routes
 
 const props = defineProps<{
-  action: string
+  route: RouteName
   context: string
   submitLabel: string
   method?: 'post'
@@ -13,7 +16,7 @@ const originalContext = props.context
 </script>
 
 <template>
-  <Form v-slot="{ processing }" :action="action" :method="method ?? 'post'">
+  <Form v-slot="{ processing }" :route="route" :method="method ?? 'post'">
     <input type="hidden" name="_masqueradeContext" :value="originalContext" />
     <slot :processing="processing" />
   </Form>

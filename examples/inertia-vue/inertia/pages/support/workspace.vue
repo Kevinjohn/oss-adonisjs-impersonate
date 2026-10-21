@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3'
-import { Form, Link } from '@adonisjs/inertia/vue'
+import { Form } from '@adonisjs/inertia/vue'
+import { Link } from '@adonisjs/inertia/vue'
 import SupportBanner from '~/components/support_banner.vue'
 import ContextForm from '~/components/context_form.vue'
 
@@ -25,7 +26,7 @@ const props = defineProps<{
         <p class="eyebrow">Account support</p>
         <h1>Support workspace</h1>
       </div>
-      <Form action="/logout" method="post"><button type="submit">Log out</button></Form>
+      <Form route="session.destroy"><button type="submit">Log out</button></Form>
     </header>
     <p>
       Signed in as <strong>{{ actor.fullName }}</strong> ({{ actor.email }}).
@@ -50,11 +51,7 @@ const props = defineProps<{
         Fixed deadline:
         <time :datetime="mode.expiresAt">{{ new Date(mode.expiresAt).toLocaleString() }}</time>
       </p>
-      <ContextForm
-        action="/support/stop"
-        :context="mode.contextToken"
-        submit-label="Stop support mode"
-      >
+      <ContextForm route="demo.stop" :context="mode.contextToken" submit-label="Stop support mode">
         <template #default="{ processing }"
           ><button type="submit" :disabled="processing">Stop support mode</button></template
         >
@@ -68,7 +65,7 @@ const props = defineProps<{
       <h2>Start support mode</h2>
       <p v-if="!operator" role="alert">This account cannot start support mode.</p>
       <ContextForm
-        action="/support/start"
+        route="demo.start"
         :context="mode.contextToken"
         submit-label="Start support mode"
       >

@@ -6,6 +6,8 @@ For a fresh host application, use the official [AdonisJS installation guide](htt
 
 ## Keep one native session guard
 
+The official Vue starter does not include AdonisJS Bouncer or the rate limiter used by the runnable example's authorization checks and support controls. If you copy its `DemoController` and route setup, install the packages with `pnpm add @adonisjs/bouncer @adonisjs/limiter`, register `() => import('@adonisjs/limiter/limiter_provider')` in `adonisrc.ts`, and add a host `config/limiter.ts` with an appropriate store. See the official [rate-limiting guide](https://docs.adonisjs.com/guides/security/rate-limiting) for store setup. Bouncer is instantiated directly by the example, so no Bouncer request middleware is needed for that pattern; applications using `ctx.bouncer` should follow the official [authorization setup](https://docs.adonisjs.com/guides/auth/authorization). You can use another host authorization and rate-limiting implementation, but keep the same account checks and protect start and stop controls from abuse.
+
 The application owns its session guard and user provider. Create the raw guard once, use that same guard factory for the ordinary and effective guards, and give the effective guard a distinct name:
 
 ```ts
@@ -26,7 +28,7 @@ import { effectiveSessionGuard } from 'adonisjs-masquerade/auth'
 import { webGuard } from '#services/web_guard'
 
 export default defineConfig({
-  default: 'web',
+  default: 'web_effective',
   guards: {
     web: webGuard,
     web_effective: effectiveSessionGuard(webGuard),
@@ -34,7 +36,9 @@ export default defineConfig({
 })
 ```
 
-Keep the normal application auth provider, models, migrations, login, and logout. Set the default guard to the raw guard when global silent-auth middleware runs, so it does not admit customer mode on control or public routes. Explicitly choose `web_effective` on customer business routes.
+Keep the normal application auth provider, models, migrations, login, and logout. Keep the effective guard as the default for business surfaces, and make silent authentication explicitly check the raw `web` guard so public and support-control routes remain tied to the operator session. Choose `web` explicitly on support controls and `web_effective` on customer business routes.
+
+If the host uses `withAuthFinder` in its Lucid user model, pass a lazy hash resolver such as `withAuthFinder(() => hash.use())`. This defers service lookup until the provider has booted, including when Ace commands import the model before application startup.
 
 ## Configure host-owned account policy
 
@@ -53,7 +57,8 @@ const native = sessionAuthority({
 export default defineConfig({
   authority: native.authority,
   policy: {
-    canMasquerade: ({ actor, target }) => Boolean(actor.user.isSupportOperator) && Boolean(target.user.active),
+    canMasquerade: ({ actor, target }) =>
+      Boolean(actor.user.isSupportOperator) && Boolean(target.user.active),
     canUseRequest: ({ actor, target }) => Boolean(actor.user.active) && Boolean(target.user.active),
   },
   store: async () => new LucidControlStore((await app.container.make(Database)).connection()),
@@ -67,20 +72,25 @@ Register the app's native adapter provider and the package provider. Add the pac
 Register `masqueradeContext` after body parsing, session, Shield, and auth initialization. The package's native routes and host support controls use the raw `web` guard. Customer reads and explicit reversible mutations use `web_effective`; mark allowed mutations with `allowMutation()` and sensitive actions with `sensitive()`:
 
 ```ts
-router.group(() => {
-  router.get('/support', [DemoController, 'workspace'])
-  router.post('/support/start', [DemoController, 'start'])
-  router.post('/support/stop', [DemoController, 'stop'])
-}).use(middleware.auth({ guards: ['web'] }))
+router
+  .group(() => {
+    router.get('/support', [DemoController, 'workspace'])
+    router.post('/support/start', [DemoController, 'start'])
+    router.post('/support/stop', [DemoController, 'stop'])
+  })
+  .use(middleware.auth({ guards: ['web'] }))
 
-router.get('/support/customer', [DemoController, 'customer'])
+router
+  .get('/support/customer', [DemoController, 'customer'])
   .use(middleware.auth({ guards: ['web_effective'] }))
 
-router.post('/support/customer/preference', [DemoController, 'preference'])
+router
+  .post('/support/customer/preference', [DemoController, 'preference'])
   .use(allowMutation())
   .use(middleware.auth({ guards: ['web_effective'] }))
 
-router.post('/support/customer/close-account', [DemoController, 'closeAccount'])
+router
+  .post('/support/customer/close-account', [DemoController, 'closeAccount'])
   .use(sensitive())
   .use(middleware.auth({ guards: ['web_effective'] }))
 ```
@@ -100,7 +110,7 @@ const originalContext = props.context
 </script>
 
 <template>
-  <Form action="/support/start" method="post">
+  <Form route="support.start">
     <input type="hidden" name="_masqueradeContext" :value="originalContext" />
     <!-- customer and reason inputs -->
     <button type="submit">Start support mode</button>

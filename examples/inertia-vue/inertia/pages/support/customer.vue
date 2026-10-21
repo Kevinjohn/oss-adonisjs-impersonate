@@ -33,7 +33,7 @@ const { ready } = useIdentityFreshness(props.mode, props.mode.expiresAt)
       </p>
       <ContextForm
         v-if="canEdit"
-        action="/support/customer/preference"
+        route="demo.preference"
         :context="mode.contextToken"
         submit-label="Save preference"
       >
@@ -53,7 +53,7 @@ const { ready } = useIdentityFreshness(props.mode, props.mode.expiresAt)
       </ContextForm>
       <p v-else role="alert">This customer cannot change preferences.</p>
       <ContextForm
-        action="/support/customer/sensitive"
+        route="demo.sensitive"
         :context="mode.contextToken"
         submit-label="Try sensitive account action"
       >

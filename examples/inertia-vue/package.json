@@ -9,14 +9,14 @@
   },
   "scripts": {
     "start": "node bin/server.js",
-    "build": "node ace build",
+    "build": "node ace codegen && node ace build",
     "dev": "node ace serve --hmr",
     "test": "node ace test",
     "test:functional": "node ace test functional",
     "test:browser": "NODE_ENV=test node ace test browser",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "typecheck": "tsc --noEmit && vue-tsc --noEmit --project inertia/tsconfig.json"
+    "typecheck": "node ace codegen && tsc --noEmit && vue-tsc --noEmit --project inertia/tsconfig.json"
   },
   "imports": {
     "#controllers/*": "./app/controllers/*.js",
