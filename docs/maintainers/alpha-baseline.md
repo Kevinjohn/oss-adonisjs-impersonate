@@ -14,7 +14,7 @@ evidence from external users.
 - No alpha tag or GitHub Release has been created. The fresh-host walkthrough passed after
   applying the setup-guide correction from issue #72, which is not yet on `main`. Keep this
   candidate local; after that correction reaches `main`, select and revalidate the main baseline
-  before the owner decides whether to create a tag.
+  before creating and pushing the annotated alpha tag.
 
 The packed archive contains the declared runtime exports, JavaScript, declarations, configure
 templates and public guides. It excludes tests, maintainer records, private design documents and
@@ -58,5 +58,5 @@ passes that journey.
 
 The candidate covers the native session integration only. The tarball is for local self-testing;
 there is no registry package, GitHub Release, release asset or production-readiness claim. Do not
-create its tag until the setup-guide correction is integrated, the main baseline is selected and
-revalidated, and the owner decides to proceed.
+create its tag until the setup-guide correction is integrated and the main baseline is selected and
+revalidated.
