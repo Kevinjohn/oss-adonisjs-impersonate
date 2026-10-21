@@ -9,7 +9,7 @@ This walkthrough follows the working [fictional native-session demo](https://git
 
 ## Try the support journey
 
-Start the demo using its [local setup instructions](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/README.md#run-the-local-demo), then sign in as the seeded operator and open the support workspace. In this example, Customer One asks for help understanding email-update preferences.
+Start the demo using its [local setup instructions](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/README.md), then sign in as the seeded operator and open the support workspace. In this example, Customer One asks for help understanding email-update preferences.
 
 ![The signed-in operator's support workspace with a customer chooser and reason field.](../assets/walkthrough/support_workspace.png)
 
