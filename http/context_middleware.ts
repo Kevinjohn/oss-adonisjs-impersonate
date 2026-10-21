@@ -11,7 +11,13 @@ export async function masqueradeContext(
   next: () => Promise<unknown>
 ): Promise<void> {
   const guards = routeGuards(ctx.route, String(ctx.auth.defaultGuard))
-  if (guards.length === 0) {
+  const hasAuth =
+    ctx.route &&
+    [...ctx.route.middleware.all()].some(
+      (entry) =>
+        typeof entry === 'object' && entry !== null && 'name' in entry && entry.name === 'auth'
+    )
+  if (guards.length === 0 && !hasAuth) {
     await next()
     return
   }
@@ -20,13 +26,20 @@ export async function masqueradeContext(
   // every potentially business-authenticated response is non-cacheable.
   setNoStore(ctx)
   const runtime = await runtimeFor(ctx)
-  if (!isBusinessRoute(ctx, runtime.effectiveGuardName, runtime.effectiveGuardNames)) {
+  const selected = runtime.selectGuard
+    ? runtime.selectGuard(ctx)
+    : {
+        kind: isBusinessRoute(ctx, runtime.effectiveGuardName, runtime.effectiveGuardNames)
+          ? 'effective'
+          : 'raw',
+      }
+  if (selected.kind !== 'effective') {
     await next()
     return
   }
   // A fallback raw/token guard could bypass admission or replace the effective facade user.
   // Session-only business routes must select effective guards exclusively.
-  if (guards.some((guard) => !runtime.effectiveGuardNames.includes(guard)))
+  if (!runtime.selectGuard && guards.some((guard) => !runtime.effectiveGuardNames.includes(guard)))
     throw new MasqueradeError('E_MASQUERADE_UNAVAILABLE')
   const admitted = await runtime.admit(ctx).catch((error: unknown) => {
     // Named auth owns native login redirects and unauthorized rendering. Its check will

@@ -10,10 +10,10 @@ without signing in as that customer. The operator stays authenticated as the act
 business routes resolve the customer as the effective identity for ordinary Auth and Bouncer
 checks.
 
-**v1 supports the AdonisJS native session guard only.** One server-side mode is shared across all
-valid integrated sessions for the operator account, has a fixed duration, and can be explicitly
-stopped. The package does not create customer credentials or combine actor and customer
-permissions.
+**V1.1 adds AdonisJS opaque access-token transport alongside native sessions.** Both transports
+share one server-side mode for the same operator account, with a fixed duration and explicit stop.
+An access token needs the configured `masquerade` ability to use integrated routes. The package
+does not create customer credentials or combine actor and customer permissions.
 
 **Status: early alpha for local self-testing.** Version `0.0.0` is not published, and there is no
 registry package for this baseline. Select and rebuild a tagged baseline as described in the
@@ -59,8 +59,8 @@ customer, the fixed deadline, and the stop control.
 - [Pruning and retention](docs/guide/operations.md) and [route coverage review](docs/guide/route-report.md):
   operate bounded cleanup and review the host's effective-route coverage.
 
-Access-token transport is planned for v1.1; the Account Kit adapter is v1.2; JWT support is out of
-scope.
+The [access-token guide](docs/guide/access-tokens.md) covers token-only or mixed session/token
+configuration. Account Kit integration remains v1.2; JWT support is out of scope.
 
 Start with Node.js 24 and pnpm. The setup guide creates files for you to review; you keep control of
 authorization, language, route policy, retention, and user-facing UI. Masquerade does not sign in as

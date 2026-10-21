@@ -204,3 +204,35 @@ test('effective wrapper rejects non-session native drivers', ({ assert }) => {
     'Masquerade requires a native session guard'
   )
 })
+
+test('default silent auth uses an unrelated registered raw guard without mode admission', async ({
+  assert,
+}) => {
+  const member = { id: 'member' }
+  let admissions = 0
+  const names: string[] = []
+  const raw = { driverName: 'session', authenticate: async () => member } as GuardContract<
+    typeof member
+  >
+  const ctx = {
+    auth: {
+      use: (name: string) => {
+        names.push(name)
+        return raw
+      },
+    },
+    containerResolver: {
+      make: async () => ({
+        selectGuard: () => ({ kind: 'raw', raw: 'members' }),
+        admit: async () => {
+          admissions++
+          throw new Error('store reached')
+        },
+      }),
+    },
+  } as unknown as HttpContext
+  const effective = new EffectiveSessionGuard('web_effective', 'web', ctx, raw)
+  assert.strictEqual(await effective.authenticate(), member)
+  assert.deepEqual(names, ['members'])
+  assert.equal(admissions, 0)
+})

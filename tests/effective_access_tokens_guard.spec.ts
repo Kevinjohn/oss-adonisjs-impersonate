@@ -1,0 +1,87 @@
+import { test } from '@japa/runner'
+import { symbols } from '@adonisjs/auth'
+import { tokensGuard } from '@adonisjs/auth/access_tokens'
+import type { AccessTokensUserProviderContract } from '@adonisjs/auth/types/access_tokens'
+import type { GuardContract } from '@adonisjs/auth/types'
+import type { HttpContext } from '@adonisjs/core/http'
+import { EffectiveAccessTokensGuard } from '../auth/effective_access_tokens_guard.js'
+import { effectiveAccessTokensGuard } from '../auth/main.js'
+
+test('effective token factory preserves nominal users without inferring actor token metadata', ({
+  assert,
+}) => {
+  class User {
+    #id = 'target'
+    get id() {
+      return this.#id
+    }
+  }
+  // This configuration is inspected only by the type checker; no provider method is invoked.
+  const configured = effectiveAccessTokensGuard(
+    tokensGuard({ provider: {} as AccessTokensUserProviderContract<User> }),
+    { guard: 'api' }
+  )
+  type Factory = Awaited<ReturnType<typeof configured.resolver>>
+  type EffectiveUser = Awaited<ReturnType<ReturnType<Factory>['authenticate']>>
+  function acceptsEffectiveUser(user: EffectiveUser): User {
+    // @ts-expect-error The effective user does not acquire the raw actor's currentAccessToken.
+    void user.currentAccessToken
+    return user
+  }
+  assert.equal(acceptsEffectiveUser(new User()).id, 'target')
+})
+
+test('default effective token facade uses selected token actor and target, never cookie actor', async ({
+  assert,
+}) => {
+  const cookie = { id: 'cookie' }
+  const token = { id: 'token', currentAccessToken: { id: 1 } }
+  const target = { id: 'target' }
+  const raw = {
+    [symbols.GUARD_KNOWN_EVENTS]: undefined,
+    driverName: 'access_tokens',
+    authenticate: async () => token,
+    authenticateAsClient: async () => ({}),
+  } as unknown as GuardContract<typeof token>
+  const names: string[] = []
+  const ctx = {
+    route: { middleware: { all: () => [{ name: 'auth', args: [{ guards: ['api_effective'] }] }] } },
+    auth: {
+      use: (name: string) => {
+        names.push(name)
+        return name === 'web' ? { authenticate: async () => cookie } : raw
+      },
+    },
+    containerResolver: {
+      make: async () => ({
+        selectGuard: () => ({ kind: 'effective', raw: 'api' }),
+        admit: async () => ({ effective: { user: target } }),
+      }),
+    },
+  } as unknown as HttpContext
+  const effective = new EffectiveAccessTokensGuard(ctx, raw)
+  assert.deepEqual(await effective.authenticate(), target)
+  assert.deepEqual(names, [])
+})
+
+test('default silent auth on an explicit raw api route chooses api, not cookie', async ({
+  assert,
+}) => {
+  const token = { id: 'token', currentAccessToken: { id: 1 } }
+  const raw = { driverName: 'access_tokens', authenticate: async () => token } as GuardContract<
+    typeof token
+  >
+  const names: string[] = []
+  const ctx = {
+    auth: {
+      use: (name: string) => {
+        names.push(name)
+        return raw
+      },
+    },
+    containerResolver: { make: async () => ({ selectGuard: () => ({ kind: 'raw', raw: 'api' }) }) },
+  } as unknown as HttpContext
+  const effective = new EffectiveAccessTokensGuard(ctx, raw)
+  assert.deepEqual(await effective.authenticate(), token)
+  assert.deepEqual(names, ['api'])
+})

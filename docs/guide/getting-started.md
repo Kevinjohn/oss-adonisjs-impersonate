@@ -1,13 +1,14 @@
 # Getting started
 
-Masquerade v1 supports AdonisJS 7 applications using the native session guard and Node.js 24 or
-later. It keeps the operator authenticated as the **actor** while the selected account is the
+Masquerade supports AdonisJS 7 applications and Node.js 24 or later. The session setup is covered
+here; v1.1 also supports opaque access tokens through the [access-token guide](access-tokens.md).
+It keeps the operator authenticated as the **actor** while the selected account is the
 **effective identity** for covered business routes. The target does not sign in, receive a
 credential, or inherit the actor's permissions.
 
 The mode is stored once per actor account and authority namespace. Every valid integrated session
-for that account sees the same mode, so logging out one browser does not stop another device from
-using it. A mode has a fixed deadline. Forms and other unsafe requests carry a context token that
+and token with the configured ability sees the same mode, so logging out one browser does not stop
+another authorized credential from using it. A mode has a fixed deadline. Forms and other unsafe requests carry a context token that
 records the mode revision when the user's intent was created. If that token is missing or stale,
 refresh the page and deliberately rebuild the action; never replace the token and replay the old
 intent automatically.

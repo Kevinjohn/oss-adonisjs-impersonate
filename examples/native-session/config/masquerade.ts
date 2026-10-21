@@ -1,26 +1,60 @@
 import { defineConfig } from 'adonisjs-masquerade'
-import { sessionAuthority } from 'adonisjs-masquerade/native'
+import {
+  accessTokensAuthority,
+  nativeAuthorities,
+  sessionAuthority,
+} from 'adonisjs-masquerade/native'
 import { LucidControlStore } from 'adonisjs-masquerade/stores/lucid'
 import app from '@adonisjs/core/services/app'
 import { Database } from '@adonisjs/lucid/database'
 import type User from '#models/user'
-import { userProvider } from '#services/web_guard'
+import { accessTokenUserProvider, userProvider } from '#services/web_guard'
+import { shouldThrowFromAuthorityCallbacks } from '#services/masquerade_test_boundary'
+
+function securityStamp(user: User) {
+  if (shouldThrowFromAuthorityCallbacks()) throw new Error('Test security-stamp callback fault')
+  return user.securityStamp
+}
 
 const native = sessionAuthority({
   namespace: 'native-session-fixture',
   guard: 'web',
   provider: userProvider,
   incarnation: 'id',
-  securityStamp: (user: User) => user.securityStamp,
+  securityStamp,
   isActive: (user: User) => Boolean(user.active),
 })
 
-const config = defineConfig({
+const tokenNative = accessTokensAuthority({
   authority: native.authority,
+  guard: 'api',
+  provider: accessTokenUserProvider,
+  ability: 'masquerade',
+})
+const authorities = nativeAuthorities(native, [tokenNative])
+const tokenOnlyNative = accessTokensAuthority({
+  namespace: 'native-token-only-fixture',
+  guard: 'api',
+  provider: accessTokenUserProvider,
+  ability: 'masquerade',
+  incarnation: 'id',
+  securityStamp,
+  isActive: (user: User) => Boolean(user.active),
+})
+const tokenOnly = process.env.MASQUERADE_TRANSPORT === 'tokens'
+const runtimeAdapter = tokenOnly ? tokenOnlyNative : authorities
+
+const config = defineConfig({
+  authority: runtimeAdapter.authority,
   policy: {
-    canMasquerade: ({ actor, target }) =>
-      Boolean(actor.user.masqueradeOperator) && Boolean(target.user.active),
-    canUseRequest: ({ actor, target }) => Boolean(actor.user.active) && Boolean(target.user.active),
+    canMasquerade: ({ actor, target }) => {
+      if (shouldThrowFromAuthorityCallbacks()) throw new Error('Test policy callback fault')
+      return Boolean(actor.user.masqueradeOperator) && Boolean(target.user.active)
+    },
+    canUseRequest: ({ actor, target }) => {
+      if (shouldThrowFromAuthorityCallbacks()) throw new Error('Test request-policy callback fault')
+      return Boolean(actor.user.active) && Boolean(target.user.active)
+    },
   },
   store: async () => {
     const database = await app.container.make(Database)
@@ -35,5 +69,6 @@ const config = defineConfig({
   retention: 'host-managed',
 })
 
-export const nativeAdapter = native
+export const nativeAdapter = runtimeAdapter
+export const tokenNativeAdapter = tokenNative
 export default config

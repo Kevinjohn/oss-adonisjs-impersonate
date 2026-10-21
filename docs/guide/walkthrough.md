@@ -41,7 +41,7 @@ _Stopping returns the browser to the raw operator workspace. It does not change 
 
 ## Identity, scope and boundaries
 
-The native session guard continues to authenticate the operator on every request. On covered business routes, the effective guard resolves the selected customer, so the application's usual customer authorization applies. The operator's permissions are not combined with the customer's, and the customer does not log in. V1 supports AdonisJS's native session guard; token guards remain raw actor guards.
+The native session guard continues to authenticate the operator on every request. On covered business routes, the effective guard resolves the selected customer, so the application's usual customer authorization applies. The operator's permissions are not combined with the customer's, and the customer does not log in. This walkthrough uses session transport; v1.1 token configuration is covered in the [access-token guide](access-tokens.md).
 
 Mode is stored server-side for the actor account and shared by valid integrated sessions. The default deadline is 15 minutes, with a one-hour maximum; an application may choose shorter limits. Later requests do not extend the deadline. Stopping or expiry ends the mode for the account, while logging out one browser session does not stop other sessions. Already admitted requests and side effects handed to other systems cannot be undone by stopping.
 

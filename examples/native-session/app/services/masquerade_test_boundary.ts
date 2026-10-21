@@ -8,6 +8,7 @@ import {
 } from '#services/fixture_control_store'
 
 let testTime: number | undefined
+let throwFromAuthorityCallbacks = false
 
 export {
   masqueradeFixtureDiagnostics,
@@ -26,4 +27,12 @@ export function setMasqueradeTestTime(value: number | undefined) {
 
 export function masqueradeNow() {
   return testTime ?? Date.now()
+}
+
+export function setAuthorityCallbacksThrow(value: boolean) {
+  throwFromAuthorityCallbacks = value
+}
+
+export function shouldThrowFromAuthorityCallbacks() {
+  return process.env.NODE_ENV === 'test' && throwFromAuthorityCallbacks
 }

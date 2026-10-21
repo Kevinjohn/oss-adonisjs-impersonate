@@ -395,3 +395,124 @@ This document defines acceptance targets, not execution results. The original mi
 are recorded as complete in [M4-RESULT.md](M4-RESULT.md) and the
 [requirement ledger](docs/maintainers/requirement-ledger.md). Those records distinguish verified
 behavior from publication; the technical contract remains authoritative for implementation.
+
+## 13. V1.1 additive contract: opaque access tokens
+
+This section adds the v1.1 access-token transport to the completed v1 contract. Sections 1–12 and
+the accepted [development plan](DEVELOPMENT-PLAN.md) remain the historical v1 record; the v1.1
+transport does not change v1 session behavior or expand the accepted v1 scope. AdonisJS Auth 10
+opaque access tokens are supported. JWT remains out of scope, and Account Kit remains v1.2.
+
+### 13.1 Native adapter and composition
+
+The public APIs are exported from `adonisjs-masquerade/native`:
+
+```ts
+const tokens = accessTokensAuthority({
+  authority: session.authority,
+  guard: 'api',
+  provider: tokenProvider,
+  ability: 'masquerade',
+})
+
+const nativeAdapter = nativeAuthorities(session, [tokens])
+```
+
+`accessTokensAuthority` accepts an Auth 10 `AccessTokensUserProviderContract`, the raw token guard,
+and a required nonempty ability name. With a shared authority, the only authority option is
+`authority`; standalone token-only applications instead provide `namespace`, `incarnation`,
+`securityStamp`, and `isActive`. These option sets are mutually exclusive. The standalone adapter
+uses its token provider for account lookup and inspection.
+
+`nativeAuthorities(primary, additional)` keeps the exact `primary.authority` object and returns a
+frozen record of native adapters keyed by raw guard. Every additional adapter must reference that
+same authority object, and raw guard names must be unique. The configured package authority remains
+the primary authority. Bind the composed adapter in the application container as `masquerade.native`.
+
+`effectiveAccessTokensGuard(rawGuard, { guard: 'api' })` wraps the named raw token guard as an
+effective-user facade. Its effective `User` type does not promise `currentAccessToken`. The raw
+selected guard retains the authenticated actor and native access token.
+
+### 13.2 Authentication and route selection
+
+The adapter authenticates only through the named native access-token guard, preserving its
+missing, malformed, expired, and revoked credential behavior. It checks the native token's
+`allows(ability)` method before canonical provider identity mapping or any package mode read.
+Capability denial returns 403 and performs no store read, audit event, or state mutation. Auth 10
+wildcard `'*'` tokens satisfy `allows()` and therefore satisfy the configured Masquerade ability;
+hosts MUST issue restricted abilities deliberately when least privilege is intended.
+
+One explicit route selection determines the raw credential adapter for effective middleware,
+runtime admission, and `silent_auth`. The package never sniffs bearer headers or falls back between
+credentials. Same-raw aliases are valid; different raw guards, or a raw and effective choice
+together, are ambiguous and fail closed. A request with both cookie and bearer credentials uses
+only the route-selected guard. A route guard is unknown when it is absent from the host's registered
+Auth guard factories. Such a selection fails closed. A registered raw Auth guard without a
+Masquerade adapter can still serve a native authentication, security, or logout route that does not
+invoke Masquerade. If that route invokes the Masquerade service, it returns unavailable before any
+store access; it MUST NOT fall back to the primary adapter. Effective guard factories MUST map to
+registered adapters at boot. Token-only mode defaults to its effective token facade. Public and
+direct service calls without route selection use the primary adapter.
+
+Raw authentication, security, logout, and public routes keep native behavior. Raw control-route
+authentication itself is store-free; when a raw token route invokes a Masquerade operation, the
+configured ability is still required before mode access. Raw token business routes remain route
+coverage defects and are not a workaround for missing ability. Integrated token business, status,
+start, and stop operations all require the one configured ability, even while idle. This ability is
+distinct from `canMasquerade`: host start and active-admission policy remain as in v1, and stop does
+not read start policy, actor or target stamps, or target account data.
+
+### 13.3 Account mode, context, and credential boundaries
+
+For an account shared across session and token transports, both adapters use the exact same
+authority object, namespace, canonical provider identity, incarnation, stamp, and eligibility
+semantics. They read and control the same owner row and revision. Session-started mode is visible
+to an authorized token; token-started mode is visible to an authorized session. Context tokens
+remain owner-bound and unchanged across transports. Existing missing/stale behavior remains 428/409,
+and clients MUST NOT refresh a context token and replay the old intent.
+
+The route declaration selects identity; conflicting or invalid incidental credentials cannot cause
+transport fallback. `silent_auth` on an effective token business route authenticates through the
+selected token adapter and leaves the effective facade in place. A token with insufficient ability
+cannot read or change mode, and an active mode never falls back to actor business behavior.
+
+The target is never issued or attached a token. The effective target user does not inherit the
+actor's `currentAccessToken`; the actor token remains on the raw guard. Native Auth 10 continues to
+own token issuance, expiry, `last_used_at`, and revocation. Revoking one token rejects that
+credential but leaves account mode intact for other valid credentials. A shared security-stamp
+change invalidates the mode for subsequent admission across transports. No Masquerade path issues,
+rotates, or extends a native credential.
+
+Bearer-only routes may use explicit Shield CSRF exemptions. Session CSRF configuration is
+unchanged, and context-token validation remains in force for both transports.
+
+### 13.4 T-TOKEN acceptance family
+
+T-TOKEN requires evidence for both token-only and mixed session/token integration. It covers:
+
+- A real native opaque token with the configured ability can read idle status, start, read the
+  target through effective business routes, pass allowed Bouncer checks, deny sensitive actions,
+  and stop. The facade exposes the effective `User`; the raw guard retains the actor and unchanged
+  `currentAccessToken`.
+- Tokens without the ability, malformed credentials, unknown users, expired credentials, and
+  revoked credentials cannot access integrated behavior. Native invalid-credential responses are
+  preserved. Ability denial happens before store read, audit, or mutation. Wildcard ability is
+  verified and documented.
+- A session and token for one account start, observe, and stop the same mode in both directions.
+  Revoking one credential does not clear it for another. A changed shared stamp invalidates the
+  mode. Context ownership, stale context, stop despite denied policy or failed stamps/target reads,
+  and a session/token CAS race are covered.
+- Conflicting cookie and bearer actors, invalid incidental credentials, token-only boot and
+  journey, same-raw aliases, unknown/duplicate adapters, ambiguous routes, selected-token
+  `silent_auth`, and no package reads on ability denial are covered. Wrong driver/config fails
+  closed before mode access.
+- No target token or credential mutation occurs; token provider reads and native `last_used_at`
+  behavior remain Auth-owned. Effective target typing and projections do not expose the actor token.
+- Missing context is 428 and stale context is 409 without handler execution or context refresh and
+  replay. Explicit bearer-only Shield exemptions leave session CSRF behavior intact. Raw
+  authentication, security, and logout routes remain native and store-free; raw business routes are
+  reported as coverage defects.
+
+This family defines required acceptance evidence; it does not claim that a test or packed-consumer
+matrix has passed. Current evidence and any remaining gaps belong in the
+[requirement ledger](docs/maintainers/requirement-ledger.md).

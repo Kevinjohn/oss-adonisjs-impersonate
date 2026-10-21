@@ -22,7 +22,10 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     assert.lengthOf(Object.keys(types), 0)
     assert.isFunction(provider.default)
     assert.isFunction(auth.effectiveSessionGuard)
+    assert.isFunction(auth.effectiveAccessTokensGuard)
     assert.isFunction(native.sessionAuthority)
+    assert.isFunction(native.accessTokensAuthority)
+    assert.isFunction(native.nativeAuthorities)
     for (const name of [
       'MasqueradeController',
       'masqueradeContext',

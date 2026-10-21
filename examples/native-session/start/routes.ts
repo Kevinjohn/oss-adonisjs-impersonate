@@ -7,6 +7,10 @@ import './masquerade_control_routes.js'
 import './demo_routes.js'
 import './demo_json_routes.js'
 
+if (process.env.NODE_ENV === 'test') {
+  await import('./token_test_routes.js')
+}
+
 const controllers = { Session, NewAccount }
 
 router.on('/').render('pages/home').as('home')

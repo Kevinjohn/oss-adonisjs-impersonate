@@ -104,7 +104,7 @@ test('provider rejects a missing actual raw guard at boot before constructing th
 }) => {
   const f = await nativeRuntimeFixture({ missingRaw: true })
   try {
-    await assert.rejects(() => f.app.boot(), 'The configured raw session guard must be registered')
+    await assert.rejects(() => f.app.boot(), 'The configured raw guard must be registered')
     assert.equal(f.storeCreations(), 0)
   } finally {
     await f.app.terminate()
@@ -118,7 +118,7 @@ test('provider requires the effective session guard to own the default facade', 
   try {
     await assert.rejects(
       () => f.app.boot(),
-      'The default auth guard must be the effective session guard'
+      'The default auth guard must be an effective masquerade guard'
     )
     assert.equal(f.storeCreations(), 0)
   } finally {

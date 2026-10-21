@@ -1,9 +1,9 @@
 # Masquerade documentation
 
-Masquerade v1 lets an authorized support operator use an AdonisJS application through a customer's
-account while remaining authenticated as the operator. The mode is account-wide across valid
-integrated sessions, has a fixed duration, and can be explicitly stopped. V1 uses the native
-session guard only.
+Masquerade lets an authorized support operator use an AdonisJS application through a customer's
+account while remaining authenticated as the operator. The account-wide mode is shared across
+valid integrated sessions and opaque access tokens, has a fixed duration, and can be explicitly
+stopped. Token adapters preserve Auth 10 bearer validation and require a configured ability.
 
 ## Get started
 
@@ -23,6 +23,8 @@ with real application screenshots.
   context, denied actions, expiry, and storage failures.
 - [Install and configure](guide/setup.md): scaffold the package files, preserve the existing
   session provider, and wire callbacks, middleware, and host-protected routes.
+- [Opaque access tokens](guide/access-tokens.md): configure token-only or mixed session/token
+  transport, select guards explicitly, and gate integrated access with token abilities.
 - [Use a support mode](guide/usage.md): follow the complete status, start, customer-work, stop, and
   Edge form recipes.
 - [Session JSON client](guide/clients/json.md): run same-origin fetch controls and customer
