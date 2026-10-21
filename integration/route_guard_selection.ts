@@ -2,7 +2,11 @@ import { routeGuards } from './route_guards.js'
 import { MasqueradeError } from '../src/errors.js'
 
 type RouteMetadata = { middleware: { all(): Iterable<unknown> } }
-export type RouteGuardSelection = { kind: 'none' | 'raw' | 'effective'; raw: string }
+export type RouteGuardSelection =
+  | { kind: 'none' | 'raw' | 'effective'; raw: string }
+  // Several native guards on a route Masquerade does not own: native auth keeps working, but no
+  // single adapter is selected, so any Masquerade operation on the route fails closed.
+  | { kind: 'ambiguous' }
 
 /** Resolve a route to one credential transport before authenticating or reading mode state. */
 export function selectRouteGuard(
@@ -33,9 +37,13 @@ export function selectRouteGuard(
     const kind = effectiveRaw ? 'effective' : 'raw'
     const raw = effectiveRaw ?? guard
     if (!registeredRawGuards.includes(raw)) throw new MasqueradeError('E_MASQUERADE_UNAVAILABLE')
-    if (selection && (selection.kind !== kind || selection.raw !== raw))
+    if (!selection || (selection.kind === kind && 'raw' in selection && selection.raw === raw)) {
+      selection = { kind, raw }
+      continue
+    }
+    if (kind !== 'raw' || selection.kind === 'effective')
       throw new MasqueradeError('E_MASQUERADE_UNAVAILABLE')
-    selection = { kind, raw }
+    selection = { kind: 'ambiguous' }
   }
   return selection!
 }

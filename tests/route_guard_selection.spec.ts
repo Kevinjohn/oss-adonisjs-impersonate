@@ -32,9 +32,13 @@ test('route selection rejects mixed, ambiguous and unknown explicit guards', ({ 
   for (const guards of [
     ['web_effective', 'api_effective'],
     ['web_effective', 'web'],
-    ['web', 'api'],
+    ['web', 'api', 'web_effective'],
     ['unknown'],
   ]) {
     assert.throws(() => selectRouteGuard(route(guards), 'web_effective', effective, ['web', 'api']))
   }
+  assert.deepEqual(
+    selectRouteGuard(route(['web', 'api']), 'web_effective', effective, ['web', 'api']),
+    { kind: 'ambiguous' }
+  )
 })

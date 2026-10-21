@@ -127,9 +127,10 @@ export async function createRuntime(
         wiring.registeredRawGuardNames,
         wiring.native.guard ?? wiring.native.authority.guard
       )
-      const adapter = Object.hasOwn(wiring.rawAdapters, selected.raw)
-        ? wiring.rawAdapters[selected.raw]
-        : undefined
+      const adapter =
+        selected.kind !== 'ambiguous' && Object.hasOwn(wiring.rawAdapters, selected.raw)
+          ? wiring.rawAdapters[selected.raw]
+          : undefined
       if (!adapter) throw new MasqueradeError('E_MASQUERADE_UNAVAILABLE')
       return adapter.authenticateActor(ctx)
     },
