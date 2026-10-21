@@ -1,0 +1,44 @@
+# Troubleshooting
+
+Masquerade package errors have stable codes and English messages. The host exception handler owns
+localization and presentation. Native authentication, Shield CSRF, and host rate limiting also run
+in the request path; their responses are not Masquerade package errors and keep the host's normal
+behavior.
+
+## Setup and boot
+
+| Symptom                                                                              | Check                                                                                                                                                                                                                                            | Safe recovery                                                                                                                                                              |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The configure command cannot load dependencies or says a destination already exists. | Use Node.js 24 or later; confirm `@adonisjs/assembler` and `@adonisjs/lucid` can be imported. Review each reported destination and its current contents.                                                                                         | Install missing configure dependencies. Merge needed application changes manually; rerun configure without `--force` unless replacing a destination is intentional.        |
+| Boot reports `E_MASQUERADE_INVALID_CONFIGURATION` or `E_MASQUERADE_INVALID_STORE`.   | Inspect the reported `field`, the namespace and guard, required `canMasquerade`, authority callbacks, and each required store method. Check that production configuration does not use the test-only memory store.                               | Correct the host configuration or use a complete production store. These setup diagnostics are programming/configuration failures, not request-level permission decisions. |
+| Authentication fails on business routes or the actor appears as the effective user.  | Confirm the raw guard and `sessionAuthority` share the exact provider object; the route uses only the effective guard; and context middleware follows Auth initialization but precedes `silent_auth` or other middleware calling `auth.check()`. | Restore the existing provider and raw guard, fix middleware order, and test a covered route before enabling the whole route group.                                         |
+
+## Request errors
+
+| Response                            | Likely cause                                                                                                                        | Check and recover                                                                                                                                                                                                                   |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `401 E_MASQUERADE_UNAUTHENTICATED`  | No valid native actor session reached the control route.                                                                            | Check the host session login and raw guard. Masquerade does not authenticate a target account.                                                                                                                                      |
+| `403 E_MASQUERADE_NOT_ALLOWED`      | Start was denied because the actor or target is ineligible, `canMasquerade` denied the pair, or `canUseRequest` denied the request. | Check native actor eligibility, the target's current eligibility, and both callbacks. A `canUseRequest` denial at start creates no mode; during active admission it rejects only that request and leaves the shared mode unchanged. |
+| `403 E_MASQUERADE_ACTION_BLOCKED`   | An active-mode mutation is not marked as an allowed ordinary mutation, or the route is sensitive.                                   | Keep sensitive actions blocked. For an ordinary mutation, review the route's `allowMutation()` marker and the target's normal Bouncer permission; the marker grants no permission by itself.                                        |
+| `409 E_MASQUERADE_ALREADY_ACTIVE`   | A start was submitted while an account-wide mode is already active.                                                                 | Read status and stop the current mode before starting another one. Starting cannot replace or extend it.                                                                                                                            |
+| `428 E_MASQUERADE_CONTEXT_REQUIRED` | A covered unsafe request or control action omitted its context token.                                                               | Read current status and rebuild the form/action with that token. Check that the Edge helper ran before rendering or that the client includes its captured token.                                                                    |
+| `409 E_MASQUERADE_CONTEXT_CHANGED`  | The token is stale or conflicting, or expiry/global invalidation was discovered during admission.                                   | Refresh status and show the current state. Ask the operator to deliberately rebuild the action; never refresh a token and automatically replay the old intent.                                                                      |
+| `422 E_MASQUERADE_INVALID_INPUT`    | A submitted field, duration, or reason did not pass validation.                                                                     | Show the validation error and request corrected input using the current context token. Do not truncate or silently normalize rejected input beyond the documented reason rules.                                                     |
+| `503 E_MASQUERADE_UNAVAILABLE`      | The store, authority, or policy could not safely answer, or a control transition's outcome is uncertain.                            | Fail closed. Check service/database health and host diagnostics. After an uncertain start or stop response, GET status before deciding what to do; do not blindly retry the old action.                                             |
+
+## Missing or stale context in report mode
+
+`contextEnforcement: 'report'` logs requests that would fail for missing or stale context but admits
+them. It is a migration aid, not stale-form protection. Inventory all Edge forms and other unsafe
+clients, capture the token with each original intent, and check that warnings stop before changing
+to `'enforce'`. See [Context tokens and browser clients](security.md#context-tokens-and-browser-clients)
+for the token contract and [Use a support mode](usage.md#recover-from-errors) for response details.
+
+## Host-owned responses and availability
+
+Native session errors, Shield CSRF rejections, and limiter responses are outside the stable
+Masquerade error list. Diagnose them using the host's normal authentication, CSRF, and limiter
+configuration. Package `503` responses mean required state or a callback could not be trusted; do
+not treat an unavailable store as an idle mode. Login and logout continue through native auth,
+while status and stop need the store. For operational cleanup and retention, see
+[Pruning and retention](operations.md).

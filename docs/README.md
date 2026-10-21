@@ -5,22 +5,24 @@ account while remaining authenticated as the operator. The mode is account-wide 
 integrated sessions, has a fixed duration, and can be explicitly stopped. V1 uses the native
 session guard only.
 
-## Try it
+## Get started
+
+Start with [Getting started](guide/getting-started.md) to choose a runnable demo or integrate
+Masquerade into an existing application. The [native-session demo](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/README.md)
+shows the operator as the authenticated actor, the customer as the effective identity, the fixed
+deadline, and how to stop the mode.
 
 [Add user impersonation to AdonisJS](guide/walkthrough.md) follows the fictional support journey
 with real application screenshots.
 
-Follow the [fictional native-session demo instructions](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/README.md)
-to run the working application with one operator and two customers. The support workspace shows the
-operator as the authenticated actor, the customer as the effective identity, the deadline, and how
-to stop the mode.
+## Guides
 
-## Integrate it
-
+- [Troubleshooting](guide/troubleshooting.md): diagnose setup and boot problems, missing or stale
+  context, denied actions, expiry, and storage failures.
 - [Install and configure](guide/setup.md): scaffold the package files, preserve the existing
   session provider, and wire callbacks, middleware, and host-protected routes.
 - [Use a support mode](guide/usage.md): follow the complete status, start, customer-work, stop, and
-  recovery recipes for JSON controls and Edge forms.
+  Edge form recipes.
 - [Supported package imports](api-reference.md#supported-package-imports): map public package
   entry points to their API references.
 
