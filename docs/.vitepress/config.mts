@@ -29,6 +29,7 @@ export default defineConfig({
         items: [
           { text: 'Install and configure', link: '/guide/setup' },
           { text: 'Use a support mode', link: '/guide/usage' },
+          { text: 'Inertia React', link: '/guide/clients/react' },
           { text: 'Security and operations', link: '/guide/security' },
         ],
       },

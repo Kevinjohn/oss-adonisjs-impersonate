@@ -32,6 +32,8 @@ customer, the fixed deadline, and the stop control.
   session provider, and wire the raw and effective guards and protected routes.
 - [Use a support mode](docs/guide/usage.md): follow the complete status, start, customer-work,
   stop, and recovery recipes for JSON controls and Edge forms.
+- [Inertia React](docs/guide/clients/react.md): launch the runnable React example with native
+  session authentication and context-bound support forms.
 - [Supported package imports](docs/api-reference.md#supported-package-imports): find each public
   entry point and its API reference.
 
