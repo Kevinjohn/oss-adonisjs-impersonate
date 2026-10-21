@@ -98,6 +98,11 @@ export default defineConfig({
         timeout: 30000,
       },
       {
+        files: ['tests/token-only/**/*.spec.ts'],
+        name: 'token-only',
+        timeout: 30000,
+      },
+      {
         files: ['tests/credentials/**/*.spec.ts'],
         name: 'credentials',
         timeout: 30000,

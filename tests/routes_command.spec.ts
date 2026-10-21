@@ -98,6 +98,10 @@ test.group('masquerade:routes Ace command', () => {
         .get('/all-effective-aliases', async () => {})
         .middleware(auth.auth({ guards: ['web_effective', 'support_effective'] }))
         .toJSON()
+      const mixedEffectiveTransports = router
+        .get('/mixed-effective-transports', async () => {})
+        .middleware(auth.auth({ guards: ['web_effective', 'api_effective'] }))
+        .toJSON()
       const sections = await routeCoverageReport(
         {
           root: [
@@ -112,11 +116,13 @@ test.group('masquerade:routes Ace command', () => {
             mixedEffectiveFirst,
             mixedRawFirst,
             allEffectiveAliases,
+            mixedEffectiveTransports,
           ],
         },
         'web',
         'web_effective',
-        ['web_effective', 'support_effective']
+        ['web_effective', 'support_effective', 'api_effective'],
+        { web_effective: 'web', support_effective: 'web', api_effective: 'api' }
       )
       const report = sections.join('\n')
       assert.include(report, 'web\n')
@@ -143,6 +149,14 @@ test.group('masquerade:routes Ace command', () => {
       )
       assert.match(report, /\/mixed-raw-first.*unsupported mixed effective\/non-effective guards/)
       assert.include(report, '/all-effective-aliases')
+      assert.match(
+        report,
+        /\/mixed-effective-transports.*unsupported distinct effective credential transports/
+      )
+      assert.notMatch(
+        report,
+        /\/all-effective-aliases.*unsupported distinct effective credential transports/
+      )
       assert.equal(report.match(/unsupported mixed effective\/non-effective guards/g)?.length, 4)
       assert.match(report, /default\n[\s\S]*\/explicit-default/)
       assert.include(report, '/explicit-default [RAW-GUARD BUSINESS READ]')

@@ -8,7 +8,9 @@ import type { RequestAdmission } from '../src/request_admission.js'
 import type { MasqueradeConfig, ObserverEvent } from '../src/types.js'
 import type { NativeRuntimeAdapter } from './native_binding.js'
 import type { MasqueradeRuntime } from './runtime.js'
-import { isEffectiveFactory } from './guard_registration.js'
+import { effectiveFactoryRawGuard, isEffectiveFactory } from './guard_registration.js'
+import { selectRouteGuard } from './route_guard_selection.js'
+import { MasqueradeError } from '../src/errors.js'
 
 type TransitionName =
   'masquerade:started' | 'masquerade:stopped' | 'masquerade:expired' | 'masquerade:invalidated'
@@ -25,6 +27,9 @@ export interface RuntimeConfiguration {
   native: NativeRuntimeAdapter
   effectiveGuardName: string
   effectiveGuardNames: readonly string[]
+  effectiveRawGuards: Readonly<Record<string, string>>
+  registeredRawGuardNames: readonly string[]
+  rawAdapters: Readonly<Record<string, NativeRuntimeAdapter>>
 }
 /** Validate native wiring without constructing the store or authenticating a request. */
 export async function runtimeConfiguration(app: ApplicationService): Promise<RuntimeConfiguration> {
@@ -38,17 +43,68 @@ export async function runtimeConfiguration(app: ApplicationService): Promise<Run
   )
     throw new TypeError('Native masquerade binding must match configured namespace and guard')
   const auth = await app.container.make('auth.manager')
-  if (typeof (auth.config.guards as Record<string, unknown>)[config.authority.guard] !== 'function')
-    throw new TypeError('The configured raw session guard must be registered')
+  const primaryRaw = native.guard ?? native.authority.guard
+  if (primaryRaw !== config.authority.guard)
+    throw new TypeError('Native masquerade binding must match configured namespace and guard')
+  const rawAdapters =
+    native.adapters ??
+    Object.freeze(
+      Object.assign(Object.create(null), { [primaryRaw]: native }) as Record<
+        string,
+        NativeRuntimeAdapter
+      >
+    )
+  if (!Object.hasOwn(rawAdapters, primaryRaw))
+    throw new TypeError('Native masquerade adapter map must include the primary guard')
+  for (const [guard, adapter] of Object.entries(rawAdapters)) {
+    if (
+      !guard ||
+      !adapter ||
+      adapter.authority !== native.authority ||
+      (adapter.guard ?? adapter.authority.guard) !== guard ||
+      typeof adapter.authenticateActor !== 'function'
+    )
+      throw new TypeError('Native masquerade adapter map is invalid')
+    if (
+      !Object.hasOwn(auth.config.guards, guard) ||
+      typeof (auth.config.guards as Record<string, unknown>)[guard] !== 'function'
+    )
+      throw new TypeError(
+        guard === primaryRaw
+          ? 'The configured raw guard must be registered'
+          : `The configured raw guard ${guard} must be registered`
+      )
+  }
   const effectiveGuardName = String(auth.defaultGuard)
   if (!isEffectiveFactory(auth.config.guards[auth.defaultGuard]))
-    throw new TypeError('The default auth guard must be the effective session guard')
+    throw new TypeError('The default auth guard must be an effective masquerade guard')
+  const effectiveRawGuards: Record<string, string> = Object.create(null)
+  for (const [name, factory] of Object.entries(auth.config.guards)) {
+    if (!isEffectiveFactory(factory)) continue
+    const raw = effectiveFactoryRawGuard(factory)
+    if (!raw || !Object.hasOwn(rawAdapters, raw))
+      throw new TypeError(`Effective masquerade guard ${name} has no registered raw adapter`)
+    effectiveRawGuards[name] = raw
+  }
   const effectiveGuardNames = Object.freeze(
     Object.entries(auth.config.guards)
       .filter(([, factory]) => isEffectiveFactory(factory))
       .map(([name]) => name)
   )
-  return { config, native, effectiveGuardName, effectiveGuardNames }
+  const registeredRawGuardNames = Object.freeze(
+    Object.entries(auth.config.guards)
+      .filter(([, factory]) => typeof factory === 'function' && !isEffectiveFactory(factory))
+      .map(([name]) => name)
+  )
+  return {
+    config,
+    native,
+    effectiveGuardName,
+    effectiveGuardNames,
+    effectiveRawGuards: Object.freeze(effectiveRawGuards),
+    registeredRawGuardNames,
+    rawAdapters,
+  }
 }
 export async function createRuntime(
   app: ApplicationService,
@@ -56,9 +112,25 @@ export async function createRuntime(
 ): Promise<MasqueradeRuntime> {
   const emitter = await app.container.make('emitter')
   const logger = await app.container.make('logger')
+  const selectGuard = (ctx: HttpContext) =>
+    selectRouteGuard(
+      ctx.route,
+      wiring.effectiveGuardName,
+      wiring.effectiveRawGuards,
+      wiring.registeredRawGuardNames,
+      wiring.native.guard ?? wiring.native.authority.guard
+    )
   const service = await createMasqueradeService(wiring.config, {
     environment: app.nodeEnvironment,
-    authenticateActor: (ctx) => wiring.native.authenticateActor(ctx),
+    authenticateActor: (ctx) => {
+      const selected = selectGuard(ctx)
+      const adapter =
+        selected.kind !== 'ambiguous' && Object.hasOwn(wiring.rawAdapters, selected.raw)
+          ? wiring.rawAdapters[selected.raw]
+          : undefined
+      if (!adapter) throw new MasqueradeError('E_MASQUERADE_UNAVAILABLE')
+      return adapter.authenticateActor(ctx)
+    },
     emitter: { emit: (name, event) => emitter.emit(name as TransitionName, event) },
     logger: { info: (event) => logger.info(event), error: (event) => logger.error(event) },
     // Native emitter.emit dispatches listener rejection to its registered onError handler.
@@ -73,6 +145,7 @@ export async function createRuntime(
     config: wiring.config,
     effectiveGuardName: wiring.effectiveGuardName,
     effectiveGuardNames: wiring.effectiveGuardNames,
+    selectGuard,
     admit: (ctx: HttpContext) => internal[admission](ctx),
   })
 }

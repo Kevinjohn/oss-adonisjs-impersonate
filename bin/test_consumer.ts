@@ -62,7 +62,12 @@ const baseEnv = {
   NO_COLOR: '1',
 }
 
-async function run(cwd: string, command: string[], name: string, env = baseEnv): Promise<string> {
+async function run(
+  cwd: string,
+  command: string[],
+  name: string,
+  env: NodeJS.ProcessEnv = baseEnv
+): Promise<string> {
   console.log(`[consumer] ${name}: pnpm ${command.join(' ')}`)
   const output = await new Promise<string>((resolveOutput, reject) => {
     const child = spawn('pnpm', command, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -309,6 +314,12 @@ try {
           `${selected}_${engine}_functional`,
           env
         )
+        const tokenOnly = await run(
+          app,
+          ['test', 'token-only'],
+          `${selected}_${engine}_token_only`,
+          { ...env, MASQUERADE_TRANSPORT: 'tokens' }
+        )
         const report = await run(app, ['test:report'], `${selected}_${engine}_report`, env)
         const credentials = await run(
           app,
@@ -331,6 +342,7 @@ try {
           peerChecks,
           incompatiblePeerWarnings: [],
           functional: passCount(functional),
+          tokenOnly: passCount(tokenOnly),
           report: passCount(report),
           credentials: passCount(credentials),
           generatedScaffoldTypecheck: 'passed',

@@ -2,7 +2,7 @@ import { BaseCommand } from '@adonisjs/core/ace'
 import { MasqueradeController } from '../http/controllers.js'
 import type { MasqueradeConfig } from '../src/types.js'
 import { routeGuards, routeMarkers } from '../integration/route_metadata.js'
-import { isEffectiveFactory } from '../integration/guard_registration.js'
+import { effectiveFactoryRawGuard, isEffectiveFactory } from '../integration/guard_registration.js'
 
 /** Print a route coverage report from the router's committed route definitions. */
 export default class RoutesCommand extends BaseCommand {
@@ -19,13 +19,19 @@ export default class RoutesCommand extends BaseCommand {
     const effectiveGuardNames = Object.entries(auth.config.guards)
       .filter(([, factory]) => isEffectiveFactory(factory))
       .map(([name]) => name)
+    const effectiveRawGuards: Record<string, string> = Object.create(null)
+    for (const [name, factory] of Object.entries(auth.config.guards)) {
+      const raw = effectiveFactoryRawGuard(factory)
+      if (raw) effectiveRawGuards[name] = raw
+    }
     router.commit()
     const domains = router.toJSON()
     for (const section of await routeCoverageReport(
       domains,
       config.authority.guard,
       String(auth.defaultGuard),
-      effectiveGuardNames
+      effectiveGuardNames,
+      effectiveRawGuards
     ))
       this.logger.info(section)
   }
@@ -44,7 +50,8 @@ export function routeCoverageReport(
   >,
   rawGuard: string,
   effectiveGuardName = 'default guard',
-  effectiveGuardNames: readonly string[] = [effectiveGuardName]
+  effectiveGuardNames: readonly string[] = [effectiveGuardName],
+  effectiveRawGuards: Readonly<Record<string, string>> = {}
 ): Promise<string[]> {
   const grouped = new Map<string, string[]>()
   const controllerCache = new Map<Function, Promise<ControllerResult>>()
@@ -56,6 +63,15 @@ export function routeCoverageReport(
         const hasEffectiveGuard = guards.some((guard) => effectiveGuardNames.includes(guard))
         const hasOtherGuard = guards.some((guard) => !effectiveGuardNames.includes(guard))
         const mixedEffectiveGuards = hasEffectiveGuard && hasOtherGuard
+        const distinctEffectiveTransports =
+          new Set(
+            guards
+              .filter((guard) => effectiveGuardNames.includes(guard))
+              .map((guard) =>
+                Object.hasOwn(effectiveRawGuards, guard) ? effectiveRawGuards[guard] : undefined
+              )
+              .filter((raw): raw is string => Boolean(raw))
+          ).size > 1
         const markers = routeMarkers({ route })
         const methods = route.methods.join(',')
         const packageControl = await isPackageControl(route.handler, controllerCache)
@@ -83,6 +99,9 @@ export function routeCoverageReport(
             nameInferredControl ? 'name-inferred; review handler' : '',
             packageControl.unresolved ? 'unresolved handler' : '',
             mixedEffectiveGuards ? 'unsupported mixed effective/non-effective guards' : '',
+            distinctEffectiveTransports
+              ? 'unsupported distinct effective credential transports'
+              : '',
           ]
             .filter(Boolean)
             .join(',')

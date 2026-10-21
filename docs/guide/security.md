@@ -8,10 +8,11 @@ For a practical status → start → customer work → stop journey, see [Use a 
 ## Actor, target and scope
 
 Masquerade is one server-side mode per `(namespace, actor ID, incarnation)`. It is visible to all
-valid integrated sessions for that actor account. On each request the native session guard still
-authenticates the actor; the effective guard returns the target to ordinary Auth and Bouncer code.
-The actor remains available separately for explicit policy and audit. Actor permissions are never
-added to target permissions.
+valid integrated sessions and authorized opaque tokens for that actor account. On each request the
+route-selected native guard still authenticates the actor; the effective guard returns the target
+to ordinary Auth and Bouncer code. The actor remains available separately for explicit policy and
+audit. Actor permissions are never added to target permissions. See the
+[access-token guide](access-tokens.md) for mixed and token-only configuration.
 
 Logging out one browser session invalidates that session only. Another valid session continues to
 see the shared mode. To end the mode for all devices, stop it or advance the account security stamp
@@ -49,11 +50,12 @@ handler has no side effects. Password, credential, identity, recovery, security 
 mutations must carry `sensitive()`; the marker always wins over `allowMutation()`. The package does
 not infer billing or security behavior from a URL. The host owns this classification.
 
-Login, signup, logout and status/start/stop control routes use the raw actor guard. They never run
-target business handlers. Do not mix an effective guard with a raw or token guard on a covered
-business route. Use `masquerade:routes` to find raw-guard routes requiring review. Keep public and
-authentication routes outside effective mode admission and ensure they cannot dispatch business
-behavior.
+Login, signup, logout and status/start/stop control routes use the explicitly selected raw actor
+guard. They never run target business handlers. Each covered business route selects one effective
+session or token guard; raw business routes remain coverage defects. Never combine distinct raw
+guards or fall back between cookie and bearer credentials. Use `masquerade:routes` to find
+raw-guard routes requiring review. Keep public and authentication routes outside effective mode
+admission and ensure they cannot dispatch business behavior.
 
 If native session authentication fails, `check()` returns `false`; calling `getUserOrFail()` after
 that failed attempt raises the native session unauthorized error. Masquerade admission errors still

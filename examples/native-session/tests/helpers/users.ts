@@ -27,6 +27,15 @@ export async function createUsers() {
   return { actor, target }
 }
 
+export async function createAccessToken(actor: User, abilities = ['masquerade']) {
+  const token = await User.accessTokens.create(actor, abilities, {
+    name: 'acceptance fixture',
+    expiresIn: '1h',
+  })
+  if (!token.value) throw new Error('Native access token was created without its secret value')
+  return { token, value: token.value.release() }
+}
+
 export async function cleanUsers() {
   const ids = [...createdIds]
   if (ids.length === 0) return
@@ -35,6 +44,9 @@ export async function cleanUsers() {
   if (await db.connection().schema.hasTable('masquerade_events')) {
     await db.from('masquerade_events').whereIn('actor_id', ownerIds).delete()
     await db.from('masquerade_modes').whereIn('actor_id', ownerIds).delete()
+  }
+  if (await db.connection().schema.hasTable('auth_access_tokens')) {
+    await db.from('auth_access_tokens').whereIn('tokenable_id', ids).delete()
   }
   await db.from('remember_me_tokens').whereIn('tokenable_id', ids).delete()
   await User.query().whereIn('id', ids).delete()

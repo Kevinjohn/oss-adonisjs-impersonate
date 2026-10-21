@@ -26,6 +26,10 @@
     "default",
     "RequestAdmission",
     "EffectiveSessionGuard",
+    "EffectiveAccessTokensGuard",
+    "SharedAuthorityOptions",
+    "StandaloneAuthorityOptions",
+    "RouteGuardSelection",
     "MarkedMiddleware"
   ],
   "externalSymbolLinkMappings": {

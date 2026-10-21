@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add v1.1 opaque access-token authentication that shares account mode with native sessions and
+  requires an explicit per-token `masquerade` ability on integrated routes.
 - Add a runnable Inertia Vue support workflow, integration guide and packed-example checks.
 - Add a runnable Inertia React support-workflow example with context-bound forms and recovery.
 - Add a same-origin session JSON client for the fictional support workflow and customer actions.
