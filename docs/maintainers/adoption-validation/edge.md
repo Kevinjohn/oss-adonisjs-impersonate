@@ -28,7 +28,28 @@ The official starter was copied from the recorded upstream commit into an empty 
 
 Initial dependency install attempted `pnpm install --frozen-lockfile`. The sandboxed registry request failed with `ENOTFOUND`; retrying the same install through the authorized host route succeeded. A subsequent local-tarball add first failed because pnpm selected a different default store in the temporary directory (`ERR_PNPM_UNEXPECTED_STORE`), and an explicit store path was not readable from the sandbox (`ERR_SQLITE_ERROR`). Retrying on the host route with the same store used by install succeeded. This was an execution-environment workaround; the project's package-manager configuration and lockfile policy were unchanged.
 
-With `PACKAGE_CHECKOUT` set to the tested package checkout, copy the artifact from the package repository into the starter as shown above, change into `fresh-edge-host`, and run:
+The preserved artifact is local and ignored by Git. To reproduce it from a clean checkout, set
+`PACKAGE_CHECKOUT` to an absolute path to this documentation branch and `FRESH_EDGE_HOST` to the
+absolute path of the newly copied starter. Build the exact package revision in another clean
+worktree; do not pack the documentation branch and expect the same hash:
+
+```sh
+PACKAGE_SOURCE="$(mktemp -d)/package"
+git -C "$PACKAGE_CHECKOUT" worktree add --detach "$PACKAGE_SOURCE" 7117345a94d6679d046b060b659bdb8bad40679b
+cd "$PACKAGE_SOURCE"
+nvm use
+pnpm install --frozen-lockfile
+pnpm build
+pnpm pack:fixture
+shasum -a 256 tmp/native-session-package.tgz
+cp tmp/native-session-package.tgz "$FRESH_EDGE_HOST/native-session-package.tgz"
+cd "$FRESH_EDGE_HOST"
+```
+
+Confirm the displayed SHA-256 equals the recorded `d251eecf...e867b` hash above before continuing.
+This regeneration was also verified in a clean exact-source worktree for the alpha record. The
+preserved `tmp/alpha-baselines/alpha-1/` copy is an alternative when it is already present locally.
+From the fresh host, run:
 
 ```sh
 pnpm install --frozen-lockfile
