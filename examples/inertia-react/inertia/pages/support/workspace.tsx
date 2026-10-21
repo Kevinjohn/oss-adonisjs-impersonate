@@ -25,7 +25,9 @@ export default function Workspace({
   beforeDeadline: boolean
   targetAvailable: boolean
 }) {
-  const stale = useIdentityFreshness(mode.isMasquerading ? mode.expiresAt : undefined)
+  const stale = useIdentityFreshness(
+    mode.isMasquerading && beforeDeadline ? mode.expiresAt : undefined
+  )
   if (stale)
     return (
       <p role="status" aria-live="assertive">

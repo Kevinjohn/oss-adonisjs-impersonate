@@ -3,13 +3,13 @@ import { defineConfig } from '@adonisjs/lucid'
 
 const migrations = { naturalSort: true, paths: ['database/migrations'] }
 
-/** The same native-session fixture runs against both supported SQL engines. */
+/** Keep browser and functional migrations away from the seeded development database. */
 export default defineConfig({
   connection: process.env.DB_CLIENT === 'pg' ? 'pg' : 'sqlite',
   connections: {
     sqlite: {
       client: 'better-sqlite3',
-      connection: { filename: app.tmpPath('db.sqlite3') },
+      connection: { filename: app.tmpPath(app.inTest ? 'test.sqlite3' : 'db.sqlite3') },
       useNullAsDefault: true,
       migrations,
     },

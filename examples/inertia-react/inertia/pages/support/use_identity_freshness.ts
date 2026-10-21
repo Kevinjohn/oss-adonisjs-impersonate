@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react'
 import { useEffect, useState } from 'react'
 
 /** Freeze old page data immediately on restoration and fetch raw current status. */
@@ -12,6 +13,7 @@ export function useIdentityFreshness(expiresAt?: string) {
       recovering = true
       setStale(true)
       document.documentElement.dataset.identityPending = 'true'
+      router.cancelAll()
       window.location.replace('/support')
     }
     document.addEventListener('visibilitychange', onVisibility)

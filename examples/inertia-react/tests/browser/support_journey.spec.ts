@@ -130,6 +130,7 @@ test.group('React support browser journey', (group) => {
       await second.getByRole('button', { name: 'Start support mode' }).click()
       await second.waitForURL('**/support/customer')
 
+      await limiter.clear(['memory'])
       assert.equal(await submitRetainedForm(staleTab, '/support/start', idleToken), 409)
       assert.equal(
         await submitRetainedForm(first, '/support/customer/preference', activeAToken),
@@ -203,18 +204,27 @@ test.group('React support browser journey', (group) => {
       const deadline = Date.parse((await page.locator('time').getAttribute('datetime'))!)
       mock.timers.setTime(deadline)
       setMasqueradeTestTime(deadline)
-      await page.route('**/support', async (route) => {
-        await new Promise((resolve) => setTimeout(resolve, 300))
-        await route.continue()
+      await page.evaluate(() => {
+        new MutationObserver(() => {
+          if (document.documentElement.dataset.identityPending === 'true') {
+            sessionStorage.setItem('deadlineFrozen', 'true')
+          }
+        }).observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['data-identity-pending'],
+        })
       })
-      await page.clock.runFor(deadline - now)
-      await page.waitForFunction(() => document.documentElement.dataset.identityPending === 'true')
+      await page.clock.runFor(deadline - now + 1)
+      await page.waitForURL(`${base()}/support`, { waitUntil: 'load' })
       await page.getByRole('heading', { name: 'Support workspace' }).waitFor()
-      await page.unroute('**/support')
+      assert.equal(await page.evaluate("sessionStorage.getItem('deadlineFrozen')"), 'true')
       assert.notInclude(await page.locator('main').innerText(), 'customer-one@example.test')
       assert.equal(await page.getByRole('button', { name: 'Save preference' }).count(), 0)
       setMasqueradeTestTime(undefined)
       mock.timers.setTime(now)
+      await page.clock.setFixedTime(now)
+      await page.getByRole('button', { name: 'Stop support mode' }).click()
+      await page.getByRole('button', { name: 'Start support mode' }).waitFor()
       await page.getByLabel('Customer').selectOption({ label: 'Customer One' })
       await page.getByLabel('Reason for support').fill('Recovery after expiry')
       await page.getByRole('button', { name: 'Start support mode' }).click()
@@ -271,9 +281,19 @@ test.group('React support browser journey', (group) => {
     await second.getByLabel('Reason for support').fill('Second customer')
     await second.getByRole('button', { name: 'Start support mode' }).click()
     await second.waitForURL('**/support/customer')
+    const rawDocument = first.waitForResponse(
+      (response) =>
+        response.url().endsWith('/support') && response.request().resourceType() === 'document'
+    )
     await first.bringToFront()
+    await first.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
     release?.()
-    await first.getByRole('heading', { name: 'Support workspace' }).waitFor()
+    await rawDocument
+    await first.waitForFunction(
+      () =>
+        document.querySelector('h1')?.textContent === 'Support workspace' &&
+        document.documentElement.dataset.identityPending !== 'true'
+    )
     assert.notInclude(await first.locator('main').innerText(), 'customer-one@example.test')
     await first.goto(`${base()}/support/customer`)
     assert.include(await first.locator('main').innerText(), 'customer-two@example.test')
