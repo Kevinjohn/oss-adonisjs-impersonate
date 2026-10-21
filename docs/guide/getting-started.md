@@ -24,8 +24,8 @@ intent automatically.
   capture the context token with the original form intent. For a same-origin browser client, see
   the [JSON client guide](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/docs/guide/clients/json.md)
   and its runnable [native-session example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session).
-  For React and Inertia, see the [React client guide](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/65ffd34a0a32dd28f4248fa8d9de8317357c1e4c/docs/guide/clients/react.md)
-  and runnable [Inertia example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/65ffd34a0a32dd28f4248fa8d9de8317357c1e4c/examples/inertia-react).
+  For React and Inertia, see the [React client guide](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/235ce0e44bc74fb088960ba91ea13a9a70cc71e3/docs/guide/clients/react.md)
+  and runnable [Inertia example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/235ce0e44bc74fb088960ba91ea13a9a70cc71e3/examples/inertia-react).
 
 ## Integrate in this order
 
