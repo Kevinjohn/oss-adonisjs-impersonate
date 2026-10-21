@@ -15,11 +15,12 @@ For each delivered path, record its exact source revision, clean starting state,
 
 ### Fresh Edge host
 
-1. Use a clean copy of the official AdonisJS Hypermedia starter. Record its upstream repository, commit, and clean state. It must start without Masquerade installed or configured.
-2. Install the exact package tarball made from the candidate commit. Record the artifact hash and lockfile result. Do not install a registry version or copy configuration from the native-session demo.
-3. Follow [Install and configure](../../guide/setup.md) in order. Complete the host-owned model fields, identity callbacks and policy; reuse the exact provider object in the raw and effective guards; set context enforcement to `enforce` for the covered forms; apply the generated migration; order middleware; and add minimal host-owned routes, UI, and data.
+1. Materialize the official AdonisJS Hypermedia starter at the recorded upstream revision. For the run below, the source was `https://github.com/adonisjs/starter-kits`, subdirectory `hypermedia`, commit `449d77cc25dd08e036f442d2d39b760d43ccfbd3`. From an empty parent directory, run `git clone https://github.com/adonisjs/starter-kits.git starter-kits`, `git -C starter-kits checkout 449d77cc25dd08e036f442d2d39b760d43ccfbd3`, then `cp -R starter-kits/hypermedia fresh-edge-host`. Confirm `fresh-edge-host` contains no Masquerade package or configuration before setup.
+2. Set `PACKAGE_CHECKOUT` to the clean package checkout being tested, then copy its exact tarball into the fresh host as `native-session-package.tgz`: `cp "$PACKAGE_CHECKOUT/tmp/alpha-baselines/alpha-1/native-session-package.tgz" fresh-edge-host/native-session-package.tgz`. Record the artifact hash and lockfile result. Do not install a registry version or copy configuration from the native-session demo.
+3. Follow [Install and configure](../../guide/setup.md) in order, using the tested host additions in step 5 to complete model fields, identity callbacks and policy; reuse the exact provider object in the raw and effective guards; set context enforcement to `enforce` for the covered forms; apply the generated migration; order middleware; and add minimal host-owned routes, UI, and data.
 4. With fictional accounts, verify start, separate actor/effective identities, customer read, a reversible preference, sensitive-action denial, a stale form rejected after another tab changes context, and stop through the raw actor session. Use browser journeys, not API calls alone.
-5. If a setup gap appears, correct the public setup guide and repeat the material setup and journey from a fresh starter copy and database.
+5. The checked-in [fresh-host patch](fresh-edge-host.patch) records the host-owned model, auth/config, migration, routes, controller, helper, and views added after package configuration for the tested journey. From the host root, after installing the exact artifact and running `node ace configure adonisjs-masquerade --namespace=fresh_edge --guard=web`, apply it with `patch -p1 < "$PACKAGE_CHECKOUT/docs/maintainers/adoption-validation/fresh-edge-host.patch"`; then run the generated migrations and typecheck before the browser journey. The patch is a reproducibility aid, not package-provided host UI.
+6. If a setup gap appears, correct the public setup guide and repeat the material setup and journey from a fresh starter copy and database.
 
 ### Additional clients
 
@@ -27,7 +28,7 @@ Validate a client only when its setup path and runnable example exist at the can
 
 ## Completion criteria
 
-A path is **not delivered** when its example is absent from the tested revision, and **not run** when it exists but has not been exercised. A path passes only when its clean setup and required real-browser journey succeed, or a material blocker is explicitly recorded. Do not infer success for unmerged work from its pull request description. External participants and study recruitment are out of scope.
+A path is **not delivered** when its example is absent from the tested revision, and **not run** when it exists but has not been exercised. A path passes only when its clean setup and required real-browser journey succeed. A material blocker leaves that path incomplete until resolved and rerun. Do not infer success for unmerged work from its pull request description. External participants and study recruitment are out of scope.
 
 ## Run index
 
