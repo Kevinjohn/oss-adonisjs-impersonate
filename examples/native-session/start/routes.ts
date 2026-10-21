@@ -4,6 +4,7 @@ import NewAccount from '#controllers/new_account_controller'
 import router from '@adonisjs/core/services/router'
 
 import './masquerade_control_routes.js'
+import './token_control_routes.js'
 import './demo_routes.js'
 import './demo_json_routes.js'
 

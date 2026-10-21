@@ -1,5 +1,18 @@
 import { defineConfig } from '@adonisjs/shield'
 
+const bearerRouteNames = new Set([
+  'token.masquerade.status',
+  'token.masquerade.start',
+  'token.masquerade.stop',
+  'auth.logout',
+])
+const testProbePaths = new Set([
+  '/api/business',
+  '/api/business/mutate',
+  '/api/business/sensitive',
+  '/api/raw-business',
+])
+
 /**
  * Security configuration using Shield.
  * Provides protection against common web vulnerabilities like CSRF,
@@ -45,13 +58,15 @@ const shieldConfig = defineConfig({
      * Routes that should be excluded from CSRF protection.
      * Useful for webhooks or API endpoints that use other auth methods.
      */
-    exceptRoutes: (ctx) =>
-      Boolean(
-        ctx.route?.pattern.startsWith('/api/masquerade/') ||
-        ctx.route?.pattern.startsWith('/api/business/') ||
-        ctx.route?.pattern === '/api/logout' ||
-        ctx.route?.pattern === '/api/raw-business'
-      ),
+    exceptRoutes: (ctx) => {
+      const routeName = ctx.route?.name
+      const routePath = ctx.route?.pattern
+
+      return Boolean(
+        (routeName && bearerRouteNames.has(routeName)) ||
+        (process.env.NODE_ENV === 'test' && routePath && testProbePaths.has(routePath))
+      )
+    },
 
     /**
      * Enable XSRF-TOKEN cookie for JavaScript frameworks.

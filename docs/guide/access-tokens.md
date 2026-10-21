@@ -11,6 +11,9 @@ configured ability. Issue deliberately restricted abilities for least privilege.
 [AdonisJS access tokens guide](https://docs.adonisjs.com/guides/auth/access-tokens-guard) for token
 provider, guard, expiration, revocation, and ability behavior.
 
+For a runnable local lifecycle against a seeded SQLite app, follow the
+[bearer API walkthrough in the existing example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/README.md#bearer-api-lifecycle).
+
 ## Share account authority with sessions
 
 For a mixed session and token application, keep the same account-level authority used by

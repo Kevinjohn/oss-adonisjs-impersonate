@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a runnable bearer API lifecycle to the native-session example, including token issuance,
+  effective customer reads, shared browser mode, stop, and native revocation.
 - Add v1.1 opaque access-token authentication that shares account mode with native sessions and
   requires an explicit per-token `masquerade` ability on integrated routes.
 - Add a runnable Inertia Vue support workflow, integration guide and packed-example checks.

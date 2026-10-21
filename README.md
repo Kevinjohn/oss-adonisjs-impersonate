@@ -27,9 +27,11 @@ See [Add user impersonation to AdonisJS](docs/guide/walkthrough.md) for an illus
 journey with the working application.
 
 With Node 24 and pnpm installed, run `pnpm demo` from this checkout to build, seed and start the
-[fictional native-session demo](examples/native-session/README.md#one-command-demo). For setup
+[fictional session and bearer demo](examples/native-session/README.md#one-command-demo). For setup
 failures or a manual launch, use the [explicit setup instructions](examples/native-session/README.md#local-setup). The support workspace shows the signed-in operator separately from the effective
-customer, the fixed deadline, and the stop control.
+customer, the fixed deadline, and the stop control. Follow the
+[runnable bearer API lifecycle](examples/native-session/README.md#bearer-api-lifecycle) to issue a
+restricted local token and exercise status, start, customer read, stop, and revocation.
 
 ### Integrate it
 
@@ -45,6 +47,8 @@ customer, the fixed deadline, and the stop control.
   the Edge demo, with native session cookies and context-bound actions.
 - [Inertia React](docs/guide/clients/react.md): launch the runnable React example with native
   session authentication and context-bound support forms.
+- [Opaque access-token guide](docs/guide/access-tokens.md): configure mixed or token-only transport
+  and follow the runnable bearer API lifecycle in the existing example.
 - [Supported package imports](docs/api-reference.md#supported-package-imports): find each public
   entry point and its API reference.
 
