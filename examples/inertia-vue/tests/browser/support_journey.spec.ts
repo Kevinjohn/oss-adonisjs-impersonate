@@ -141,6 +141,38 @@ test.group('Inertia Vue browser journey', (group) => {
     assert.include(await retained.locator('main').innerText(), 'customer-two@example.test')
   })
 
+  test('refreshes a visible workspace for customer A after another session switches to customer B', async ({
+    browser,
+    browserContext,
+    assert,
+  }) => {
+    const workspace = await browserContext.newPage()
+    await signIn(workspace)
+    await selectCustomer(workspace, 1)
+    await workspace.getByLabel('Reason for support').fill('Customer A request')
+    await workspace.getByRole('button', { name: 'Start support mode' }).click()
+    await workspace.waitForURL('**/support/customer')
+    await workspace.goto(`${base()}/support`)
+    await workspace.getByText(/Viewing Customer One/).waitFor()
+
+    const secondContext = await browser.newContext()
+    try {
+      const second = await secondContext.newPage()
+      await signIn(second)
+      await second.getByRole('button', { name: 'Stop support mode' }).click()
+      await selectCustomer(second, 2)
+      await second.getByLabel('Reason for support').fill('Customer B request')
+      await second.getByRole('button', { name: 'Start support mode' }).click()
+      await second.waitForURL('**/support/customer')
+    } finally {
+      await secondContext.close()
+    }
+
+    await workspace.evaluate('document.dispatchEvent(new Event("visibilitychange"))')
+    await workspace.getByText(/Viewing Customer Two/).waitFor()
+    assert.notInclude(await workspace.locator('main').innerText(), 'customer-one@example.test')
+  })
+
   test('rechecks a captured customer A response after the account has switched to customer B', async ({
     browser,
     browserContext,
@@ -260,6 +292,8 @@ test.group('Inertia Vue browser journey', (group) => {
     await page.route('**/support/identity', async (route) => {
       const response = await route.fetch()
       const body = await response.text()
+      // The idle workspace checks status too; hold only the active customer page's check.
+      if (!body.includes('"isMasquerading":true')) return route.fulfill({ response, body })
       captureIdentity(body)
       await identityGate
       await route.fulfill({ response, body })

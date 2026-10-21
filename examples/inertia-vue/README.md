@@ -23,7 +23,7 @@ Open <http://localhost:3378/login> and sign in as `operator@example.test` with p
 
 To use a validated alpha baseline from issue #66, check out the exact annotated tag recorded there and build and pack it with the same commands. Do not use a registry dependency for this local example. The package specifier resolves to `../../tmp/inertia-vue-package.tgz`; repack and reinstall after changing or switching the package source.
 
-The raw `web` guard owns login, logout, support status, and start/stop controls. The `web_effective` guard protects customer reads and mutations. Every unsafe form, including an idle start form, captures its context token when the form is created. Shield's CSRF token is independent. The app refreshes the customer page after transitions, encrypts Inertia history, revalidates restored or visible customer pages, and never replays an old action with a refreshed token.
+The raw `web` guard owns login, logout, support status, and start/stop controls. The `web_effective` guard protects customer reads and mutations. Every unsafe form, including an idle start form, captures its context token when the form is created. Shield's CSRF token is independent. The app refreshes the customer page after transitions, encrypts Inertia history, revalidates restored or visible customer pages and the operator workspace, and never replays an old action with a refreshed token.
 
 The demo commands use `tmp/db.sqlite3`. Functional and browser tests use the separate `tmp/test.sqlite3`, so running the suites does not alter local demo accounts.
 

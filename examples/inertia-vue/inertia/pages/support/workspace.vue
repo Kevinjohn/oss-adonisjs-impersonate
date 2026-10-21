@@ -4,6 +4,7 @@ import { Form } from '@adonisjs/inertia/vue'
 import { Link } from '@adonisjs/inertia/vue'
 import SupportBanner from '~/components/support_banner.vue'
 import ContextForm from '~/components/context_form.vue'
+import { useWorkspaceFreshness } from './use_workspace_freshness'
 
 type UserLabel = { id: number; fullName: string; email: string }
 type Mode = { isMasquerading: boolean; contextToken: string; targetId?: string; expiresAt?: string }
@@ -16,6 +17,7 @@ const props = defineProps<{
   beforeDeadline: boolean
   targetAvailable: boolean
 }>()
+useWorkspaceFreshness(props.mode, props.beforeDeadline)
 </script>
 
 <template>
