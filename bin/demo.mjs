@@ -104,10 +104,13 @@ async function effectiveEnv() {
     )
   }
   environment.PORT = String(port)
-  if (createdEnv && fileValues.get('APP_URL') === 'http://${HOST}:${PORT}') {
-    environment.APP_URL = `http://127.0.0.1:${port}`
-    source = source.replace(/^APP_URL=.*$/m, `APP_URL=${environment.APP_URL}`)
-    await writeFile(envPath, source)
+  if (environment.APP_URL === 'http://${HOST}:${PORT}') {
+    const appUrlHost = environment.HOST ?? '127.0.0.1'
+    environment.APP_URL = `http://${appUrlHost}:${port}`
+    if (createdEnv) {
+      source = source.replace(/^APP_URL=.*$/m, `APP_URL=${environment.APP_URL}`)
+      await writeFile(envPath, source)
+    }
   }
   try {
     if (!environment.APP_URL) throw new Error('missing')

@@ -77,6 +77,10 @@ async function fixture(options = {}) {
       })
       setTimeout(() => server.listen(port, '127.0.0.1', async () => {
         await writeFile('server.pid', String(process.pid))
+        await writeFile(
+          'effective-config.json',
+          JSON.stringify({ APP_URL: process.env.APP_URL, HOST: process.env.HOST, PORT: process.env.PORT })
+        )
       }), startupDelay)
     `
     )
@@ -144,6 +148,7 @@ if (args[0] === 'dev') {
     DEMO_TEST_LOG: path.join(directory, 'commands.log'),
   }
   for (const name of ['NODE_ENV', 'PORT', 'APP_KEY', 'DB_CLIENT', 'HOST']) delete env[name]
+  Object.assign(env, options.envOverrides)
   if (options.failAt) env.DEMO_TEST_FAIL_AT = options.failAt
   if (options.startupFail) env.DEMO_TEST_STARTUP_FAIL = '1'
   if (options.startupDelay) env.DEMO_TEST_STARTUP_DELAY = String(options.startupDelay)
@@ -288,6 +293,52 @@ test('refuses production and PostgreSQL settings before migration or seed', asyn
       ''
     )
   }
+})
+
+test('resolves the documented APP_URL template in existing config without rewriting it', async (t) => {
+  const port = await freePort()
+  const originalEnv = `NODE_ENV=development\nPORT=12345\nHOST=localhost\nAPP_URL=http://\${HOST}:\${PORT}\nAPP_KEY=base64:preserve-this-key\n`
+  const demo = await fixture({
+    port,
+    env: originalEnv,
+    envOverrides: { HOST: '127.0.0.1', PORT: String(port) },
+  })
+  t.after(() => rm(demo.directory, { recursive: true, force: true }))
+  const child = launch(demo)
+  const output = await outputOf(child)
+  await waitForFile(path.join(demo.example, 'server.pid'))
+  child.kill('SIGINT')
+  const result = await collectExit(child, output)
+  assert.equal(result.code, 130, result.text)
+  assert.deepEqual(
+    JSON.parse(await readFile(path.join(demo.example, 'effective-config.json'), 'utf8')),
+    { APP_URL: `http://127.0.0.1:${port}`, HOST: '127.0.0.1', PORT: String(port) }
+  )
+  assert.equal(await readFile(path.join(demo.example, '.env'), 'utf8'), originalEnv)
+  assert.match(
+    await readFile(path.join(demo.example, 'state.json'), 'utf8'),
+    /unrelated@example\.test/
+  )
+
+  await Promise.all([
+    rm(path.join(demo.example, 'server.pid'), { force: true }),
+    rm(path.join(demo.example, 'effective-config.json'), { force: true }),
+  ])
+  const repeat = launch(demo)
+  const repeatOutput = await outputOf(repeat)
+  await waitForFile(path.join(demo.example, 'server.pid'))
+  repeat.kill('SIGINT')
+  const repeatResult = await collectExit(repeat, repeatOutput)
+  assert.equal(repeatResult.code, 130, repeatResult.text)
+  assert.equal(await readFile(path.join(demo.example, '.env'), 'utf8'), originalEnv)
+  assert.deepEqual(
+    JSON.parse(await readFile(path.join(demo.example, 'effective-config.json'), 'utf8')),
+    { APP_URL: `http://127.0.0.1:${port}`, HOST: '127.0.0.1', PORT: String(port) }
+  )
+  assert.match(
+    await readFile(path.join(demo.example, 'state.json'), 'utf8'),
+    /unrelated@example\.test/
+  )
 })
 
 test('reports an occupied local port without stopping its owner or touching the database', async (t) => {
