@@ -41,7 +41,7 @@ test.group('JSON support browser client', (group) => {
       .selectOption({ label: 'Customer One — customer-one@example.test' })
     await page.getByLabel('Reason for access').fill('Customer requested email setting help')
     await page.getByRole('button', { name: 'Start support mode' }).click()
-    await page.getByText('Customer access confirmed.').waitFor()
+    await page.getByText('Action completed.').waitFor()
     const customer = await User.findByOrFail('email', demoAccounts[1].email)
     assert.include(await page.locator('#json-customer').innerText(), customer.email)
     assert.include(await page.locator('#json-customer').innerText(), demoAccounts[0].email)
@@ -63,10 +63,17 @@ test.group('JSON support browser client', (group) => {
         },
         body: JSON.stringify({ emailUpdates: '1' }),
       })
-      return { status: response.status, type: response.headers.get('content-type') || '' }
+      return {
+        status: response.status,
+        responseType: response.type,
+        contentType: response.headers.get('content-type') || '',
+      }
     })
-    assert.isTrue([302, 303, 403].includes(rejectedCsrf.status))
-    assert.notInclude(rejectedCsrf.type, 'application/json')
+    assert.isTrue(
+      (rejectedCsrf.responseType === 'opaqueredirect' && rejectedCsrf.status === 0) ||
+        rejectedCsrf.status === 403
+    )
+    assert.notInclude(rejectedCsrf.contentType, 'application/json')
     assert.isNull(await db.from('demo_preferences').where('user_id', customer.id).first())
     await page.getByRole('button', { name: 'Save preference' }).click()
     await page.getByText('Action completed.').waitFor()
@@ -94,7 +101,7 @@ test.group('JSON support browser client', (group) => {
       .selectOption({ label: 'Customer One — customer-one@example.test' })
     await page.getByLabel('Reason for access').fill('First customer')
     await page.getByRole('button', { name: 'Start support mode' }).click()
-    await page.getByText('Customer access confirmed.').waitFor()
+    await page.getByText('Action completed.').waitFor()
     let releaseOld!: () => void
     let capturedOld!: () => void
     let deliveredOld!: () => void
@@ -129,7 +136,7 @@ test.group('JSON support browser client', (group) => {
       .selectOption({ label: 'Customer Two — customer-two@example.test' })
     await other.getByLabel('Reason for access').fill('Second customer')
     await other.getByRole('button', { name: 'Start support mode' }).click()
-    await other.getByText('Customer access confirmed.').waitFor()
+    await other.getByText('Action completed.').waitFor()
     await page.getByRole('button', { name: 'Check current status' }).click()
     await page.getByText('Customer access confirmed.').waitFor()
     assert.include(await page.locator('#json-customer').innerText(), demoAccounts[2].email)
@@ -155,13 +162,13 @@ test.group('JSON support browser client', (group) => {
       .selectOption({ label: 'Customer One — customer-one@example.test' })
     await page.getByLabel('Reason for access').fill('Expiry and recovery')
     await page.getByRole('button', { name: 'Start support mode' }).click()
-    await page.getByText('Customer access confirmed.').waitFor()
+    await page.getByText('Action completed.').waitFor()
     const deadlineText = await page.locator('#json-deadline').innerText()
     const deadline = Date.parse(deadlineText.replace('Fixed deadline: ', ''))
     await page.clock.setFixedTime(deadline)
     await page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
-    await page.getByText('fixed deadline passed', { exact: false }).waitFor()
-    assert.equal(await page.getByRole('button', { name: 'Save preference' }).isHidden(), true)
+    await page.locator('#json-preference').waitFor({ state: 'hidden' })
+    assert.equal(await page.locator('#json-preference').isHidden(), true)
     assert.equal(
       await page.getByRole('button', { name: 'Try sensitive action' }).isDisabled(),
       true

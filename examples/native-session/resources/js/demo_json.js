@@ -70,7 +70,7 @@ export function initJsonClient({
   }
   function errorMessage(error) {
     if (error.status === 401 || error.status === 419)
-      return 'Session or CSRF protection changed. Sign in again, then check status.'
+      return 'Session or CSRF protection changed. Reload this page for a new token, sign in if needed, then check status.'
     if (error.status === 409 || error.status === 428)
       return 'Support context changed. Check current status and choose a new action.'
     if (error.status === 403)
@@ -178,6 +178,7 @@ export function initJsonClient({
     const current = ++generation
     frozen = true
     rawStopAllowed = false
+    el('json-start').reset()
     clearCustomer()
     renderStatus()
     notice('Waiting for the result…')

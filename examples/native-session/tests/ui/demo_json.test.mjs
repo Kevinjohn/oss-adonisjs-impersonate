@@ -189,3 +189,28 @@ test('does not claim completion when a successful POST is followed by a failed s
   assert.doesNotMatch(elements['json-notice'].textContent, /Action completed/)
   assert.equal(elements['json-preference'].hidden, true)
 })
+
+test('a Shield redirect gives session and CSRF recovery without replaying the request', async () => {
+  const requests = []
+  const { elements } = fixture(async (path) => {
+    requests.push(path)
+    if (path === '/masquerade') return json(active('current'))
+    if (path === '/support/json/customer')
+      return json(customer('current', 'customer-one@example.test'))
+    return new Response(null, { status: 302, headers: { location: '/support/json' } })
+  })
+  await tick()
+  elements['json-setting'].value = '1'
+  elements['json-preference'].listeners.submit({ preventDefault() {} })
+  await tick()
+  assert.deepEqual(requests, [
+    '/masquerade',
+    '/support/json/customer',
+    '/support/json/customer/preference',
+    '/masquerade',
+    '/support/json/customer',
+  ])
+  assert.match(elements['json-notice'].textContent, /Session or CSRF protection changed/)
+  assert.equal(elements['json-notice'].focused, true)
+  assert.equal(requests.filter((path) => path === '/support/json/customer/preference').length, 1)
+})
