@@ -15,7 +15,7 @@ intent automatically.
 
 ## Choose a path
 
-- **Try the working demo.** Follow the [native-session demo instructions](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session/README.md)
+- **Try the working demo.** Follow the [native-session demo instructions](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/README.md#one-command-demo)
   to run the fictional operator and customer application.
 - **Add support mode to an existing app.** Continue with [Install and configure](setup.md), then
   follow [Use a support mode](usage.md). Keep the current session provider and guard, review the
@@ -23,10 +23,10 @@ intent automatically.
   business routes.
 - **Choose a delivered client integration.** [Edge forms](usage.md#edge-forms-and-host-redirects)
   capture the context token with the original form intent. For a same-origin browser client, see
-  the [JSON client guide](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/docs/guide/clients/json.md)
-  and its runnable [native-session example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session).
-  For React and Inertia, see the [React client guide](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/235ce0e44bc74fb088960ba91ea13a9a70cc71e3/docs/guide/clients/react.md)
-  and runnable [Inertia example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/235ce0e44bc74fb088960ba91ea13a9a70cc71e3/examples/inertia-react).
+  the [JSON client guide](clients/json.md)
+  and its runnable [native-session example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/main/examples/native-session).
+  For React and Inertia, see the [React client guide](clients/react.md)
+  and runnable [Inertia example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/main/examples/inertia-react).
   For Vue and Inertia, use the [Vue integration guide](clients/vue.md) and its
   [runnable Vue example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/main/examples/inertia-vue).
 
