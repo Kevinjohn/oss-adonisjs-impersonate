@@ -323,6 +323,7 @@ test.group('Inertia Vue browser journey', (group) => {
     await page.getByLabel('Reason for support').fill('Recovery test')
     await page.getByRole('button', { name: 'Start support mode' }).click()
     await page.waitForURL('**/support/customer')
+    await page.locator('[data-identity="current"]').waitFor()
     const target = await User.findByOrFail('email', demoAccounts[1].email)
     target.active = false
     await target.save()
@@ -339,6 +340,7 @@ test.group('Inertia Vue browser journey', (group) => {
     await page.getByLabel('Reason for support').fill('Transient request failure')
     await page.getByRole('button', { name: 'Start support mode' }).click()
     await page.waitForURL('**/support/customer')
+    await page.locator('[data-identity="current"]').waitFor()
     setCustomerRequestsUnavailable(true)
     await page.goto(`${base()}/support/customer`)
     await page.waitForURL('**/support/recovery')
@@ -353,6 +355,7 @@ test.group('Inertia Vue browser journey', (group) => {
     await page.getByLabel('Reason for support').fill('Store recovery test')
     await page.getByRole('button', { name: 'Start support mode' }).click()
     await page.waitForURL('**/support/customer')
+    await page.locator('[data-identity="current"]').waitFor()
 
     setMasqueradeStoreUnavailable(true)
     await page.goto(`${base()}/support`)
