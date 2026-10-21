@@ -1903,7 +1903,7 @@ packages:
   adonisjs-masquerade@file:../../tmp/inertia-vue-package.tgz:
     resolution:
       {
-        integrity: sha512-aDGtFacK0mkYqO5oF7JKv25YVB0UuvkQKBjvicEIklAtTqDLmMvqqZQgom1DpbsRGld1QU+svtt9we1LmZGvOw==,
+        integrity: sha512-LrQGGjoCI4R4Fluba4hfzsc/608ldgGB6pTUFjNWDvhjweh6qnQVaqEMzeZA+kIgxG0oPNC1F7bAanOrpEs9hQ==,
         tarball: file:../../tmp/inertia-vue-package.tgz,
       }
     version: 0.0.0
