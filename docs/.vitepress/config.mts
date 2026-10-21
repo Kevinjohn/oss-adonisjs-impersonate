@@ -29,6 +29,7 @@ export default defineConfig({
         items: [
           { text: 'Install and configure', link: '/guide/setup' },
           { text: 'Use a support mode', link: '/guide/usage' },
+          { text: 'Session JSON client', link: '/guide/clients/json' },
           { text: 'Security and operations', link: '/guide/security' },
         ],
       },

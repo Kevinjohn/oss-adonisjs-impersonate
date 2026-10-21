@@ -18,6 +18,8 @@ to stop the mode.
   session provider, and wire callbacks, middleware, and host-protected routes.
 - [Use a support mode](guide/usage.md): follow the complete status, start, customer-work, stop, and
   recovery recipes for JSON controls and Edge forms.
+- [Session JSON client](guide/clients/json.md): run same-origin fetch controls and customer
+  actions with session cookies, CSRF, captured context, and deliberate recovery.
 - [Supported package imports](api-reference.md#supported-package-imports): map public package
   entry points to their API references.
 
