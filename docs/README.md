@@ -17,6 +17,8 @@ with real application screenshots.
 
 ## Guides
 
+- [Inertia Vue](guide/clients/vue.md): run the fictional support workflow with Vue forms and
+  page recovery after an identity change.
 - [Troubleshooting](guide/troubleshooting.md): diagnose setup and boot problems, missing or stale
   context, denied actions, expiry, and storage failures.
 - [Install and configure](guide/setup.md): scaffold the package files, preserve the existing

@@ -26,6 +26,8 @@ intent automatically.
   and its runnable [native-session example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session).
   For React and Inertia, see the [React client guide](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/235ce0e44bc74fb088960ba91ea13a9a70cc71e3/docs/guide/clients/react.md)
   and runnable [Inertia example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/235ce0e44bc74fb088960ba91ea13a9a70cc71e3/examples/inertia-react).
+  For Vue and Inertia, use the [Vue integration guide](clients/vue.md) and its
+  [runnable Vue example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/main/examples/inertia-vue).
 
 ## Integrate in this order
 

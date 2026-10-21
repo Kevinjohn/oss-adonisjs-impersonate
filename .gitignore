@@ -14,6 +14,7 @@ package-lock.json
 !.env.example
 !examples/native-session/.env.test
 !examples/inertia-react/.env.test
+!examples/inertia-vue/.env.test
 *.tgz
 /tmp/
 

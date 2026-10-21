@@ -35,6 +35,8 @@ customer, the fixed deadline, and the stop control.
 
 - [Get started](docs/guide/getting-started.md): choose the demo or an existing-session application
   and follow the delivered frontend path.
+- [Inertia Vue example](examples/inertia-vue/README.md) and [integration guide](docs/guide/clients/vue.md):
+  run the support workflow with context-bound forms and identity-safe page recovery.
 - [Install and configure](docs/guide/setup.md): add the provider and migration, reuse the host's
   session provider, and wire the raw and effective guards and protected routes.
 - [Use a support mode](docs/guide/usage.md): follow the complete status, start, customer-work,
