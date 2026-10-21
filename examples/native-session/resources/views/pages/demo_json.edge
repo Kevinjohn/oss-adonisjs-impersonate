@@ -1,0 +1,72 @@
+@layouts.app({ title: 'JSON support client' })
+  @page({
+    title: 'JSON support client',
+    description: 'A same-origin session client for the fictional support workflow.',
+  })
+    <div class="support-stack" id="json-client" data-csrf="{{ csrfToken }}">
+      <section class="panel support-identity">
+        <div>
+          <p class="tag">Signed-in account · raw session</p>
+          <h2>{{ actor.fullName || actor.email }}</h2>
+          <p>{{ actor.email }}</p>
+        </div>
+        <a class="btn btn--secondary" href="/support">Edge example</a>
+      </section>
+      <section class="panel" aria-labelledby="json-status-heading">
+        <h2 id="json-status-heading">Support status</h2>
+        <p id="json-notice" role="status" aria-live="polite" tabindex="-1">
+          Checking current status…
+        </p>
+        <p id="json-mode"></p>
+        <button class="btn btn--secondary" id="json-refresh" type="button">
+          Check current status
+        </button>
+      </section>
+      <section class="panel" id="json-start-panel" hidden>
+        <h2>Choose a customer</h2>
+        <form id="json-start" class="support-form">
+          <div class="field">
+            <label class="field__label" for="json-target">Customer</label>
+            <select class="field__input" id="json-target" required>
+              <option value="">Select a customer</option>
+              @each(customer in customers)
+                <option value="{{ customer.id }}">
+                  {{ customer.fullName || customer.email }}
+                  —
+                  {{ customer.email }}
+                </option>
+              @end
+            </select>
+          </div>
+          <div class="field">
+            <label class="field__label" for="json-reason">Reason for access</label>
+            <textarea class="field__input" id="json-reason" required maxlength="500"></textarea>
+          </div>
+          <button class="btn btn--primary" type="submit">Start support mode</button>
+        </form>
+      </section>
+      <section class="panel" id="json-active-panel" hidden>
+        <h2>Customer workspace</h2>
+        <p id="json-customer">Checking customer access…</p>
+        <p id="json-deadline"></p>
+        <form id="json-preference" class="support-form" hidden>
+          <div class="field">
+            <label class="field__label" for="json-setting">Email updates</label>
+            <select class="field__input" id="json-setting">
+              <option value="0">Off</option>
+              <option value="1">On</option>
+            </select>
+          </div>
+          <button class="btn btn--primary" type="submit">Save preference</button>
+        </form>
+        <div class="support-actions">
+          <button class="btn btn--secondary" id="json-sensitive" type="button">
+            Try sensitive action
+          </button>
+          <button class="btn btn--primary" id="json-stop" type="button">Stop support mode</button>
+        </div>
+      </section>
+    </div>
+    @vite(['resources/js/demo_json.js'])
+  @end
+@end

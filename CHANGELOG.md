@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a same-origin session JSON client for the fictional support workflow and customer actions.
+
 Add documentation, native-session recipe, and browser checks to pull-request validation.
 
 Organize the README and documentation landing page around the demo, integration guides, and
