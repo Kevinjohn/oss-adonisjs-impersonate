@@ -14,15 +14,18 @@ intent automatically.
 
 ## Choose a path
 
-- **Try the working demo.** Follow the [native-session demo instructions](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/README.md)
+- **Try the working demo.** Follow the [native-session demo instructions](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session/README.md)
   to run the fictional operator and customer application.
 - **Add support mode to an existing app.** Continue with [Install and configure](setup.md), then
   follow [Use a support mode](usage.md). Keep the current session provider and guard, review the
   generated files, and make the host-owned callback and route decisions below before enabling
   business routes.
-- **Use the delivered client integration.** [Edge forms](usage.md#edge-forms-and-host-redirects)
-  capture the context token with the original form intent. Other client guides will appear here
-  when their runnable examples are delivered.
+- **Choose a delivered client integration.** [Edge forms](usage.md#edge-forms-and-host-redirects)
+  capture the context token with the original form intent. For a same-origin browser client, see
+  the [JSON client guide](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/docs/guide/clients/json.md)
+  and its runnable [native-session example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session).
+  For React and Inertia, see the [React client guide](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/65ffd34a0a32dd28f4248fa8d9de8317357c1e4c/docs/guide/clients/react.md)
+  and runnable [Inertia example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/65ffd34a0a32dd28f4248fa8d9de8317357c1e4c/examples/inertia-react).
 
 ## Integrate in this order
 
