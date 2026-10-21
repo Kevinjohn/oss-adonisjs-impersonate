@@ -59,7 +59,7 @@ test('default effective token facade uses selected token actor and target, never
       }),
     },
   } as unknown as HttpContext
-  const effective = new EffectiveAccessTokensGuard(ctx, raw)
+  const effective = new EffectiveAccessTokensGuard(ctx, raw, 'api')
   assert.deepEqual(await effective.authenticate(), target)
   assert.deepEqual(names, [])
 })
@@ -81,7 +81,32 @@ test('default silent auth on an explicit raw api route chooses api, not cookie',
     },
     containerResolver: { make: async () => ({ selectGuard: () => ({ kind: 'raw', raw: 'api' }) }) },
   } as unknown as HttpContext
-  const effective = new EffectiveAccessTokensGuard(ctx, raw)
+  const effective = new EffectiveAccessTokensGuard(ctx, raw, 'api')
   assert.deepEqual(await effective.authenticate(), token)
   assert.deepEqual(names, ['api'])
+})
+
+test('token facade on a public route authenticates its own token guard, not the primary cookie guard', async ({
+  assert,
+}) => {
+  const token = { id: 'token', currentAccessToken: { id: 1 } }
+  const raw = { driverName: 'access_tokens', authenticate: async () => token } as GuardContract<
+    typeof token
+  >
+  const names: string[] = []
+  const ctx = {
+    route: { middleware: { all: () => [] } },
+    auth: {
+      use: (name: string) => {
+        names.push(name)
+        return name === 'web' ? { authenticate: async () => ({ id: 'cookie' }) } : raw
+      },
+    },
+    containerResolver: {
+      make: async () => ({ selectGuard: () => ({ kind: 'none', raw: 'web' }) }),
+    },
+  } as unknown as HttpContext
+  const effective = new EffectiveAccessTokensGuard(ctx, raw, 'api')
+  assert.deepEqual(await effective.authenticate(), token)
+  assert.notInclude(names, 'web')
 })

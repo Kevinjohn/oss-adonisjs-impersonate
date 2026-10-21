@@ -51,7 +51,9 @@ export class EffectiveSessionGuard<User> implements GuardContract<User> {
       const admitted = await runtime.admit(this.ctx)
       this.user = admitted.effective.user as User
     } else {
-      const raw = this.ctx.auth.use((selected?.raw ?? this.rawName) as never) as GuardContract<User>
+      const raw = this.ctx.auth.use(
+        (selected && selected.kind !== 'ambiguous' ? selected.raw : this.rawName) as never
+      ) as GuardContract<User>
       this.user = await raw.authenticate()
     }
     this.isAuthenticated = true

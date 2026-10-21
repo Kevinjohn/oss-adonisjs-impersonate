@@ -3,6 +3,8 @@ import { errorCode, fixture } from './helpers/core.js'
 import { createRuntime, runtimeConfiguration } from '../integration/runtime_factory.js'
 import { markEffectiveFactory } from '../integration/guard_registration.js'
 import { contextToken } from '../src/context_token.js'
+import { masqueradeContext } from '../http/context_middleware.js'
+import { EffectiveSessionGuard } from '../auth/effective_session_guard.js'
 
 const raw = () => ({})
 const effective = (guard: string) => markEffectiveFactory(() => ({}), guard)
@@ -151,6 +153,71 @@ test('unrelated registered raw guard passes selection but cannot enter the servi
   const unknown = { middleware: { all: () => [{ name: 'auth', args: [{ guards: ['missing'] }] }] } }
   assert.equal(
     await errorCode(() => runtime.service.status({ route: unknown } as never)),
+    'E_MASQUERADE_UNAVAILABLE'
+  )
+  assert.equal(reads, 0)
+})
+
+test('a route accepting several raw guards keeps native auth but cannot enter the service', async ({
+  assert,
+}) => {
+  const f = fixture()
+  let reads = 0
+  const read = f.store.read.bind(f.store)
+  f.store.read = async (owner) => {
+    reads++
+    return read(owner)
+  }
+  const web = {
+    authority: f.config.authority,
+    authenticateActor: async () => f.users.get('a')!,
+  }
+  const adapters = Object.freeze({ web })
+  const wiring = {
+    config: f.config,
+    native: { ...web, adapters },
+    effectiveGuardName: 'web_effective',
+    effectiveGuardNames: ['web_effective'],
+    effectiveRawGuards: Object.freeze({ web_effective: 'web' }),
+    registeredRawGuardNames: ['web', 'api'],
+    rawAdapters: adapters,
+  }
+  const app = {
+    nodeEnvironment: 'test',
+    container: {
+      make: async (name: string) =>
+        name === 'emitter' ? { emit: async () => {} } : { info: () => {}, error: () => {} },
+    },
+  }
+  const runtime = await createRuntime(app as never, wiring as never)
+  const route = {
+    middleware: { all: () => [{ name: 'auth', args: [{ guards: ['web', 'api'] }] }] },
+  }
+  const member = { id: 'member' }
+  const names: string[] = []
+  const rawGuard = { driverName: 'session', authenticate: async () => member }
+  const ctx = {
+    route,
+    auth: {
+      defaultGuard: 'web_effective',
+      use: (name: string) => {
+        names.push(name)
+        return rawGuard
+      },
+    },
+    response: { header: () => {}, vary: () => {} },
+    containerResolver: { make: async () => runtime },
+  }
+  let continued = false
+  await masqueradeContext(ctx as never, async () => {
+    continued = true
+  })
+  assert.isTrue(continued)
+  const silent = new EffectiveSessionGuard('web_effective', 'web', ctx as never, rawGuard as never)
+  assert.isTrue(await silent.check())
+  assert.deepEqual(names, ['web'])
+  assert.equal(
+    await errorCode(() => runtime.service.status(ctx as never)),
     'E_MASQUERADE_UNAVAILABLE'
   )
   assert.equal(reads, 0)
