@@ -395,6 +395,7 @@ test.group('Inertia Vue browser journey', (group) => {
     setMasqueradeStoreUnavailable(true)
     await page.goto(`${base()}/support`)
     await page.waitForURL('**/support/recovery')
+    await page.getByRole('heading', { name: 'Support action needs review' }).waitFor()
     assert.equal(await page.evaluate('document.activeElement?.tagName'), 'H1')
     setMasqueradeStoreUnavailable(false)
     await page.getByRole('link', { name: 'Check current status' }).click()
