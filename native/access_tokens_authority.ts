@@ -43,7 +43,6 @@ export function accessTokensAuthority<User>(
     !options ||
     typeof options.provider?.createUserForGuard !== 'function' ||
     typeof options.provider.findById !== 'function' ||
-    typeof options.guard !== 'string' ||
     !boundedString(options.guard, 128) ||
     !boundedString(options.ability, 128) ||
     !options.ability.trim()

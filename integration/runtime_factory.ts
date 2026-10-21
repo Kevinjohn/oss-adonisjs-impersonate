@@ -75,11 +75,6 @@ export async function runtimeConfiguration(app: ApplicationService): Promise<Run
           : `The configured raw guard ${guard} must be registered`
       )
   }
-  if (
-    !Object.hasOwn(auth.config.guards, config.authority.guard) ||
-    typeof (auth.config.guards as Record<string, unknown>)[config.authority.guard] !== 'function'
-  )
-    throw new TypeError('The configured raw guard must be registered')
   const effectiveGuardName = String(auth.defaultGuard)
   if (!isEffectiveFactory(auth.config.guards[auth.defaultGuard]))
     throw new TypeError('The default auth guard must be an effective masquerade guard')
@@ -117,16 +112,18 @@ export async function createRuntime(
 ): Promise<MasqueradeRuntime> {
   const emitter = await app.container.make('emitter')
   const logger = await app.container.make('logger')
+  const selectGuard = (ctx: HttpContext) =>
+    selectRouteGuard(
+      ctx.route,
+      wiring.effectiveGuardName,
+      wiring.effectiveRawGuards,
+      wiring.registeredRawGuardNames,
+      wiring.native.guard ?? wiring.native.authority.guard
+    )
   const service = await createMasqueradeService(wiring.config, {
     environment: app.nodeEnvironment,
     authenticateActor: (ctx) => {
-      const selected = selectRouteGuard(
-        ctx.route,
-        wiring.effectiveGuardName,
-        wiring.effectiveRawGuards,
-        wiring.registeredRawGuardNames,
-        wiring.native.guard ?? wiring.native.authority.guard
-      )
+      const selected = selectGuard(ctx)
       const adapter =
         selected.kind !== 'ambiguous' && Object.hasOwn(wiring.rawAdapters, selected.raw)
           ? wiring.rawAdapters[selected.raw]
@@ -148,14 +145,7 @@ export async function createRuntime(
     config: wiring.config,
     effectiveGuardName: wiring.effectiveGuardName,
     effectiveGuardNames: wiring.effectiveGuardNames,
-    selectGuard: (ctx: HttpContext) =>
-      selectRouteGuard(
-        ctx.route,
-        wiring.effectiveGuardName,
-        wiring.effectiveRawGuards,
-        wiring.registeredRawGuardNames,
-        wiring.native.guard ?? wiring.native.authority.guard
-      ),
+    selectGuard,
     admit: (ctx: HttpContext) => internal[admission](ctx),
   })
 }
