@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Add a one-command launcher for the fictional native-session demo, preserving existing local configuration and data.
+- Add an illustrated user-impersonation walkthrough captured from the fictional native-session demo.
+- Organize adoption guidance by integration task and add safe troubleshooting paths.
 
 Add documentation, native-session recipe, and browser checks to pull-request validation.
 
