@@ -20,17 +20,38 @@ export default defineConfig({
     socialLinks: [{ icon: 'github', link: repository }],
     editLink: { pattern: `${repository}/edit/main/docs/:path` },
     nav: [
-      { text: 'Guide', link: '/guide/setup' },
+      { text: 'Get started', link: '/guide/getting-started' },
       { text: 'API reference', link: '/api-reference' },
     ],
     sidebar: [
       {
-        text: 'Guide',
+        text: 'Get started',
         items: [
+          { text: 'Getting started', link: '/guide/getting-started' },
+          { text: 'Add user impersonation', link: '/guide/walkthrough' },
           { text: 'Install and configure', link: '/guide/setup' },
           { text: 'Use a support mode', link: '/guide/usage' },
+        ],
+      },
+      {
+        text: 'Delivered clients',
+        items: [
+          { text: 'Edge forms', link: '/guide/usage#edge-forms-and-host-redirects' },
           { text: 'Session JSON client', link: '/guide/clients/json' },
+        ],
+      },
+      {
+        text: 'Troubleshooting',
+        items: [{ text: 'Troubleshooting', link: '/guide/troubleshooting' }],
+      },
+      {
+        text: 'Advanced',
+        items: [
           { text: 'Security and operations', link: '/guide/security' },
+          { text: 'Route coverage review', link: '/guide/route-report' },
+          { text: 'Custom authorities', link: '/guide/custom-authorities' },
+          { text: 'Custom stores', link: '/guide/custom-stores' },
+          { text: 'Pruning and retention', link: '/guide/operations' },
         ],
       },
       {

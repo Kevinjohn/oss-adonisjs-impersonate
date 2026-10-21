@@ -63,6 +63,33 @@ test('every anchor in a relative Markdown link names a heading', async ({ assert
   assert.deepEqual(broken, [])
 })
 
+test('guide navigation points to existing guide pages and sections', async ({ assert }) => {
+  const config = await readFile(join(repoRoot, 'docs/.vitepress/config.mts'), 'utf8')
+  const links = [...config.matchAll(/link:\s*'([^']+)'/g)].map(([, link]) => link)
+  const guideLinks = links.filter((link) => link.startsWith('/guide/'))
+  const missing: string[] = []
+
+  for (const link of guideLinks) {
+    const [route, anchor] = link.split('#')
+    const document = `docs${route}.md`
+    if (!existsSync(join(repoRoot, document))) {
+      missing.push(link)
+      continue
+    }
+    const anchors = await headingAnchors(document)
+    if (anchor && !anchors.has(anchor)) missing.push(link)
+  }
+
+  assert.include(guideLinks, '/guide/getting-started')
+  assert.include(guideLinks, '/guide/troubleshooting')
+  assert.include(guideLinks, '/guide/route-report')
+  assert.include(guideLinks, '/guide/custom-authorities')
+  assert.include(guideLinks, '/guide/custom-stores')
+  assert.include(guideLinks, '/guide/operations')
+  assert.include(guideLinks, '/guide/usage#edge-forms-and-host-redirects')
+  assert.deepEqual(missing, [])
+})
+
 /** Paths in the npm tarball; Markdown there is read without the rest of the repository. */
 function packedFiles(): Set<string> {
   const packed = spawnSync('pnpm', ['pack', '--dry-run', '--json'], {

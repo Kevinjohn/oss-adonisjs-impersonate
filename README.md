@@ -21,13 +21,18 @@ permissions.
 
 ### Try it
 
-Run the [fictional native-session demo](examples/native-session/README.md). Its setup guide builds
-the package from this checkout, seeds one operator and two customers, and starts the working
-application. The support workspace shows the signed-in operator separately from the effective
+See [Add user impersonation to AdonisJS](docs/guide/walkthrough.md) for an illustrated support
+journey with the working application.
+
+With Node 24 and pnpm installed, run `pnpm demo` from this checkout to build, seed and start the
+[fictional native-session demo](examples/native-session/README.md#one-command-demo). For setup
+failures or a manual launch, use the [explicit setup instructions](examples/native-session/README.md#local-setup). The support workspace shows the signed-in operator separately from the effective
 customer, the fixed deadline, and the stop control.
 
 ### Integrate it
 
+- [Get started](docs/guide/getting-started.md): choose the demo or an existing-session application
+  and follow the delivered frontend path.
 - [Install and configure](docs/guide/setup.md): add the provider and migration, reuse the host's
   session provider, and wire the raw and effective guards and protected routes.
 - [Use a support mode](docs/guide/usage.md): follow the complete status, start, customer-work,
@@ -39,6 +44,8 @@ customer, the fixed deadline, and the stop control.
 
 ### Security and operations
 
+- [Troubleshooting](docs/guide/troubleshooting.md): diagnose setup, context, admission and storage
+  failures, with safe recovery steps.
 - [Security boundaries](docs/guide/security.md): actor and customer identity, account-wide
   sessions, authorization, context tokens, expiry, audit, and external work.
 - [Custom authorities](docs/guide/custom-authorities.md) and [custom stores](docs/guide/custom-stores.md):
