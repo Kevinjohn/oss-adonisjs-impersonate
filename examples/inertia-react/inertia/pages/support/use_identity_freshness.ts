@@ -1,4 +1,3 @@
-import { router } from '@inertiajs/react'
 import { useEffect, useState } from 'react'
 
 /** Freeze old page data immediately on restoration and fetch raw current status. */
@@ -8,10 +7,11 @@ export function useIdentityFreshness(expiresAt?: string) {
     let timer: ReturnType<typeof setTimeout> | undefined
     let recovering = false
     const recover = () => {
+      if (recovering) return
       recovering = true
       setStale(true)
       document.documentElement.dataset.identityPending = 'true'
-      router.visit('/support', { replace: true, preserveState: false, preserveScroll: false })
+      window.location.replace('/support')
     }
     window.addEventListener('popstate', recover)
     window.addEventListener('pageshow', onPageShow)
@@ -27,7 +27,6 @@ export function useIdentityFreshness(expiresAt?: string) {
       if (remaining <= 0) recover()
       else timer = setTimeout(recover, remaining)
     }
-    if (!recovering) document.documentElement.removeAttribute('data-identity-pending')
     return () => {
       window.removeEventListener('popstate', recover)
       window.removeEventListener('pageshow', onPageShow)

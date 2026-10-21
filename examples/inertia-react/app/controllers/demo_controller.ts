@@ -22,7 +22,7 @@ export default class DemoController {
       ? await User.query().whereIn('email', customerEmails).where('active', true)
       : []
     const target = mode.isMasquerading ? await User.find(mode.targetId) : null
-    ctx.inertia.encryptHistory()
+    prepareHistory(ctx)
     return ctx.inertia.render('support/workspace', {
       actor: label(actor),
       operator: Boolean(actor.masqueradeOperator),
@@ -40,7 +40,7 @@ export default class DemoController {
       'masquerade.runtime'
     )) as MasqueradeRuntime<User>
     await runtime.service.start(ctx, controlInput(ctx, 'start'))
-    ctx.inertia.clearHistory()
+    ctx.session.flash('supportClearHistory', true)
     return ctx.response.redirect().toPath('/support/customer')
   }
 
@@ -50,7 +50,7 @@ export default class DemoController {
       'masquerade.runtime'
     )) as MasqueradeRuntime<User>
     await runtime.service.stop(ctx, controlInput(ctx, 'stop'))
-    ctx.inertia.clearHistory()
+    ctx.session.flash('supportClearHistory', true)
     return ctx.response.redirect().toPath('/support')
   }
 
@@ -70,7 +70,7 @@ export default class DemoController {
       Bouncer.ability((user: User) => user.active && user.id === customer.id)
     )
     const preference = await db.from('demo_preferences').where('user_id', customer.id).first()
-    ctx.inertia.encryptHistory()
+    prepareHistory(ctx)
     return ctx.inertia.render('support/customer', {
       actor: label(actor),
       customer: label(customer),
@@ -114,7 +114,7 @@ export default class DemoController {
   async recovery(ctx: HttpContext) {
     noStore(ctx)
     const message = ctx.session.flashMessages.get('supportRecovery') as string | undefined
-    ctx.inertia.encryptHistory()
+    prepareHistory(ctx)
     return ctx.inertia.render('support/recovery', {
       message: message ?? 'Check current support status before creating a new action.',
     })
@@ -123,6 +123,11 @@ export default class DemoController {
 
 function label(user: User) {
   return { id: user.id, fullName: user.fullName, email: user.email }
+}
+
+function prepareHistory(ctx: HttpContext) {
+  if (ctx.session.flashMessages.get('supportClearHistory')) ctx.inertia.clearHistory()
+  ctx.inertia.encryptHistory()
 }
 
 function customerBouncer(ctx: HttpContext) {

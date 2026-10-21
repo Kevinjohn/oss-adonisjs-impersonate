@@ -2,21 +2,29 @@ import User from '#models/user'
 import type { HttpContext } from '@adonisjs/core/http'
 
 export default class SessionController {
-  async create({ inertia }: HttpContext) {
+  async create({ inertia, session }: HttpContext) {
+    if (session.flashMessages.get('supportClearHistory')) inertia.clearHistory()
     return inertia.render('auth/login', {})
   }
 
-  async store({ request, auth, response }: HttpContext) {
+  async store({ request, auth, response, session }: HttpContext) {
     const { email, password } = request.all()
-    const user = await User.verifyCredentials(email, password)
+    let user: User
+    try {
+      user = await User.verifyCredentials(email, password)
+    } catch (error) {
+      if ((error as { code?: string }).code !== 'E_INVALID_CREDENTIALS') throw error
+      session.flash('error', 'Email or password did not match.')
+      return response.redirect().toPath('/login')
+    }
 
     await auth.use('web').login(user)
     response.redirect().toPath('/support')
   }
 
-  async destroy({ auth, response, inertia }: HttpContext) {
+  async destroy({ auth, response, session }: HttpContext) {
     await auth.use('web').logout()
-    inertia.clearHistory()
+    session.flash('supportClearHistory', true)
     response.redirect().toPath('/login')
   }
 }

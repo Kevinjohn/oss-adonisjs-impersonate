@@ -12,8 +12,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit && tsc --noEmit --project inertia/tsconfig.json",
-    "test:browser": "NODE_ENV=test node ace test browser",
-    "test:ui": "node --test tests/ui/*.test.mjs"
+    "test:browser": "NODE_ENV=test node ace test browser"
   },
   "imports": {
     "#controllers/*": "./app/controllers/*.js",

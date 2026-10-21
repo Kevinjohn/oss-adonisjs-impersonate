@@ -1,6 +1,8 @@
+/// <reference lib="dom" />
 import { test } from '@japa/runner'
 import { mock } from 'node:test'
 import User from '#models/user'
+import db from '@adonisjs/lucid/services/db'
 import testUtils from '@adonisjs/core/services/test_utils'
 import limiter from '@adonisjs/limiter/services/main'
 import { resetDemoAccounts, seedDemoAccounts } from '#services/demo_accounts'
@@ -34,10 +36,14 @@ test.group('React support browser journey', (group) => {
     await page.getByLabel('Password').fill('demo-operator-2026')
     await page.getByRole('button', { name: 'Log in' }).press('Enter')
     await page.waitForURL('**/support')
+    const idleHistoryKey = await page.evaluate("sessionStorage.getItem('historyKey')")
     await page.getByLabel('Customer').selectOption({ label: 'Customer One' })
     await page.getByLabel('Reason for support').fill('Customer requested email update help')
     await page.getByRole('button', { name: 'Start support mode' }).press('Enter')
     await page.waitForURL('**/support/customer')
+    const activeHistoryKey = await page.evaluate("sessionStorage.getItem('historyKey')")
+    assert.isNotNull(activeHistoryKey)
+    assert.notEqual(activeHistoryKey, idleHistoryKey)
     assert.include(await page.getByRole('status').first().innerText(), 'Customer One')
     assert.include(await page.locator('main').innerText(), 'customer-one@example.test')
     await page.setViewportSize({ width: 320, height: 844 })
@@ -53,6 +59,39 @@ test.group('React support browser journey', (group) => {
     await page.getByRole('link', { name: 'Check current status' }).click()
     await page.getByRole('button', { name: 'Stop support mode' }).click()
     await page.getByRole('button', { name: 'Start support mode' }).waitFor()
+    const stoppedHistoryKey = await page.evaluate("sessionStorage.getItem('historyKey')")
+    assert.notEqual(stoppedHistoryKey, activeHistoryKey)
+    await page.getByRole('button', { name: 'Log out' }).click()
+    await page.getByRole('heading', { name: 'Log in' }).waitFor()
+    assert.notEqual(await page.evaluate("sessionStorage.getItem('historyKey')"), stoppedHistoryKey)
+  })
+
+  test('announces login and signup failures beside the affected fields', async ({
+    browserContext,
+    assert,
+  }) => {
+    const page = await browserContext.newPage()
+    await page.goto(`${base()}/login`)
+    await page.getByLabel('Email').fill('operator@example.test')
+    await page.getByLabel('Password').fill('incorrect-password')
+    await page.getByRole('button', { name: 'Log in' }).click()
+    const loginAlert = page.getByRole('alert')
+    await loginAlert.waitFor()
+    assert.include(await loginAlert.innerText(), 'Email or password did not match')
+
+    await page.goto(`${base()}/signup`)
+    await page.getByLabel('Name').fill('Example User')
+    await page.getByLabel('Email').fill('operator@example.test')
+    await page.getByLabel('Password', { exact: true }).fill('correct-password')
+    await page.getByLabel('Confirm password').fill('different-password')
+    await page.getByRole('button', { name: 'Create account' }).click()
+    await page.locator('#email-error').waitFor()
+    await page.locator('#confirmation-error').waitFor()
+    assert.equal(await page.getByLabel('Email').getAttribute('aria-invalid'), 'true')
+    assert.equal(
+      await page.getByLabel('Confirm password').getAttribute('aria-describedby'),
+      'confirmation-error'
+    )
   })
 
   test('revalidates retained pages through A to B and independent operator sessions', async ({
@@ -65,6 +104,8 @@ test.group('React support browser journey', (group) => {
     const staleTab = await browserContext.newPage()
     await staleTab.goto(`${base()}/support`)
     const idleToken = await staleTab.locator('input[name="_masqueradeContext"]').inputValue()
+    await staleTab.getByLabel('Customer').selectOption({ label: 'Customer One' })
+    await staleTab.getByLabel('Reason for support').fill('Retained idle form')
 
     await first.getByLabel('Customer').selectOption({ label: 'Customer One' })
     await first.getByLabel('Reason for support').fill('Customer One requested help')
@@ -88,6 +129,15 @@ test.group('React support browser journey', (group) => {
       await second.getByLabel('Reason for support').fill('Customer Two requested help')
       await second.getByRole('button', { name: 'Start support mode' }).click()
       await second.waitForURL('**/support/customer')
+
+      assert.equal(await submitRetainedForm(staleTab, '/support/start', idleToken), 409)
+      assert.equal(
+        await submitRetainedForm(first, '/support/customer/preference', activeAToken),
+        409
+      )
+      const customerOne = await User.findByOrFail('email', 'customer-one@example.test')
+      assert.isNull(await db.from('demo_preferences').where('user_id', customerOne.id).first())
+      assert.include(await second.locator('main').innerText(), 'customer-two@example.test')
 
       await staleTab.bringToFront()
       await staleTab.goto(`${base()}/support/customer`)
@@ -118,14 +168,13 @@ test.group('React support browser journey', (group) => {
       await page.getByRole('button', { name: 'Start support mode' }).click()
       await page.waitForURL('**/support/customer')
       const deadline = Date.parse((await page.locator('time').getAttribute('datetime'))!)
-      await page.clock.setFixedTime(deadline)
       mock.timers.setTime(deadline)
       setMasqueradeTestTime(deadline)
       await page.route('**/support', async (route) => {
         await new Promise((resolve) => setTimeout(resolve, 300))
         await route.continue()
       })
-      await page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+      await page.clock.runFor(deadline - now)
       await page.waitForFunction(() => document.documentElement.dataset.identityPending === 'true')
       await page.getByRole('heading', { name: 'Support workspace' }).waitFor()
       await page.unroute('**/support')
@@ -223,4 +272,30 @@ async function signIn(
   await page.getByLabel('Password').fill('demo-operator-2026')
   await page.getByRole('button', { name: 'Log in' }).click()
   await page.waitForURL('**/support')
+}
+
+async function submitRetainedForm(
+  page: Parameters<typeof signIn>[0],
+  formAction: string,
+  originalToken: string
+) {
+  return page.evaluate(
+    async ({ action, token }) => {
+      const form = document.querySelector<HTMLFormElement>(`form[action="${action}"]`)
+      if (!form) throw new Error(`Retained form ${action} is missing`)
+      const data = new FormData(form)
+      if (data.get('_masqueradeContext') !== token) throw new Error('Retained form context changed')
+      const xsrf = document.cookie.split('; ').find((part) => part.startsWith('XSRF-TOKEN='))
+      if (!xsrf) throw new Error('XSRF cookie is missing')
+      const response = await fetch(form.action, {
+        method: 'POST',
+        body: data,
+        credentials: 'same-origin',
+        redirect: 'manual',
+        headers: { 'X-XSRF-TOKEN': decodeURIComponent(xsrf.split('=')[1]) },
+      })
+      return response.status
+    },
+    { action: formAction, token: originalToken }
+  )
 }

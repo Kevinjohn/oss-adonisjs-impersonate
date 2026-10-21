@@ -17,6 +17,7 @@ function run(cwd: string, label: string, args: string[]) {
       NODE_ENV: 'test',
       HOST: process.env.HOST ?? '127.0.0.1',
       PORT: process.env.PORT ?? '3371',
+      DB_CLIENT: 'sqlite',
       CI: 'true',
     },
   })
@@ -31,4 +32,13 @@ run(example, 'lint', ['lint'])
 run(example, 'typecheck', ['typecheck'])
 run(example, 'build', ['build'])
 run(example, 'functional tests', ['test', 'functional'])
-if (!noBrowser) run(example, 'browser tests', ['test:browser'])
+if (!noBrowser) {
+  run(example, 'install matching Chromium', [
+    'exec',
+    'playwright',
+    'install',
+    ...(process.platform === 'linux' ? ['--with-deps'] : []),
+    'chromium',
+  ])
+  run(example, 'browser tests', ['test:browser'])
+}
