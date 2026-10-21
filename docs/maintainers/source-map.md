@@ -44,6 +44,8 @@ remain one protocol; service control and admission ordering remain one lifecycle
   [HTTP context scenarios](../../examples/native-session/tests/functional/masquerade_context.spec.ts).
 - Opaque access-token journeys:
   [token authority scenarios](../../examples/native-session/tests/functional/access_token_authority.spec.ts),
+  [ordinary bearer controls and customer route](../../examples/native-session/start/token_control_routes.ts),
+  [local token command](../../examples/native-session/commands/demo_token.ts),
   [token route fixture](../../examples/native-session/start/token_test_routes.ts), and
   [native Auth guard wiring](../../examples/native-session/config/auth.ts).
 - Visual assets: [CSS entry](../../examples/native-session/resources/css/app.css) and

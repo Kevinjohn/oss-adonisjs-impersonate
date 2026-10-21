@@ -1,4 +1,4 @@
-import { cleanUsers, createUsers } from '#tests/helpers/users'
+import { cleanUsers, createAccessToken, createUsers } from '#tests/helpers/users'
 import User from '#models/user'
 import {
   assertDemoEnvironmentAllowed,
@@ -70,6 +70,8 @@ test.group('demo accounts', (group) => {
     const { actor } = await createUsers()
     await seedDemoAccounts()
     const demoOperator = await User.findByOrFail('email', 'operator@example.test')
+    const { token: demoToken } = await createAccessToken(demoOperator)
+    const { token: unrelatedToken } = await createAccessToken(actor)
     await db.table('masquerade_modes').insert([idleMode(demoOperator.id), idleMode(actor.id)])
     await db
       .table('remember_me_tokens')
@@ -130,6 +132,28 @@ test.group('demo accounts', (group) => {
     assert.equal(
       Number(
         await db
+          .from('auth_access_tokens')
+          .where('id', String(demoToken.identifier))
+          .count('* as total')
+          .first()
+          .then((row) => row?.total)
+      ),
+      0
+    )
+    assert.equal(
+      Number(
+        await db
+          .from('auth_access_tokens')
+          .where('id', String(unrelatedToken.identifier))
+          .count('* as total')
+          .first()
+          .then((row) => row?.total)
+      ),
+      1
+    )
+    assert.equal(
+      Number(
+        await db
           .from('masquerade_events')
           .where('actor_id', String(demoOperator.id))
           .count('* as total')
@@ -159,6 +183,105 @@ test.group('demo accounts', (group) => {
     assert.lengthOf(await User.query().whereIn('email', demoEmails), 3)
   }).skip(usesPostgres, 'Demo account fixtures require SQLite')
 
+  test('prints one restricted native bearer credential only after validating seeded accounts', async ({
+    assert,
+  }) => {
+    await seedDemoAccounts()
+    const result = runDemoCommand('demo:token', 'development')
+    assert.equal(result.exitCode, 0, result.output)
+    const token = JSON.parse(result.stdout) as {
+      token: string
+      tokenId: string
+      expiresAt: string
+      operator: { id: string; email: string }
+      customers: { id: string; email: string }[]
+    }
+    assert.deepEqual(Object.keys(token), ['token', 'tokenId', 'expiresAt', 'operator', 'customers'])
+    assert.isString(token.token)
+    assert.isNotEmpty(token.token)
+    assert.isString(token.tokenId)
+    assert.isTrue(Number.isFinite(Date.parse(token.expiresAt)))
+    const operator = await User.findByOrFail('email', 'operator@example.test')
+    assert.deepEqual(token.operator, {
+      id: String(operator.id),
+      email: 'operator@example.test',
+    })
+    assert.deepEqual(
+      token.customers.map(({ email }) => email),
+      ['customer-one@example.test', 'customer-two@example.test']
+    )
+    const customers = await User.query()
+      .whereIn('email', ['customer-one@example.test', 'customer-two@example.test'])
+      .orderBy('email')
+    assert.deepEqual(
+      token.customers.map(({ id }) => id),
+      customers.map(({ id }) => String(id))
+    )
+    const issued = await db.from('auth_access_tokens').where('id', token.tokenId).first()
+    assert.equal(issued?.name, 'local-support-demo')
+    assert.equal(String(issued?.tokenable_id), token.operator.id)
+    assert.deepEqual(JSON.parse(issued?.abilities ?? '[]'), ['masquerade'])
+    assert.isNotNull(issued?.expires_at)
+    assert.equal(new Date(issued.expires_at).toISOString(), token.expiresAt)
+    assert.isAbove(Date.parse(token.expiresAt), Date.now())
+    assert.isAtMost(Date.parse(token.expiresAt), Date.now() + 60 * 60 * 1000)
+    const customerTokenCount = await db
+      .from('auth_access_tokens')
+      .whereIn(
+        'tokenable_id',
+        customers.map(({ id }) => id)
+      )
+      .count('* as total')
+      .first()
+    assert.equal(Number(customerTokenCount?.total), 0)
+
+    const production = runDemoCommand('demo:token', 'production')
+    assert.notEqual(production.exitCode, 0)
+    assert.notInclude(production.stdout, '"token"')
+    const postgres = runDemoCommand('demo:token', 'development', 'pg')
+    assert.notEqual(postgres.exitCode, 0)
+    assert.notInclude(postgres.stdout, '"token"')
+  }).skip(usesPostgres, 'Demo account fixtures require SQLite')
+
+  test('refuses token issuance before creating a token when demo accounts are missing or ineligible', async ({
+    assert,
+  }) => {
+    await seedDemoAccounts()
+    const customer = await User.findByOrFail('email', 'customer-two@example.test')
+    await customer.delete()
+    const noCustomers = runDemoCommand('demo:token', 'development')
+    assert.notEqual(noCustomers.exitCode, 0)
+    assert.notInclude(noCustomers.stdout, '"token"')
+    assert.equal(
+      Number(
+        await db
+          .from('auth_access_tokens')
+          .count('* as total')
+          .first()
+          .then((row) => row?.total)
+      ),
+      0
+    )
+
+    await seedDemoAccounts()
+    const operator = await User.findByOrFail('email', 'operator@example.test')
+    operator.masqueradeOperator = false
+    await operator.save()
+    const ineligible = runDemoCommand('demo:token', 'development')
+    assert.notEqual(ineligible.exitCode, 0)
+    assert.notInclude(ineligible.stdout, '"token"')
+    assert.equal(
+      Number(
+        await db
+          .from('auth_access_tokens')
+          .count('* as total')
+          .first()
+          .then((row) => row?.total)
+      ),
+      0
+    )
+  }).skip(usesPostgres, 'Demo account fixtures require SQLite')
+
   test('runs reset through Ace using NODE_ENV instead of the console execution environment', async ({
     assert,
   }) => {
@@ -186,10 +309,12 @@ test.group('demo accounts', (group) => {
 })
 
 function runDemoCommand(
-  command: 'demo:reset' | 'demo:seed',
-  nodeEnv: 'development' | 'production'
+  command: 'demo:reset' | 'demo:seed' | 'demo:token',
+  nodeEnv: 'development' | 'production',
+  dbClient: 'sqlite' | 'pg' = 'sqlite'
 ): {
   exitCode: number
+  stdout: string
   output: string
 } {
   const appRoot = fileURLToPath(new URL('../../', import.meta.url))
@@ -205,12 +330,12 @@ function runDemoCommand(
         APP_KEY: 'development-command-fixture-key-012345',
         APP_URL: 'http://localhost:3333',
         SESSION_DRIVER: 'memory',
-        DB_CLIENT: 'sqlite',
+        DB_CLIENT: dbClient,
       },
       encoding: 'utf8',
       stdio: 'pipe',
     })
-    return { exitCode: 0, output }
+    return { exitCode: 0, stdout: output, output }
   } catch (error) {
     const commandError = error as {
       status?: number
@@ -219,6 +344,7 @@ function runDemoCommand(
     }
     return {
       exitCode: commandError.status ?? 1,
+      stdout: commandError.stdout?.toString() ?? '',
       output: `${commandError.stdout?.toString() ?? ''}${commandError.stderr?.toString() ?? ''}`,
     }
   }

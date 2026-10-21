@@ -5,21 +5,6 @@ import router from '@adonisjs/core/services/router'
 import type User from '#models/user'
 
 router
-  .group(() => {
-    router
-      .get('/', [() => import('#controllers/masquerade_controller'), 'status'])
-      .as('token.masquerade.status')
-    router
-      .post('/start', [() => import('#controllers/masquerade_controller'), 'start'])
-      .as('token.masquerade.start')
-    router
-      .post('/stop', [() => import('#controllers/masquerade_controller'), 'stop'])
-      .as('token.masquerade.stop')
-  })
-  .prefix('/api/masquerade')
-  .use(middleware.auth({ guards: ['api'] }))
-
-router
   .get('/api/business', async (ctx) => {
     const { auth } = ctx
     const actor = auth.use('api').user!
@@ -65,11 +50,4 @@ router
 
 router
   .get('/api/raw-business', async ({ auth }) => ({ actorId: auth.use('api').user!.id }))
-  .use(middleware.auth({ guards: ['api'] }))
-
-router
-  .post('/api/logout', async ({ auth }) => {
-    await auth.use('api').invalidateToken()
-    return { loggedOut: true }
-  })
   .use(middleware.auth({ guards: ['api'] }))

@@ -8,12 +8,21 @@ const appRoot = fileURLToPath(new URL('../../', import.meta.url))
 
 test.group('test-only route registration boundary', () => {
   test('Ace route reports include probes only when NODE_ENV is test', async ({ assert }) => {
-    const [normal, testEnvironment] = await Promise.all([
+    const [normal, production, testEnvironment] = await Promise.all([
       routeReport('development'),
+      routeReport('production'),
       routeReport('test'),
     ])
 
-    assert.include(normal, '/masquerade/start')
+    for (const report of [normal, production]) {
+      assert.include(report, '/masquerade/start')
+      assert.match(report, /GET,HEAD\s+\/api\/masquerade \[CONTROL READ\]/)
+      assert.match(report, /POST\s+\/api\/masquerade\/start \[CONTROL MUTATION\]/)
+      assert.match(report, /POST\s+\/api\/logout \[POSSIBLE CONTROL MUTATION\]/)
+      assert.match(report, /GET,HEAD\s+\/api\/support\/customer \[BUSINESS READ\]/)
+      assert.notInclude(report, '/api/business')
+      assert.notInclude(report, '/api/business/mutate')
+    }
     assert.match(normal, /\/support\/json \[RAW-GUARD BUSINESS READ\]/)
     assert.match(normal, /\/support\/json\/customer \[BUSINESS READ\]/)
     assert.match(
@@ -33,7 +42,7 @@ test.group('test-only route registration boundary', () => {
   })
 })
 
-async function routeReport(nodeEnv: 'development' | 'test'): Promise<string> {
+async function routeReport(nodeEnv: 'development' | 'production' | 'test'): Promise<string> {
   const { stdout, stderr } = await execFile(process.execPath, ['ace.js', 'masquerade:routes'], {
     cwd: appRoot,
     env: { ...process.env, NODE_ENV: nodeEnv },

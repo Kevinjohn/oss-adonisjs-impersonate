@@ -75,6 +75,13 @@ export async function resetDemoAccounts(
       )
       .delete()
     await trx
+      .from('auth_access_tokens')
+      .whereIn(
+        'tokenable_id',
+        users.map(({ id }) => id)
+      )
+      .delete()
+    await trx
       .from('users')
       .whereIn(
         'id',

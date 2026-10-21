@@ -1,10 +1,12 @@
-# Native session demo
+# Native session and access-token demo
 
 This AdonisJS 7 hypermedia fixture is based on the official starter kit at commit
 [`449d77c`](https://github.com/adonisjs/starter-kits/commit/449d77cc25dd08e036f442d2d39b760d43ccfbd3).
-It consumes the built package tarball through native session authentication, Bouncer, Edge,
-controllers, middleware and a real Lucid store on SQLite or PostgreSQL. Its demo accounts and test
-credentials are fictional.
+It consumes the built package tarball through native session and opaque access-token
+authentication, Bouncer, Edge, controllers, middleware and a real Lucid store on SQLite or
+PostgreSQL. The browser support workspace demonstrates session auth; the bearer walkthrough below
+uses the same seeded operator and account-wide mode. Demo accounts and test credentials are
+fictional.
 
 ## One-command demo
 
@@ -31,6 +33,95 @@ Sign in with the fictional local operator account:
 From the dashboard, open the support workspace, choose a customer, enter a reason and start
 support mode. Open the customer page to read the customer's email and reversible email-update
 preference, change that preference, then return to the workspace and stop support mode.
+
+## Bearer API lifecycle
+
+The bearer API uses the seeded operator and customers from the running demo. Keep the server from
+`pnpm demo` running, open a second terminal at the repository root, and issue one short-lived
+token. `demo:token` requires the demo accounts to exist; it does not seed or modify their flags.
+It refuses non-development/test environments, non-SQLite databases, missing or ineligible demo
+accounts, and creates a token that expires after one hour with only the `masquerade` ability. The command prints
+JSON to stdout. Capture it directly in a shell variable; do not paste the value into a file or
+share terminal logs containing it.
+
+This walkthrough starts from idle mode. `pnpm demo` preserves account-wide mode from an earlier
+run. Before issuing a token, inspect the current mode at `/support`; if it is active, stop it
+deliberately from that workspace and confirm it is idle. The commands below do not clear or
+replace an active target.
+
+```sh
+nvm use
+cd examples/native-session
+set -eu
+
+BASE_URL=http://127.0.0.1:3333
+TOKEN_DATA=$(node ace demo:token)
+TOKEN=$(printf '%s' "$TOKEN_DATA" | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>process.stdout.write(JSON.parse(s).token))')
+CUSTOMER_ID=$(printf '%s' "$TOKEN_DATA" | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>process.stdout.write(JSON.parse(s).customers[0].id))')
+printf 'Selected seeded customer id: %s\n' "$CUSTOMER_ID"
+```
+
+The JSON lists the seeded customer IDs in a stable order. The first one is selected here; the
+command discovers the ID from the CLI output instead of assuming a database sequence. Read the
+idle context, start the mode, and save the context returned by that transition:
+
+```sh
+IDLE_JSON=$(curl --fail-with-body -sS "$BASE_URL/api/masquerade" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Accept: application/json')
+IDLE_CONTEXT=$(printf '%s' "$IDLE_JSON" | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>process.stdout.write(JSON.parse(s).contextToken))')
+
+START_BODY=$(printf '%s' "$TOKEN_DATA" | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const d=JSON.parse(s);process.stdout.write(JSON.stringify({targetId:d.customers[0].id,reason:"Local bearer support demo"}))})')
+START_JSON=$(curl --fail-with-body -sS -X POST "$BASE_URL/api/masquerade/start" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -H "X-Masquerade-Context: $IDLE_CONTEXT" \
+  --data "$START_BODY")
+ACTIVE_CONTEXT=$(printf '%s' "$START_JSON" | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>process.stdout.write(JSON.parse(s).contextToken))')
+```
+
+Read the effective customer route. In another browser window already signed in as the seeded
+operator, refresh `/support` to see the same account-wide mode and target. The bearer route keeps
+the operator as actor and returns the customer as the effective identity; it does not attach the
+token to the customer.
+
+```sh
+curl --fail-with-body -sS "$BASE_URL/api/support/customer" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Accept: application/json'
+```
+
+Stop with the context saved from the successful start, then revoke the bearer token through the
+native API logout route. Stop first so the account-wide mode is closed before revoking this
+credential.
+
+```sh
+curl --fail-with-body -sS -X POST "$BASE_URL/api/masquerade/stop" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -H "X-Masquerade-Context: $ACTIVE_CONTEXT" \
+  --data '{}'
+
+curl --fail-with-body -sS -X POST "$BASE_URL/api/logout" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Accept: application/json' \
+  -H 'Content-Type: application/json' \
+  --data '{}'
+
+unset TOKEN_DATA TOKEN CUSTOMER_ID IDLE_JSON IDLE_CONTEXT START_BODY START_JSON ACTIVE_CONTEXT
+```
+
+If an unsafe request returns 409 or 428, stop and deliberately rebuild the action from a fresh
+status or page; never replace its context value and replay the old intent. A 503 may leave a
+control result uncertain: check status before choosing a new action. Revoking a token invalidates
+only that credential; another valid session or token with the required ability continues to see
+the shared mode until it is explicitly stopped or a global security-stamp change invalidates it.
+Do not retry with a newly issued token as a substitute for resolving the current mode. Avoid curl
+verbose mode, which would print the bearer credential. The token expires after one hour. After the
+demo, remove the seeded accounts with `node ace demo:reset`; it also removes their access tokens,
+remember-me credentials, mode rows, and audit events while preserving unrelated account data.
 
 ## Local setup
 
@@ -92,10 +183,10 @@ Open <http://localhost:3333>, then sign in with one of these local-only credenti
 
 These reserved accounts are for local demonstration only. Signup creates ordinary non-operator
 accounts. `node ace demo:seed` can be run again safely: it refreshes these three addresses and does
-not remove other accounts. To remove only these accounts, their remember-me tokens and their
-masquerade rows, run `node ace demo:reset`. Both commands require `NODE_ENV` to be `development`
-or `test` and the local SQLite database; they refuse production and PostgreSQL. Reset does not
-drop tables or wipe unrelated accounts. Stop the server with Ctrl+C.
+not remove other accounts. To remove only these accounts, their access tokens, remember-me tokens,
+masquerade rows and audit events, run `node ace demo:reset`. Both commands require `NODE_ENV` to be
+`development` or `test` and the local SQLite database; they refuse production and PostgreSQL.
+Reset does not drop tables or wipe unrelated accounts. Stop the server with Ctrl+C.
 
 `node ace generate:key` creates a unique application key in your local `.env`. The fixed keys in
 `.env.test` belong only to repeatable tests and are not suitable for an interactive app.
@@ -107,14 +198,15 @@ The customer page reads that customer's email and demo email-update preference. 
 preference is reversible and uses the customer's Bouncer permission; the operator's own permission
 does not carry over. The sensitive-action example is blocked during support mode. Ordinary signup
 accounts can view the support entry but cannot start mode. The functional suite covers the
-dashboard response, logout redirect, full support journey and recovery paths.
+dashboard response, logout redirect, full support journey, and session and token recovery paths.
 
 Forms include Shield CSRF and the context token captured when they were rendered. If another tab
 or session changes mode, an old form returns a context-changed page; return to `/support` and
 build a fresh action from the current page. A 503 after a control attempt may mean the outcome is
 unknown: check `/support` status before acting again. The raw operator workspace remains available
-if customer admission fails, so a valid operator can still inspect and stop mode. JSON clients
-continue to use the canonical `/masquerade` status/start/stop API and its normal error responses.
+if customer admission fails, so a valid operator can still inspect and stop mode. The browser JSON
+client continues to use session-authenticated `/masquerade` controls. Bearer clients use
+`/api/masquerade` and `/api/logout` as shown in the bearer walkthrough.
 
 Production-mode browser captures show the
 [previous render failure](../../docs/assets/review/dashboard_render_before.png) and the
@@ -190,8 +282,8 @@ pnpm test:consumer --profile=latest --database=pg
 pnpm test:consumer --package=tmp/native-session-package.tgz
 ```
 
-The functional suite contains the four original identity proofs, ten context/action cases and
-two alternate-identifier cases. The original numeric User integration exercises the complete
+The functional suite covers identity, context, action, token and session transport, and
+alternate-identifier behavior. The original numeric User integration exercises the complete
 provider/effective-guard facade, raw actor, lazy Bouncer, global silent authentication and real
 HTTP controls. `Member` uses `support_accounts.account_key` with application-assigned string and
 UUID identifiers and no `id` property. Its separate host routes prove native provider canonical
@@ -210,14 +302,16 @@ remember token. The short age is enabled only by `NATIVE_CREDENTIALS_SESSION=tru
 For PostgreSQL direct runs, set `DB_CLIENT=pg` plus the connection variables above. `DB_SCHEMA`
 optionally isolates fixture tables. SQLite remains the normal local default.
 
-Route-report warnings for intentionally raw, alternate-guard and mixed-guard routes belong to the
-test-only suites; they are adversarial cases, not recommended host wiring. Report mode runs in a
-separate process so it cannot weaken the enforce-mode cases.
+The raw bearer status/start/stop controls, token logout, and effective customer read are ordinary
+demo routes. Other raw-business, alternate-guard, and mixed-guard routes remain test-only
+adversarial cases, not recommended host wiring. Report mode runs in a separate process so it cannot
+weaken the enforce-mode cases.
 
-The example keeps ordinary host wiring in `config/masquerade.ts`,
-`start/masquerade_control_routes.ts`, `start/demo_routes.ts` and `start/routes.ts`: Lucid storage,
-native auth routes, raw-guard start/status/stop controls and the browser adapter. HTML start/stop
-forms use the same service and actor-keyed limiter definitions as the canonical JSON routes. The
+The example keeps ordinary host wiring in `config/masquerade.ts`, `config/auth.ts`,
+`start/masquerade_control_routes.ts`, `start/demo_routes.ts`, the bearer API routes, and
+`start/routes.ts`: Lucid storage, native auth routes, raw-guard session and bearer controls, the
+effective bearer customer read, and the browser adapter. HTML start/stop forms use the same service
+and actor-keyed limiter definitions as the session JSON routes. The
 form and deliberate identity, alternate-guard,
 mutation and concurrency probes live in `start/test_routes.ts` and `start/member_routes.ts`;
 AdonisJS preloads them only when `NODE_ENV=test`, where the original test URLs remain available.
