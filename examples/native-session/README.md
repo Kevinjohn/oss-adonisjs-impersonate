@@ -52,7 +52,6 @@ replace an active target.
 ```sh
 nvm use
 cd examples/native-session
-set -eu
 
 BASE_URL=http://127.0.0.1:3333
 TOKEN_DATA=$(node ace demo:token)
