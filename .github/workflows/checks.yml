@@ -51,6 +51,7 @@ jobs:
           cache-dependency-path: |
             pnpm-lock.yaml
             examples/native-session/pnpm-lock.yaml
+            examples/inertia-vue/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - name: Typecheck
         if: ${{ matrix.database == 'better-sqlite3' }}
@@ -84,3 +85,11 @@ jobs:
         run: |
           pnpm test:browser
           pnpm test:browser
+      - name: Check Inertia Vue example
+        if: ${{ github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
+        env:
+          DB_CLIENT: sqlite
+          HOST: 127.0.0.1
+          PORT: 3378
+          SESSION_DRIVER: memory
+        run: pnpm test:inertia-vue

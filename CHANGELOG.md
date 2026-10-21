@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Add a runnable Inertia Vue support workflow, integration guide and packed-example checks.
+
 Add documentation, native-session recipe, and browser checks to pull-request validation.
 
 Organize the README and documentation landing page around the demo, integration guides, and

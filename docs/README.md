@@ -14,6 +14,8 @@ to stop the mode.
 
 ## Integrate it
 
+- [Inertia Vue](guide/clients/vue.md): run the fictional support workflow with Vue forms and
+  page recovery after an identity change.
 - [Install and configure](guide/setup.md): scaffold the package files, preserve the existing
   session provider, and wire callbacks, middleware, and host-protected routes.
 - [Use a support mode](guide/usage.md): follow the complete status, start, customer-work, stop, and
