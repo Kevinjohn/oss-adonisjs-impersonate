@@ -153,6 +153,39 @@ test.group('React support browser journey', (group) => {
     }
   })
 
+  test('keeps restored customer history hidden after navigating through Home', async ({
+    browser,
+    browserContext,
+    assert,
+  }) => {
+    const first = await browserContext.newPage()
+    await signIn(first)
+    await first.getByLabel('Customer').selectOption({ label: 'Customer One' })
+    await first.getByLabel('Reason for support').fill('History boundary')
+    await first.getByRole('button', { name: 'Start support mode' }).click()
+    await first.waitForURL('**/support/customer')
+    await first.getByRole('link', { name: 'Home' }).click()
+    await first.waitForURL(base() + '/')
+
+    const separate = await browser.newContext()
+    try {
+      const second = await separate.newPage()
+      await signIn(second)
+      await second.getByRole('button', { name: 'Stop support mode' }).click()
+      await second.getByLabel('Customer').selectOption({ label: 'Customer Two' })
+      await second.getByLabel('Reason for support').fill('Current customer')
+      await second.getByRole('button', { name: 'Start support mode' }).click()
+      await second.waitForURL('**/support/customer')
+
+      await first.goBack()
+      await first.getByRole('heading', { name: 'Support workspace' }).waitFor()
+      assert.notInclude(await first.locator('main').innerText(), 'customer-one@example.test')
+      assert.include(await first.locator('main').innerText(), 'viewing Customer Two')
+    } finally {
+      await separate.close()
+    }
+  })
+
   test('freezes the customer page at its exact deadline and renders unavailable recovery', async ({
     browserContext,
     assert,

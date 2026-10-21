@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 export function useIdentityFreshness(expiresAt?: string) {
   const [stale, setStale] = useState(false)
   useEffect(() => {
+    sessionStorage.setItem('supportHistorySeen', 'true')
     let timer: ReturnType<typeof setTimeout> | undefined
     let recovering = false
     const recover = () => {
@@ -13,12 +14,7 @@ export function useIdentityFreshness(expiresAt?: string) {
       document.documentElement.dataset.identityPending = 'true'
       window.location.replace('/support')
     }
-    window.addEventListener('popstate', recover)
-    window.addEventListener('pageshow', onPageShow)
     document.addEventListener('visibilitychange', onVisibility)
-    function onPageShow(event: PageTransitionEvent) {
-      if (event.persisted) recover()
-    }
     function onVisibility() {
       if (!document.hidden) recover()
     }
@@ -28,8 +24,6 @@ export function useIdentityFreshness(expiresAt?: string) {
       else timer = setTimeout(recover, remaining)
     }
     return () => {
-      window.removeEventListener('popstate', recover)
-      window.removeEventListener('pageshow', onPageShow)
       document.removeEventListener('visibilitychange', onVisibility)
       if (timer) clearTimeout(timer)
     }

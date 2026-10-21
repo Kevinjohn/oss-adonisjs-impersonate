@@ -4,6 +4,9 @@ import { createInertiaApp } from '@inertiajs/react'
 import { resolvePageComponent } from '@adonisjs/inertia/helpers'
 import Layout from '~/layouts/default'
 import type { ReactElement } from 'react'
+import { installSupportHistoryRecovery } from './support_history'
+
+installSupportHistoryRecovery()
 
 createInertiaApp({
   title: (title) => (title ? `${title} — Support example` : 'Support example'),
