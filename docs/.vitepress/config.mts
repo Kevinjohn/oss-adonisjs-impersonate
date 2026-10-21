@@ -38,6 +38,7 @@ export default defineConfig({
         items: [
           { text: 'Edge forms', link: '/guide/usage#edge-forms-and-host-redirects' },
           { text: 'Session JSON client', link: '/guide/clients/json' },
+          { text: 'Inertia React', link: '/guide/clients/react' },
         ],
       },
       {

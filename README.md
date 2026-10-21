@@ -39,6 +39,8 @@ customer, the fixed deadline, and the stop control.
   stop, and recovery recipes for JSON controls and Edge forms.
 - [Session JSON client](docs/guide/clients/json.md): try the runnable browser client alongside
   the Edge demo, with native session cookies and context-bound actions.
+- [Inertia React](docs/guide/clients/react.md): launch the runnable React example with native
+  session authentication and context-bound support forms.
 - [Supported package imports](docs/api-reference.md#supported-package-imports): find each public
   entry point and its API reference.
 

@@ -25,6 +25,8 @@ with real application screenshots.
   Edge form recipes.
 - [Session JSON client](guide/clients/json.md): run same-origin fetch controls and customer
   actions with session cookies, CSRF, captured context, and deliberate recovery.
+- [Inertia React](guide/clients/react.md): run the React support workflow with captured form
+  context, refreshed customer pages, and deliberate recovery.
 - [Supported package imports](api-reference.md#supported-package-imports): map public package
   entry points to their API references.
 

@@ -60,7 +60,8 @@
     "pg:stop": "bash bin/pg.sh stop",
     "test:pg": "bash bin/pg.sh test",
     "demo": "node bin/demo.mjs",
-    "test:demo": "node --test tests/demo_launcher.test.mjs"
+    "test:demo": "node --test tests/demo_launcher.test.mjs",
+    "test:inertia-react": "node --import=@poppinss/ts-exec --enable-source-maps bin/test_inertia_react.ts"
   },
   "keywords": [
     "adonisjs",
