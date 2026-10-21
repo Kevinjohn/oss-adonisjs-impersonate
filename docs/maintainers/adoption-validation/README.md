@@ -33,3 +33,4 @@ A path is **not delivered** when its example is absent from the tested revision,
 ## Run index
 
 - [Native-session demo and fresh Edge host](edge.md)
+- [Fresh Inertia Vue host](vue.md): separate, unmerged example candidate and the exact main package artifact.

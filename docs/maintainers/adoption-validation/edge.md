@@ -87,4 +87,4 @@ Evidence: [fresh active customer view](evidence/fresh_edge_customer_active.png),
 
 ## Other paths at the tested `main` revision
 
-The root launcher, Vue integration, same-origin JSON client, Inertia React integration, and illustrated walkthrough were absent at the tested main revision. Their separate pull requests were open and were not part of the checked-out source. They are **not delivered on this baseline** and have no self-setup result here. The Vue path is being validated independently against its candidate when available. Do not infer main-branch behavior from those candidate branches.
+The root launcher, Vue integration, same-origin JSON client, Inertia React integration, and illustrated walkthrough were absent at the tested main revision. Their separate pull requests were open and were not part of the checked-out source. They are **not delivered on this baseline**. The [Vue candidate has separate fresh-host evidence](vue.md); the other absent paths have no self-setup result here. Do not infer main-branch behavior from those candidate branches.
