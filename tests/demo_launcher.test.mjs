@@ -103,6 +103,7 @@ async function fixture(options = {}) {
     }
     if (command === 'migration:run') await writeFile('migrations-ran', 'yes')
     if (command === 'demo:seed') {
+      await new Promise((resolve) => setTimeout(resolve, Number(process.env.DEMO_TEST_SEED_DELAY ?? 0)))
       const state = JSON.parse(await readFile('state.json'))
       state.demoSeeded = true
       await writeFile('state.json', JSON.stringify(state))
@@ -153,6 +154,7 @@ if (args[0] === 'dev') {
   if (options.startupFail) env.DEMO_TEST_STARTUP_FAIL = '1'
   if (options.startupDelay) env.DEMO_TEST_STARTUP_DELAY = String(options.startupDelay)
   if (options.badPage) env.DEMO_TEST_BAD_PAGE = '1'
+  if (options.seedDelay) env.DEMO_TEST_SEED_DELAY = String(options.seedDelay)
   return { directory, root, example, port, env, logPath: env.DEMO_TEST_LOG }
 }
 
@@ -341,26 +343,50 @@ test('resolves the documented APP_URL template in existing config without rewrit
   )
 })
 
-test('reports an occupied local port without stopping its owner or touching the database', async (t) => {
+for (const ownerHost of ['127.0.0.1', '0.0.0.0', '::', '::1']) {
+  test(`reports a local port occupied on ${ownerHost} without stopping its owner or touching the database`, async (t) => {
+    const port = await freePort()
+    const owner = createServer().listen(port, ownerHost)
+    await once(owner, 'listening')
+    t.after(() => owner.close())
+    const demo = await fixture({
+      port,
+      env: `NODE_ENV=development\nPORT=${port}\nAPP_KEY=base64:kept\nAPP_URL=http://127.0.0.1:${port}\n`,
+    })
+    t.after(() => rm(demo.directory, { recursive: true, force: true }))
+    const child = launch(demo)
+    const output = await outputOf(child)
+    const result = await collectExit(child, output)
+    assert.equal(result.code, 1, result.text)
+    assert.match(result.text, new RegExp(`Port ${port} is already in use`))
+    assert.equal(owner.listening, true)
+    assert.equal(
+      await readFile(path.join(demo.example, 'migrations-ran'), 'utf8').catch(() => ''),
+      ''
+    )
+  })
+}
+
+test('reports a port taken during setup instead of starting the server', async (t) => {
   const port = await freePort()
-  const owner = createServer().listen(port, '127.0.0.1')
-  await once(owner, 'listening')
-  t.after(() => owner.close())
   const demo = await fixture({
     port,
     env: `NODE_ENV=development\nPORT=${port}\nAPP_KEY=base64:kept\nAPP_URL=http://127.0.0.1:${port}\n`,
+    seedDelay: 1500,
   })
   t.after(() => rm(demo.directory, { recursive: true, force: true }))
   const child = launch(demo)
+  t.after(() => child.kill('SIGINT'))
   const output = await outputOf(child)
-  const result = await collectExit(child, output)
+  const exited = collectExit(child, output)
+  await waitForFile(path.join(demo.example, 'migrations-ran'))
+  const owner = createServer().listen(port, '0.0.0.0')
+  await once(owner, 'listening')
+  t.after(() => owner.close())
+  const result = await exited
   assert.equal(result.code, 1, result.text)
   assert.match(result.text, new RegExp(`Port ${port} is already in use`))
-  assert.equal(owner.listening, true)
-  assert.equal(
-    await readFile(path.join(demo.example, 'migrations-ran'), 'utf8').catch(() => ''),
-    ''
-  )
+  assert.equal(await readFile(path.join(demo.example, 'server.pid'), 'utf8').catch(() => ''), '')
 })
 
 test('reports setup failures and terminates its owned child process group', async (t) => {

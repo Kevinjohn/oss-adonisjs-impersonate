@@ -258,17 +258,31 @@ function run(command, args, options = {}) {
   })
 }
 
-async function portIsAvailable(port) {
+function portIsFreeOn(host, port) {
   return new Promise((resolve, reject) => {
     const server = createServer()
     server.once('error', (error) => {
       if (error.code === 'EADDRINUSE') resolve(false)
+      // The host has no such address family, so nothing can hold the port there.
+      else if (['EADDRNOTAVAIL', 'EAFNOSUPPORT'].includes(error.code)) resolve(true)
       else reject(error)
     })
-    server.listen({ host: '127.0.0.1', port, exclusive: true }, () => {
+    server.listen({ host, port, exclusive: true }, () => {
       server.close((error) => (error ? reject(error) : resolve(true)))
     })
   })
+}
+
+// `node ace serve` moves to a random port when any local address holds the configured one, so
+// a listener on the wildcard or IPv6 addresses must count as busy too.
+async function assertPortAvailable(port) {
+  for (const host of ['127.0.0.1', '0.0.0.0', '::', '::1']) {
+    if (!(await portIsFreeOn(host, port))) {
+      throw new Error(
+        `Port ${port} is already in use on ${host}. Stop its owner or choose another PORT in examples/native-session/.env, then retry.`
+      )
+    }
+  }
 }
 
 async function refreshLocalTarballIntegrity() {
@@ -388,11 +402,7 @@ export async function runDemo() {
       `The demo requires NODE_ENV=development; found ${environment.NODE_ENV ?? 'unset'}. Set it in examples/native-session/.env and retry.`
     )
   }
-  if (!(await portIsAvailable(Number(environment.PORT)))) {
-    throw new Error(
-      `Port ${environment.PORT} is already in use on 127.0.0.1. Stop its owner or choose another PORT in examples/native-session/.env, then retry.`
-    )
-  }
+  await assertPortAvailable(Number(environment.PORT))
 
   const pnpm = 'pnpm'
   await run(pnpm, ['install', '--frozen-lockfile'])
@@ -425,6 +435,8 @@ export async function runDemo() {
   const childEnv = { ...environment, HOST: '127.0.0.1' }
   await run(process.execPath, ['ace', 'migration:run'], { cwd: example, env: childEnv })
   await run(process.execPath, ['ace', 'demo:seed'], { cwd: example, env: childEnv })
+  // Setup can take minutes; another application may have taken the port meanwhile.
+  await assertPortAvailable(Number(environment.PORT))
   await startServer(childEnv)
 }
 
