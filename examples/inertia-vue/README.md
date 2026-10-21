@@ -25,4 +25,6 @@ To use a validated alpha baseline from issue #66, check out the exact annotated 
 
 The raw `web` guard owns login, logout, support status, and start/stop controls. The `web_effective` guard protects customer reads and mutations. Every unsafe form, including an idle start form, captures its context token when the form is created. Shield's CSRF token is independent. The app refreshes the customer page after transitions, encrypts Inertia history, revalidates restored or visible customer pages, and never replays an old action with a refreshed token.
 
+The demo commands use `tmp/db.sqlite3`. Functional and browser tests use the separate `tmp/test.sqlite3`, so running the suites does not alter local demo accounts.
+
 Run app checks from this directory with `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test functional`, and `pnpm test:browser`. From the repository root, `pnpm test:inertia-vue -- --no-browser` runs the local package build/pack, installs this fixture dependency, and runs the non-browser checks. The full root command also runs the Chromium suite. Browser coverage exercises Chromium and a 320px viewport; it does not certify screen-reader behavior, other browser engines, or every assistive-technology combination.
