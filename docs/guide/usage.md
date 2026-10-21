@@ -81,6 +81,8 @@ label.
 
 ## Read status and start
 
+The [same-origin JSON client](./clients/json.md) runs this workflow in the native-session example.
+
 Read `GET /masquerade` before rendering a control. An idle response is:
 
 ```json

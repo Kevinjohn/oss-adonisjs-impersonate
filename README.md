@@ -37,6 +37,8 @@ customer, the fixed deadline, and the stop control.
   session provider, and wire the raw and effective guards and protected routes.
 - [Use a support mode](docs/guide/usage.md): follow the complete status, start, customer-work,
   stop, and recovery recipes for JSON controls and Edge forms.
+- [Session JSON client](docs/guide/clients/json.md): try the runnable browser client alongside
+  the Edge demo, with native session cookies and context-bound actions.
 - [Supported package imports](docs/api-reference.md#supported-package-imports): find each public
   entry point and its API reference.
 
