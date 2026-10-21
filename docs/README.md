@@ -12,6 +12,9 @@ Masquerade into an existing application. The [native-session demo](https://githu
 shows the operator as the authenticated actor, the customer as the effective identity, the fixed
 deadline, and how to stop the mode.
 
+[Add user impersonation to AdonisJS](guide/walkthrough.md) follows the fictional support journey
+with real application screenshots.
+
 ## Guides
 
 - [Troubleshooting](guide/troubleshooting.md): diagnose setup and boot problems, missing or stale

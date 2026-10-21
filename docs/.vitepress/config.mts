@@ -28,6 +28,7 @@ export default defineConfig({
         text: 'Get started',
         items: [
           { text: 'Getting started', link: '/guide/getting-started' },
+          { text: 'Add user impersonation', link: '/guide/walkthrough' },
           { text: 'Install and configure', link: '/guide/setup' },
           { text: 'Use a support mode', link: '/guide/usage' },
         ],

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add an illustrated user-impersonation walkthrough captured from the fictional native-session demo.
 - Organize adoption guidance by integration task and add safe troubleshooting paths.
 
 Add documentation, native-session recipe, and browser checks to pull-request validation.
