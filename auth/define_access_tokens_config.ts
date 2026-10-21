@@ -27,7 +27,7 @@ export function effectiveAccessTokensGuard<User>(
         throw new TypeError('Configure distinct raw and effective access-token guards')
       const rawFactory = await raw.resolver(options.guard, app)
       return markEffectiveFactory(
-        (ctx: HttpContext) => new EffectiveAccessTokensGuard(ctx, rawFactory(ctx)),
+        (ctx: HttpContext) => new EffectiveAccessTokensGuard(ctx, rawFactory(ctx), options.guard),
         options.guard
       )
     },

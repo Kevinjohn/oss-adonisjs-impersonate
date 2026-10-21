@@ -19,7 +19,8 @@ export class EffectiveAccessTokensGuard<RawUser> implements GuardContract<
   authenticationAttempted = false
   constructor(
     private ctx: HttpContext,
-    private raw: GuardContract<RawUser>
+    private raw: GuardContract<RawUser>,
+    private rawName: string
   ) {
     if (raw.driverName !== 'access_tokens')
       throw new TypeError('Masquerade requires a native access_tokens guard')
@@ -43,8 +44,10 @@ export class EffectiveAccessTokensGuard<RawUser> implements GuardContract<
       const admitted = await runtime.admit(this.ctx)
       this.user = admitted.effective.user as EffectiveAccessTokensUser<RawUser>
     } else {
+      // A public route selects no credential; this facade still answers only for its own tokens.
+      const rawName = selected.kind === 'none' ? this.rawName : selected.raw
       this.user = (await (
-        this.ctx.auth.use(selected.raw as never) as GuardContract<RawUser>
+        this.ctx.auth.use(rawName as never) as GuardContract<RawUser>
       ).authenticate()) as EffectiveAccessTokensUser<RawUser>
     }
     this.isAuthenticated = true
