@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add an illustrated user-impersonation walkthrough captured from the fictional native-session demo.
+
 Add documentation, native-session recipe, and browser checks to pull-request validation.
 
 Organize the README and documentation landing page around the demo, integration guides, and

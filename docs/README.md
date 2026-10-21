@@ -7,6 +7,9 @@ session guard only.
 
 ## Try it
 
+[Add user impersonation to AdonisJS](guide/walkthrough.md) follows the fictional support journey
+with real application screenshots.
+
 Follow the [fictional native-session demo instructions](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/README.md)
 to run the working application with one operator and two customers. The support workspace shows the
 operator as the authenticated actor, the customer as the effective identity, the deadline, and how

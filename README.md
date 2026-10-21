@@ -21,6 +21,9 @@ permissions.
 
 ### Try it
 
+See [Add user impersonation to AdonisJS](docs/guide/walkthrough.md) for an illustrated support
+journey with the working application.
+
 Run the [fictional native-session demo](examples/native-session/README.md). Its setup guide builds
 the package from this checkout, seeds one operator and two customers, and starts the working
 application. The support workspace shows the signed-in operator separately from the effective

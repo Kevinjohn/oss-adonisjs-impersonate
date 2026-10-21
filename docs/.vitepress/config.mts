@@ -27,6 +27,7 @@ export default defineConfig({
       {
         text: 'Guide',
         items: [
+          { text: 'Add user impersonation', link: '/guide/walkthrough' },
           { text: 'Install and configure', link: '/guide/setup' },
           { text: 'Use a support mode', link: '/guide/usage' },
           { text: 'Security and operations', link: '/guide/security' },
