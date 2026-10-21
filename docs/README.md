@@ -32,7 +32,9 @@ to stop the mode.
 - [Route coverage review](guide/route-report.md): inspect the effective and raw routes in the host
   application.
 
-The package is a pre-release candidate and has not been published. The accepted v1 boundaries are
+The package is an early alpha for local self-testing and has not been published to a package
+registry. Build the selected tagged baseline and install its local tarball as described in the
+[setup guide](guide/setup.md#generate-the-starter-files). The accepted v1 boundaries are
 in the [development plan](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/DEVELOPMENT-PLAN.md),
 the [technical specification](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/SPEC-impersonation.md),
 and the [product requirements](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/PRD-impersonation.md).

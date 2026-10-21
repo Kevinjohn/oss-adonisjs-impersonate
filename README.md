@@ -15,7 +15,9 @@ valid integrated sessions for the operator account, has a fixed duration, and ca
 stopped. The package does not create customer credentials or combine actor and customer
 permissions.
 
-**Status: pre-release candidate.** Version `0.0.0` is not published.
+**Status: early alpha for local self-testing.** Version `0.0.0` is not published, and there is no
+registry package for this baseline. Select and rebuild a tagged baseline as described in the
+[setup guide](docs/guide/setup.md#generate-the-starter-files).
 
 ## Choose a path
 
