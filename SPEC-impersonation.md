@@ -442,17 +442,19 @@ Capability denial returns 403 and performs no store read, audit event, or state 
 wildcard `'*'` tokens satisfy `allows()` and therefore satisfy the configured Masquerade ability;
 hosts MUST issue restricted abilities deliberately when least privilege is intended.
 
-One explicit route selection determines the raw credential adapter for effective middleware,
-runtime admission, and `silent_auth`. The package never sniffs bearer headers or falls back between
-credentials. Same-raw aliases are valid; different raw guards, or a raw and effective choice
-together, are ambiguous and fail closed. A request with both cookie and bearer credentials uses
-only the route-selected guard. A route guard is unknown when it is absent from the host's registered
-Auth guard factories. Such a selection fails closed. A registered raw Auth guard without a
-Masquerade adapter can still serve a native authentication, security, or logout route that does not
-invoke Masquerade. If that route invokes the Masquerade service, it returns unavailable before any
-store access; it MUST NOT fall back to the primary adapter. Effective guard factories MUST map to
-registered adapters at boot. Token-only mode defaults to its effective token facade. Public and
-direct service calls without route selection use the primary adapter.
+One explicit route selection determines the raw credential adapter for effective middleware, runtime
+admission, and `silent_auth`. The package never sniffs bearer headers or falls back between
+credentials. Same-raw aliases are valid; different effective transports, or a raw and effective
+choice together, are ambiguous and fail closed. A route listing only raw guards with different
+credentials selects no adapter: native authentication and `silent_auth` keep their v1 behavior, and
+any Masquerade operation on it returns unavailable before store access. A request with both cookie
+and bearer credentials uses only the route-selected guard. A route guard is unknown when it is
+absent from the host's registered Auth guard factories. Such a selection fails closed. A registered
+raw Auth guard without a Masquerade adapter can still serve a native authentication, security, or
+logout route that does not invoke Masquerade. If that route invokes the Masquerade service, it
+returns unavailable before any store access; it MUST NOT fall back to the primary adapter. Effective
+guard factories MUST map to registered adapters at boot. Token-only mode defaults to its effective
+token facade. Public and direct service calls without route selection use the primary adapter.
 
 Raw authentication, security, logout, and public routes keep native behavior. Raw control-route
 authentication itself is store-free; when a raw token route invokes a Masquerade operation, the
