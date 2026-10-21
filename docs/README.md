@@ -17,10 +17,6 @@ with real application screenshots.
 
 ## Guides
 
-- [Inertia Vue](guide/clients/vue.md): run the fictional support workflow with Vue forms and
-  page recovery after an identity change.
-- [Troubleshooting](guide/troubleshooting.md): diagnose setup and boot problems, missing or stale
-  context, denied actions, expiry, and storage failures.
 - [Install and configure](guide/setup.md): scaffold the package files, preserve the existing
   session provider, and wire callbacks, middleware, and host-protected routes.
 - [Opaque access tokens](guide/access-tokens.md): configure token-only or mixed session/token
@@ -31,11 +27,15 @@ with real application screenshots.
   actions with session cookies, CSRF, captured context, and deliberate recovery.
 - [Inertia React](guide/clients/react.md): run the React support workflow with captured form
   context, refreshed customer pages, and deliberate recovery.
+- [Inertia Vue](guide/clients/vue.md): run the fictional support workflow with Vue forms and
+  page recovery after an identity change.
 - [Supported package imports](api-reference.md#supported-package-imports): map public package
   entry points to their API references.
 
 ## Security and operations
 
+- [Troubleshooting](guide/troubleshooting.md): diagnose setup and boot problems, missing or stale
+  context, denied actions, expiry, and storage failures.
 - [Security boundaries](guide/security.md): actor and customer identity, sessions, authorization,
   context tokens, expiry, audit, and side effects.
 - [Custom authorities](guide/custom-authorities.md): provide coherent account identity and

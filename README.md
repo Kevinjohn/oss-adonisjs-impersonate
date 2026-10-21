@@ -26,9 +26,18 @@ registry package for this baseline. Select and rebuild a tagged baseline as desc
 See [Add user impersonation to AdonisJS](docs/guide/walkthrough.md) for an illustrated support
 journey with the working application.
 
-With Node 24 and pnpm installed, run `pnpm demo` from this checkout to build, seed and start the
-[fictional session and bearer demo](examples/native-session/README.md#one-command-demo). For setup
-failures or a manual launch, use the [explicit setup instructions](examples/native-session/README.md#local-setup). The support workspace shows the signed-in operator separately from the effective
+With Node 24 and pnpm installed, run these commands from this checkout to build, seed and start the
+[fictional session and bearer demo](examples/native-session/README.md#one-command-demo):
+
+```sh
+nvm use
+pnpm demo
+```
+
+Open <http://127.0.0.1:3333> and sign in with the fictional operator account listed in the
+[demo instructions](examples/native-session/README.md#one-command-demo). For setup failures or a
+manual launch, use the [explicit setup instructions](examples/native-session/README.md#local-setup).
+The support workspace shows the signed-in operator separately from the effective
 customer, the fixed deadline, and the stop control. Follow the
 [runnable bearer API lifecycle](examples/native-session/README.md#bearer-api-lifecycle) to issue a
 restricted local token and exercise status, start, customer read, stop, and revocation.
@@ -63,14 +72,13 @@ restricted local token and exercise status, start, customer read, stop, and revo
 - [Pruning and retention](docs/guide/operations.md) and [route coverage review](docs/guide/route-report.md):
   operate bounded cleanup and review the host's effective-route coverage.
 
-The [access-token guide](docs/guide/access-tokens.md) covers token-only or mixed session/token
-configuration. Account Kit integration remains v1.2; JWT support is out of scope.
+Account Kit integration remains v1.2; JWT support is out of scope.
 
-Start with Node.js 24 and pnpm. The setup guide creates files for you to review; you keep control of
-authorization, language, route policy, retention, and user-facing UI. Masquerade does not sign in as
-the customer, issue customer credentials, or grant the operator's permissions to the customer.
+The setup guide creates files for you to review; you keep control of authorization, language,
+route policy, retention, and user-facing UI.
 
 The accepted boundaries are recorded in [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md), the technical
 contract in [SPEC-impersonation.md](SPEC-impersonation.md), and product requirements in
 [PRD-impersonation.md](PRD-impersonation.md). For contribution checks, see
 [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+See the [documentation index](docs/README.md) for all guides and the API reference.
