@@ -2,7 +2,8 @@
 node_modules
 .adonisjs
 build
-tmp
+tmp/*
+!tmp/.gitkeep
 
 # Secrets
 .env
