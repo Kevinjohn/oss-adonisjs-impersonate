@@ -59,7 +59,9 @@
     "prepublishOnly": "pnpm build",
     "pg:start": "bash bin/pg.sh start",
     "pg:stop": "bash bin/pg.sh stop",
-    "test:pg": "bash bin/pg.sh test"
+    "test:pg": "bash bin/pg.sh test",
+    "demo": "node bin/demo.mjs",
+    "test:demo": "node --test tests/demo_launcher.test.mjs"
   },
   "keywords": [
     "adonisjs",
