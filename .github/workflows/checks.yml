@@ -88,6 +88,7 @@ jobs:
       - name: Check runnable Inertia React example
         if: ${{ github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
         env:
+          DB_CLIENT: sqlite
           HOST: 127.0.0.1
           PORT: 3393
           SESSION_DRIVER: memory
