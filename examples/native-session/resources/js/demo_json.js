@@ -13,6 +13,7 @@ export function initJsonClient({
   let customer = null
   let generation = 0
   let frozen = false
+  let rawStopAllowed = false
   let deadlineTimer
 
   function notice(message, focus = false) {
@@ -26,12 +27,13 @@ export function initJsonClient({
     el('json-preference').hidden = true
     el('json-setting').value = '0'
   }
-  function freeze(message) {
+  function freeze(message, { allowRawStop = false } = {}) {
     frozen = true
+    rawStopAllowed = allowRawStop && Boolean(status?.isMasquerading)
     clearCustomer()
     el('json-preference').hidden = true
     el('json-sensitive').disabled = true
-    el('json-stop').disabled = true
+    el('json-stop').disabled = !rawStopAllowed
     notice(message, true)
   }
   async function request(path, { method = 'GET', body, token } = {}) {
@@ -46,10 +48,17 @@ export function initJsonClient({
       headers,
       credentials: 'same-origin',
       cache: 'no-store',
+      redirect: 'manual',
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     })
     const type = response.headers.get('content-type') || ''
-    const data = type.includes('application/json') ? await response.json() : null
+    if (!type.includes('application/json')) {
+      const error = new Error('The host returned a redirect or a non-JSON response.')
+      error.status = [429, 503].includes(response.status) ? response.status : 419
+      error.retryAfter = response.headers.get('retry-after')
+      throw error
+    }
+    const data = await response.json()
     if (!response.ok) {
       const error = new Error(data?.message || `Request failed (${response.status}).`)
       error.status = response.status
@@ -57,7 +66,6 @@ export function initJsonClient({
       error.retryAfter = response.headers.get('retry-after')
       throw error
     }
-    if (!data) throw new Error('Expected a JSON response from the host.')
     return data
   }
   function errorMessage(error) {
@@ -81,7 +89,7 @@ export function initJsonClient({
     el('json-mode').textContent = active
       ? `Stored customer ID: ${status.targetId}`
       : 'No support mode is active.'
-    el('json-stop').disabled = frozen || !active
+    el('json-stop').disabled = !active || (frozen && !rawStopAllowed)
     el('json-sensitive').disabled = frozen || !customer
   }
   async function loadCustomer(expectedGeneration) {
@@ -92,10 +100,13 @@ export function initJsonClient({
         !status?.isMasquerading ||
         data.mode.contextToken !== status.contextToken
       )
-        return
+        return false
       if (now() >= Date.parse(data.mode.expiresAt)) {
-        freeze('The fixed deadline passed. Check status and choose a new action.')
-        return
+        freeze(
+          'The fixed deadline passed. Customer actions are closed; raw stop remains available.',
+          { allowRawStop: true }
+        )
+        return false
       }
       customer = data
       el('json-customer').textContent =
@@ -105,50 +116,68 @@ export function initJsonClient({
       el('json-sensitive').disabled = false
       el('json-deadline').textContent = `Fixed deadline: ${data.mode.expiresAt}`
       notice('Customer access confirmed. Choose a new action.')
+      return true
     } catch (error) {
-      if (generation !== expectedGeneration) return
+      if (generation !== expectedGeneration) return false
       clearCustomer()
       notice(errorMessage(error), true)
+      return false
     }
   }
   async function refresh() {
     const current = ++generation
     clearTimeout(deadlineTimer)
     frozen = true
+    rawStopAllowed = false
     clearCustomer()
     renderStatus()
     notice('Checking current status…')
     try {
       const next = await request('/masquerade')
-      if (generation !== current) return
+      if (generation !== current) return false
       status = next
       el('json-start').reset()
       frozen = false
       if (next.isMasquerading && now() >= Date.parse(next.expiresAt)) {
-        freeze('The stored mode has expired. Check status again before choosing a new action.')
+        freeze(
+          'The stored mode has expired. Customer actions are closed; raw stop remains available.',
+          { allowRawStop: true }
+        )
         renderStatus()
-        return
+        return false
       }
       renderStatus()
       if (next.isMasquerading) {
         const delay = Math.max(0, Date.parse(next.expiresAt) - now())
         deadlineTimer = schedule(() => {
           if (generation === current)
-            freeze('The fixed deadline passed. Check status and choose a new action.')
+            freeze(
+              'The fixed deadline passed. Customer actions are closed; raw stop remains available.',
+              { allowRawStop: true }
+            )
         }, delay)
-        await loadCustomer(current)
-      } else notice('Support mode is idle. Choose a customer to start.')
+        return await loadCustomer(current)
+      }
+      notice('Support mode is idle. Choose a customer to start.')
+      return true
     } catch (error) {
-      if (generation !== current) return
+      if (generation !== current) return false
       status = null
       freeze(errorMessage(error))
       renderStatus()
+      return false
     }
   }
   async function act(path, body, token) {
-    if (frozen || !status || token !== status.contextToken) return
+    if (
+      (frozen && !(path === '/masquerade/stop' && rawStopAllowed)) ||
+      !status ||
+      token !== status.contextToken
+    )
+      return
     const current = ++generation
     frozen = true
+    rawStopAllowed = false
     clearCustomer()
     renderStatus()
     notice('Waiting for the result…')
@@ -156,7 +185,8 @@ export function initJsonClient({
       const result = await request(path, { method: 'POST', body, token })
       if (generation !== current) return
       // A response can arrive after another tab changes mode. Read raw status before rendering.
-      await refresh()
+      const refreshed = await refresh()
+      if (!refreshed || generation !== current + 1) return
       if (path.endsWith('/sensitive'))
         notice('Sensitive action was unexpectedly accepted; check status.', true)
       else if (result) notice('Action completed. Current status and customer data refreshed.')

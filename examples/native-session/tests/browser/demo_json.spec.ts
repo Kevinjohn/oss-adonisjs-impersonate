@@ -55,6 +55,7 @@ test.group('JSON support browser client', (group) => {
       const response = await fetch('/support/json/customer/preference', {
         method: 'POST',
         credentials: 'same-origin',
+        redirect: 'manual',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
@@ -62,9 +63,10 @@ test.group('JSON support browser client', (group) => {
         },
         body: JSON.stringify({ emailUpdates: '1' }),
       })
-      return response.status
+      return { status: response.status, type: response.headers.get('content-type') || '' }
     })
-    assert.notEqual(rejectedCsrf, 200)
+    assert.isTrue([302, 303, 403].includes(rejectedCsrf.status))
+    assert.notInclude(rejectedCsrf.type, 'application/json')
     assert.isNull(await db.from('demo_preferences').where('user_id', customer.id).first())
     await page.getByRole('button', { name: 'Save preference' }).click()
     await page.getByText('Action completed.').waitFor()
@@ -93,6 +95,30 @@ test.group('JSON support browser client', (group) => {
     await page.getByLabel('Reason for access').fill('First customer')
     await page.getByRole('button', { name: 'Start support mode' }).click()
     await page.getByText('Customer access confirmed.').waitFor()
+    let releaseOld!: () => void
+    let capturedOld!: () => void
+    let deliveredOld!: () => void
+    const oldHeld = new Promise<void>((resolve) => {
+      releaseOld = resolve
+    })
+    const oldCaptured = new Promise<void>((resolve) => {
+      capturedOld = resolve
+    })
+    const oldDelivered = new Promise<void>((resolve) => {
+      deliveredOld = resolve
+    })
+    let delayed = false
+    await page.route('**/support/json/customer', async (route) => {
+      if (delayed) return route.continue()
+      delayed = true
+      const response = await route.fetch()
+      capturedOld()
+      await oldHeld
+      await route.fulfill({ response })
+      deliveredOld()
+    })
+    await page.getByRole('button', { name: 'Check current status' }).click()
+    await oldCaptured
     const other = await browserContext.newPage()
     await other.goto(`${base()}/support/json`)
     await other.getByText('Customer access confirmed.').waitFor()
@@ -107,6 +133,8 @@ test.group('JSON support browser client', (group) => {
     await page.getByRole('button', { name: 'Check current status' }).click()
     await page.getByText('Customer access confirmed.').waitFor()
     assert.include(await page.locator('#json-customer').innerText(), demoAccounts[2].email)
+    releaseOld()
+    await oldDelivered
     assert.notInclude(await page.locator('#json-customer').innerText(), demoAccounts[1].email)
     assert.equal(await page.getByLabel('Email updates').inputValue(), '0')
   })
@@ -138,6 +166,10 @@ test.group('JSON support browser client', (group) => {
       await page.getByRole('button', { name: 'Try sensitive action' }).isDisabled(),
       true
     )
+    assert.equal(await page.getByRole('button', { name: 'Stop support mode' }).isEnabled(), true)
+    setMasqueradeTestTime(deadline)
+    await page.getByRole('button', { name: 'Stop support mode' }).click()
+    await page.getByText('No support mode is active.').waitFor()
     setMasqueradeTestTime(undefined)
   })
 
