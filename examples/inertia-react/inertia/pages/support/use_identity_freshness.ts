@@ -6,7 +6,9 @@ export function useIdentityFreshness(expiresAt?: string) {
   const [stale, setStale] = useState(false)
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined
+    let recovering = false
     const recover = () => {
+      recovering = true
       setStale(true)
       document.documentElement.dataset.identityPending = 'true'
       router.visit('/support', { replace: true, preserveState: false, preserveScroll: false })
@@ -25,7 +27,7 @@ export function useIdentityFreshness(expiresAt?: string) {
       if (remaining <= 0) recover()
       else timer = setTimeout(recover, remaining)
     }
-    document.documentElement.removeAttribute('data-identity-pending')
+    if (!recovering) document.documentElement.removeAttribute('data-identity-pending')
     return () => {
       window.removeEventListener('popstate', recover)
       window.removeEventListener('pageshow', onPageShow)

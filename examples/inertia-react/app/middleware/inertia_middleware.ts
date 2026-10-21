@@ -6,7 +6,7 @@ import type User from '#models/user'
 export default class InertiaMiddleware extends BaseInertiaMiddleware {
   share(ctx: HttpContext) {
     const { session, auth } = ctx as Partial<HttpContext>
-    const user = auth?.user as User | undefined
+    const user = auth?.use('web').user as User | undefined
     return {
       errors: ctx.inertia.always(this.getValidationErrors(ctx)),
       flash: ctx.inertia.always({

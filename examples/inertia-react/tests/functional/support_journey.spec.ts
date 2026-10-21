@@ -49,6 +49,7 @@ test.group('Inertia support journey', (group) => {
     page.assertStatus(200)
     assert.equal(pageData(page.text()).props.customer.id, target.id)
     assert.equal(pageData(page.text()).props.actor.id, actor.id)
+    assert.equal(pageData(page.text()).props.user.email, actor.email)
     assert.equal(pageData(page.text()).props.mode.contextToken, activeToken)
     assert.notProperty(pageData(page.text()).props.customer, 'password')
 
