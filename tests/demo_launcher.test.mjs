@@ -8,10 +8,18 @@ import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { assertNodeVersion } from '../bin/demo.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const launcherPath = path.join(repoRoot, 'bin/demo.mjs')
 const currentNode = process.execPath
+
+test('requires Node 24 before demo setup', () => {
+  assert.doesNotThrow(() => assertNodeVersion('24.0.0'))
+  assert.doesNotThrow(() => assertNodeVersion('25.2.1'))
+  assert.throws(() => assertNodeVersion('23.11.0'), /requires Node\.js 24 or newer/)
+  assert.throws(() => assertNodeVersion('unknown'), /requires Node\.js 24 or newer/)
+})
 
 async function freePort() {
   const server = createServer()
@@ -74,6 +82,10 @@ async function fixture(options = {}) {
     )
   }
   await writeFile(
+    path.join(example, 'orphan.mjs'),
+    "import { createServer } from 'node:http'\nimport { writeFile } from 'node:fs/promises'\nconst server = createServer((_request, response) => response.end('orphan'))\nawait writeFile('orphan.pid', String(process.pid))\nserver.listen(Number(process.env.PORT), '127.0.0.1')\n"
+  )
+  await writeFile(
     path.join(example, 'ace'),
     `
     import { readFile, writeFile } from 'node:fs/promises'
@@ -95,13 +107,23 @@ async function fixture(options = {}) {
   )
   const pnpmScript = `#!${currentNode}
 import { spawn } from 'node:child_process'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 const args = process.argv.slice(2)
 const command = args.join(' ')
 const logPath = process.env.DEMO_TEST_LOG
 await writeFile(logPath, (await import('node:fs/promises').then(({readFile}) => readFile(logPath, 'utf8').catch(() => ''))) + 'pnpm ' + command + '\\n')
-if (process.env.DEMO_TEST_FAIL_AT && command.includes(process.env.DEMO_TEST_FAIL_AT)) process.exit(17)
+if (process.env.DEMO_TEST_FAIL_AT && command.includes(process.env.DEMO_TEST_FAIL_AT)) {
+  if (args[0] === 'build') {
+    const example = path.join(process.cwd(), 'examples/native-session')
+    spawn(process.execPath, [path.join(example, 'orphan.mjs')], { cwd: example, env: process.env, stdio: 'ignore' })
+    for (let attempt = 0; attempt < 100; attempt++) {
+      if (await readFile(path.join(example, 'orphan.pid'), 'utf8').catch(() => '')) break
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+  }
+  process.exit(17)
+}
 if (args[0] === 'pack:fixture') {
   await mkdir(path.join(process.cwd(), 'tmp'), { recursive: true })
   await writeFile(path.join(process.cwd(), 'tmp/native-session-package.tgz'), 'tarball')
@@ -298,6 +320,15 @@ test('reports setup failures and terminates its owned child process group', asyn
   const result = await collectExit(child, output)
   assert.equal(result.code, 1, result.text)
   assert.match(result.text, /pnpm build exited with code 17/)
+  const orphanFile = path.join(demo.example, 'orphan.pid')
+  const orphanPidText = await readFile(orphanFile, 'utf8').catch(async (error) => {
+    throw new Error(
+      `Expected orphan process to start before launcher cleanup: ${error.message}; log: ${await readFile(demo.logPath, 'utf8')}`
+    )
+  })
+  const orphanPid = Number(orphanPidText)
+  assert.throws(() => process.kill(orphanPid, 0), { code: 'ESRCH' })
+  assert.equal(await isListening(demo.port), false)
   assert.doesNotMatch(await readFile(demo.logPath, 'utf8'), /migration:run|demo:seed/)
 })
 

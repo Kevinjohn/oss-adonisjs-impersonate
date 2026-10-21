@@ -2,6 +2,7 @@
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createServer } from 'node:net'
+import { realpathSync } from 'node:fs'
 import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -19,8 +20,19 @@ const reservedEmails = [
 ]
 const reservedPasswords = ['demo-operator-2026', 'demo-customer-one-2026', 'demo-customer-two-2026']
 const children = new Set()
+const ownedGroups = new Set()
+const groupCleanupPromises = new Map()
 let interruptedBy = null
 let cleanupPromise = null
+
+export function assertNodeVersion(version = process.versions.node) {
+  const major = Number(version.split('.')[0])
+  if (!Number.isInteger(major) || major < 24) {
+    throw new Error(
+      `The demo requires Node.js 24 or newer; found ${version}. Use the version in .nvmrc, then rerun pnpm demo.`
+    )
+  }
+}
 
 function parseEnv(source, filePath) {
   const result = new Map()
@@ -113,38 +125,97 @@ async function effectiveEnv() {
   }
 }
 
+function processGroupExists(groupId) {
+  try {
+    process.kill(-groupId, 0)
+    return true
+  } catch (error) {
+    return error.code === 'EPERM'
+  }
+}
+
 function signalOwnedProcesses(signal = 'SIGTERM') {
+  if (process.platform !== 'win32') {
+    for (const groupId of ownedGroups) {
+      try {
+        process.kill(-groupId, signal)
+      } catch (error) {
+        if (error.code !== 'ESRCH') throw error
+      }
+    }
+    return
+  }
   for (const child of children) {
     if (child.exitCode !== null || child.signalCode !== null) continue
+    child.kill(signal)
+  }
+}
+
+function waitForProcessGroupExit(groupId, timeoutMs) {
+  return new Promise((resolve) => {
+    const deadline = Date.now() + timeoutMs
+    const poll = setInterval(() => {
+      if (!processGroupExists(groupId)) {
+        clearInterval(poll)
+        ownedGroups.delete(groupId)
+        resolve(true)
+      } else if (Date.now() >= deadline) {
+        clearInterval(poll)
+        resolve(false)
+      }
+    }, 40)
+  })
+}
+
+function cleanupProcessGroup(groupId) {
+  if (!groupId || process.platform === 'win32') return Promise.resolve()
+  const existing = groupCleanupPromises.get(groupId)
+  if (existing) return existing
+  if (!processGroupExists(groupId)) {
+    ownedGroups.delete(groupId)
+    return Promise.resolve()
+  }
+
+  const cleanup = (async () => {
     try {
-      if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, signal)
-      else child.kill(signal)
+      process.kill(-groupId, 'SIGTERM')
     } catch (error) {
       if (error.code !== 'ESRCH') throw error
     }
-  }
+    if (await waitForProcessGroupExit(groupId, 1800)) return
+    try {
+      process.kill(-groupId, 'SIGKILL')
+    } catch (error) {
+      if (error.code !== 'ESRCH') throw error
+    }
+    await waitForProcessGroupExit(groupId, 1800)
+  })().finally(() => groupCleanupPromises.delete(groupId))
+  groupCleanupPromises.set(groupId, cleanup)
+  return cleanup
 }
 
 function cleanupOwnedProcesses() {
   if (cleanupPromise) return cleanupPromise
-  if ([...children].every((child) => child.exitCode !== null || child.signalCode !== null)) {
+  if (ownedGroups.size === 0 && children.size === 0) {
     cleanupPromise = Promise.resolve()
     return cleanupPromise
   }
-  cleanupPromise = new Promise((resolve) => {
+  cleanupPromise = (async () => {
     signalOwnedProcesses('SIGTERM')
-    const timer = setTimeout(() => {
-      signalOwnedProcesses('SIGKILL')
-      resolve()
-    }, 1800)
-    const poll = setInterval(() => {
-      if ([...children].every((child) => child.exitCode !== null || child.signalCode !== null)) {
-        clearTimeout(timer)
-        clearInterval(poll)
-        resolve()
+    await Promise.all([...ownedGroups].map(cleanupProcessGroup))
+    if (process.platform === 'win32') {
+      const deadline = Date.now() + 1800
+      while (
+        [...children].some((child) => child.exitCode === null && child.signalCode === null) &&
+        Date.now() < deadline
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 40))
       }
-    }, 40)
-  })
+      for (const child of children) {
+        if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
+      }
+    }
+  })()
   return cleanupPromise
 }
 
@@ -159,12 +230,19 @@ function run(command, args, options = {}) {
       shell: false,
     })
     children.add(child)
+    if (process.platform !== 'win32' && child.pid) ownedGroups.add(child.pid)
     child.once('error', (error) => {
       children.delete(child)
       reject(error)
     })
-    child.once('exit', (code, signal) => {
+    child.once('exit', async (code, signal) => {
       children.delete(child)
+      try {
+        await cleanupProcessGroup(child.pid)
+      } catch (error) {
+        reject(error)
+        return
+      }
       if (interruptedBy) reject(new Error(`Interrupted by ${interruptedBy}`))
       else if (code === 0) resolve()
       else
@@ -258,6 +336,7 @@ async function startServer(environment) {
     shell: false,
   })
   children.add(child)
+  if (process.platform !== 'win32' && child.pid) ownedGroups.add(child.pid)
   const exitPromise = new Promise((resolve, reject) => {
     child.once('error', reject)
     child.once('exit', (code, signal) => resolve({ code, signal }))
@@ -267,7 +346,10 @@ async function startServer(environment) {
     spawnError = error
     children.delete(child)
   })
-  child.once('exit', () => children.delete(child))
+  child.once('exit', () => {
+    children.delete(child)
+    void cleanupProcessGroup(child.pid)
+  })
   const url = await waitForDemo(environment.PORT, child, () => spawnError)
   console.log(`\nDemo ready: ${url}`)
   console.log('Sign in with the fictional local operator account:')
@@ -294,7 +376,8 @@ async function ensureFiles() {
   await mkdir(path.dirname(tarballPath), { recursive: true })
 }
 
-async function main() {
+export async function runDemo() {
+  assertNodeVersion()
   await ensureFiles()
   let { environment, needsKey } = await effectiveEnv()
   if (environment.NODE_ENV !== 'development') {
@@ -342,21 +425,24 @@ async function main() {
   await startServer(childEnv)
 }
 
-for (const signal of ['SIGINT', 'SIGTERM']) {
-  process.on(signal, () => {
-    if (interruptedBy) return
-    interruptedBy = signal
-    cleanupOwnedProcesses().finally(() => {
-      process.exitCode = signal === 'SIGINT' ? 130 : 143
+const invokedPath = process.argv[1]
+if (invokedPath && realpathSync(invokedPath) === realpathSync(fileURLToPath(import.meta.url))) {
+  for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.on(signal, () => {
+      if (interruptedBy) return
+      interruptedBy = signal
+      cleanupOwnedProcesses().finally(() => {
+        process.exitCode = signal === 'SIGINT' ? 130 : 143
+      })
     })
+  }
+
+  runDemo().catch(async (error) => {
+    await cleanupOwnedProcesses()
+    if (interruptedBy) process.exitCode = interruptedBy === 'SIGINT' ? 130 : 143
+    else {
+      console.error(`Demo setup failed: ${error.message}`)
+      process.exitCode = 1
+    }
   })
 }
-
-main().catch(async (error) => {
-  await cleanupOwnedProcesses()
-  if (interruptedBy) process.exitCode = interruptedBy === 'SIGINT' ? 130 : 143
-  else {
-    console.error(`Demo setup failed: ${error.message}`)
-    process.exitCode = 1
-  }
-})

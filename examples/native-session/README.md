@@ -65,7 +65,13 @@ await writeFile(lockPath, lock.replace(entry, `$1${integrity}$2`))
 NODE
 
 pnpm install --frozen-lockfile
-# Set APP_URL=http://127.0.0.1:3333 in .env; the template value is not interpolated by dotenv.
+node --input-type=module <<'NODE'
+import { readFile, writeFile } from 'node:fs/promises'
+
+const path = '.env'
+const env = await readFile(path, 'utf8')
+await writeFile(path, env.replace(/^APP_URL=.*$/m, 'APP_URL=http://127.0.0.1:3333'))
+NODE
 node ace generate:key
 node ace migration:run
 node ace demo:seed
