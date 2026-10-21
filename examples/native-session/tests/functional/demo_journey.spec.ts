@@ -77,6 +77,8 @@ test.group('support operator browser journey', (group) => {
       .loginAs(actor)
     sensitive.assertStatus(403)
     assert.include(sensitive.text(), 'Sensitive action blocked')
+    const afterSensitive = await db.from('demo_preferences').where('user_id', target.id).first()
+    assert.equal(afterSensitive?.email_updates, 1)
 
     const stop = await client
       .post('/support/stop')
