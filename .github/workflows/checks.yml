@@ -105,3 +105,16 @@ jobs:
           PORT: 3378
           SESSION_DRIVER: memory
         run: pnpm test:inertia-vue
+      - name: Exercise packed Account Kit consumer
+        env:
+          ACCOUNT_KIT_EVIDENCE_DIR: ${{ github.workspace }}/tmp/account-kit-evidence-${{ matrix.database }}
+        run: pnpm test:account-kit --profile=all --database=${{ matrix.database == 'pg' && 'pg' || 'sqlite' }} --strategy=all --session-management=all
+      - name: Upload Account Kit consumer evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: account-kit-${{ matrix.database }}
+          path: |
+            tmp/account-kit-evidence-${{ matrix.database }}/evidence.json
+            tmp/account-kit-evidence-${{ matrix.database }}/logs/**
+          if-no-files-found: warn

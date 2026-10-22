@@ -55,6 +55,7 @@ async function fixture(
     inlineBlocker?: boolean
     name?: string
     strategy?: string
+    identifier?: unknown
     environment?: string
     group?: string
   } = {}
@@ -79,7 +80,9 @@ async function fixture(
       namespace: 'users',
       incarnation: (user: { generation: string }) => user.generation,
     },
-    provider: { createUserForGuard: async (_user: unknown) => ({ getId: () => 42 }) },
+    provider: {
+      createUserForGuard: async (_user: unknown) => ({ getId: () => options.identifier ?? 42 }),
+    },
     authenticateActor: async () => {
       throw new Error('ability absent')
     },
@@ -103,7 +106,12 @@ async function fixture(
 async function block(
   host: Awaited<ReturnType<typeof fixture>>,
   name: string,
-  options: { authenticated?: boolean; active?: boolean; failure?: 'guard' | 'store' } = {}
+  options: {
+    authenticated?: boolean
+    active?: boolean
+    failure?: 'guard' | 'store'
+    missingUser?: boolean
+  } = {}
 ) {
   const reads: unknown[] = []
   let nextCalls = 0
@@ -113,7 +121,10 @@ async function block(
     auth: {
       use: () => {
         if (options.failure === 'guard') throw new Error('guard unavailable')
-        return { user, check: async () => options.authenticated ?? true }
+        return {
+          user: options.missingUser ? undefined : user,
+          check: async () => options.authenticated ?? true,
+        }
       },
     },
     containerResolver: {
@@ -141,6 +152,29 @@ async function block(
 }
 
 test.group('Account Kit provider', () => {
+  test('requires the native adapter and managed HTTP service before route validation', async ({
+    assert,
+  }) => {
+    for (const missing of ['adapter', 'managedHttp'] as const) {
+      const host = await fixture()
+      try {
+        if (missing === 'adapter') {
+          delete (host.adapter as { kit?: unknown }).kit
+        } else {
+          host.adapter.kit = async () => ({ managedHttp: undefined }) as never
+        }
+        await assert.rejects(
+          () => host.provider.ready(),
+          missing === 'adapter'
+            ? 'Account Kit native adapter required'
+            : 'Account Kit managed HTTP service required'
+        )
+      } finally {
+        await host.app.terminate()
+      }
+    }
+  }).skip(!canLoadKit(), 'requires installed Account Kit or ACCOUNT_KIT_SOURCE')
+
   test('commits and verifies registered routes and installed blocker at console ready', async ({
     assert,
   }) => {
@@ -326,6 +360,34 @@ test.group('Account Kit provider', () => {
       }
     } finally {
       await host.app.terminate()
+    }
+  }).skip(!canLoadKit(), 'requires installed Account Kit or ACCOUNT_KIT_SOURCE')
+
+  test('rejects missing guard users and unsupported or oversized owner identifiers', async ({
+    assert,
+  }) => {
+    for (const options of [
+      { missingUser: true, identifier: 42 },
+      { missingUser: false, identifier: { id: 42 } },
+      { missingUser: false, identifier: 'x'.repeat(256) },
+    ]) {
+      const host = await fixture({ identifier: options.identifier })
+      try {
+        host.router.commit()
+        let providerCalls = 0
+        const createUserForGuard = host.adapter.provider.createUserForGuard
+        host.adapter.provider.createUserForGuard = async (user) => {
+          providerCalls++
+          return createUserForGuard(user)
+        }
+        const attempt = await block(host, 'accountKit.auth.passwordReset.request', options)
+        await assert.rejects(attempt.call, 'Masquerade is unavailable')
+        assert.deepEqual(attempt.reads, [])
+        assert.equal(attempt.nextCalls(), 0)
+        if (options.missingUser) assert.equal(providerCalls, 0)
+      } finally {
+        await host.app.terminate()
+      }
     }
   }).skip(!canLoadKit(), 'requires installed Account Kit or ACCOUNT_KIT_SOURCE')
 })
