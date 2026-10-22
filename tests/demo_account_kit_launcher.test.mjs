@@ -684,6 +684,7 @@ test('bootstraps from a clean workspace, downloads only the pinned release URL, 
   for (let iteration = 0; iteration < 2; iteration++) {
     const run = launch(demo, [], t)
     await waitForText(run, 'Account Kit demo ready:')
+    await waitForText(run, 'operator@example.test / demo-operator-2026')
     assert.match(run.text(), /operator@example\.test \/ demo-operator-2026/)
     await waitForFile(path.join(demo.app, 'server.pid'), 6000, run)
     const response = await waitForHttp(demo, run)
@@ -964,6 +965,7 @@ test('handles Ctrl+C during setup and while serving, with no child or listener l
   t.after(() => cleanupFixture(serving))
   const serveRun = launch(serving, [], t)
   await waitForText(serveRun, 'Account Kit demo ready:')
+  await waitForText(serveRun, 'operator@example.test / demo-operator-2026')
   assert.match(serveRun.text(), /operator@example\.test \/ demo-operator-2026/)
   const serverPid = Number(await waitForFile(path.join(serving.app, 'server.pid'), 6000, serveRun))
   assertAlive(serverPid)
