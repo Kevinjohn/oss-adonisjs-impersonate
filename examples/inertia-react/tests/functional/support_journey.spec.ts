@@ -74,7 +74,11 @@ test.group('Inertia support journey', (group) => {
       .loginAs(actor)
     sensitive.assertStatus(302)
     assert.equal(sensitive.header('location'), '/support/recovery')
-    const sensitiveRecovery = await client.get('/support/recovery').loginAs(actor)
+    sensitive.assertFlashMessage('supportRecoveryTitle', 'Sensitive action is unavailable')
+    const sensitiveRecovery = await client
+      .get('/support/recovery')
+      .withFlashMessages(sensitive.flashMessages())
+      .loginAs(actor)
     assert.equal(pageData(sensitiveRecovery.text()).props.title, 'Sensitive action is unavailable')
     const afterSensitive = await db.from('demo_preferences').where('user_id', target.id).first()
     assert.equal(afterSensitive?.email_updates, 1)
@@ -125,8 +129,12 @@ test.group('Inertia support journey', (group) => {
       .loginAs(actor)
     blocked.assertStatus(302)
     assert.equal(blocked.header('location'), '/support/recovery')
+    blocked.assertFlashMessage('supportRecoveryTitle', 'View-only support mode blocked this change')
 
-    const recovery = await client.get('/support/recovery').loginAs(actor)
+    const recovery = await client
+      .get('/support/recovery')
+      .withFlashMessages(blocked.flashMessages())
+      .loginAs(actor)
     assert.equal(
       pageData(recovery.text()).props.title,
       'View-only support mode blocked this change'

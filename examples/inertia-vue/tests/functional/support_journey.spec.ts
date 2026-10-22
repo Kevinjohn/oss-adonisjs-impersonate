@@ -191,8 +191,16 @@ test.group('Inertia Vue support journey', (group) => {
       .loginAs(actor)
     blocked.assertStatus(302)
     assert.equal(blocked.header('location'), '/support/recovery')
+    blocked.assertFlashMessage('supportRecoveryTitle', 'Edit blocked in view-only mode')
+    blocked.assertFlashMessage(
+      'supportRecovery',
+      'This support session is view only. Start a new session and choose Can edit to make changes.'
+    )
 
-    const recovery = await client.get('/support/recovery').loginAs(actor)
+    const recovery = await client
+      .get('/support/recovery')
+      .withFlashMessages(blocked.flashMessages())
+      .loginAs(actor)
     const props = pageData(recovery.text()).props
     assert.equal(props.title, 'Edit blocked in view-only mode')
     assert.include(props.message, 'This support session is view only')

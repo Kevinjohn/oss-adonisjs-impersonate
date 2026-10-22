@@ -9,7 +9,7 @@ defineProps<{
 
 <template>
   <aside class="support-banner" role="status" aria-live="polite">
-    <strong>{{ mode.access === 'view' ? 'View only' : 'Can edit' }} support mode is active</strong>
+    <strong>{{ mode.access === 'edit' ? 'Can edit' : 'View only' }} support mode is active</strong>
     <span
       >Operator {{ actor.fullName }} ({{ actor.email }}) is viewing {{ customer.fullName }} ({{
         customer.email
