@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add view-only-by-default starts with optional per-start edit access gated by `canEdit`, include
+  `access` in active mode and audit projections, and return typed `blockedBy` details for blocked
+  actions. Update the control-store conformance contract and examples for the new access level.
 - Add a runnable bearer API lifecycle to the native-session example, including token issuance,
   effective customer reads, shared browser mode, stop, and native revocation.
 - Add v1.1 opaque access-token authentication that shares account mode with native sessions and

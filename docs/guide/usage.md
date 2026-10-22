@@ -113,7 +113,7 @@ like this:
 
 Omitting `access` selects view. Choose **Can edit** deliberately in the start form and send
 `access: 'edit'` when the host's `canEdit` policy permits it. The level stays fixed until stop;
-restart to choose another level. See the [access contract](../../SPEC-impersonation.md#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
+restart to choose another level. See the [access contract](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/SPEC-impersonation.md#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
 
 The default duration is 900 seconds and the default maximum is 3600 seconds. A host can configure
 a shorter duration and maximum. When duration is omitted, the configured default is used;
@@ -493,13 +493,13 @@ response with this start intent. This excerpt is copied from the
       <legend class="field__label">Access level</legend>
       <label class="field__choice">
         <input type="radio" name="access" value="view" checked />
-        
+
         View only
 
       </label>
       <label class="field__choice">
         <input type="radio" name="access" value="edit" />
-        
+
         Can edit
 
       </label>

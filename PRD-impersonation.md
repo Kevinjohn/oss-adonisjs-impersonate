@@ -51,7 +51,7 @@ Success means an application can explicitly configure the package, deny masquera
 - Native authentication remains the actor. Application middleware/wrappers expose the target as the effective principal to ordinary target-facing Auth/Bouncer behavior.
 - Explicit application callback for actor authorization and target eligibility. Missing, denying, or failing callback means deny.
 - Fixed, non-sliding expiry and explicit stop.
-- Unsafe request methods blocked by default while masquerade is active. The proposed issue #86 change adds view-only mode by default and per-start, host-policy-gated edit access; ordinary mutations additionally require route opt-in. Sensitive account and security actions remain denied.
+- Unsafe request methods blocked by default while masquerade is active. The accepted issue #86 change adds view-only mode by default and per-start, host-policy-gated edit access; ordinary mutations additionally require route opt-in. Sensitive account and security actions remain denied.
 - A non-secret context token or version on all covered authenticated unsafe business requests, including while no masquerade is active, so a stale rendered form cannot mutate under a newer server-side mode. Public login/proof endpoints and control/logout exemptions retain explicit separate contracts; they must not become business-route bypasses.
 - Durable server-side coordination and audit records. SQL storage is an optional integration behind a core store contract; proposed first-party support is SQLite and PostgreSQL through a Lucid subpath.
 - Native actor credential validation and an optional Account Kit adapter that relies on existing account/credential validation rather than issuing masquerade credentials.

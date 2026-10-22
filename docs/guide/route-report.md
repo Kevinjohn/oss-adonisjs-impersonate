@@ -27,7 +27,9 @@ does not establish what an arbitrary host handler or middleware does.
   was not recognized as a control. Confirm that it is an intentional control or move business work
   behind the effective guard.
 - `BUSINESS` means the route uses an effective guard. Review its `sensitive` and `allowMutation`
-  markers against the operations it performs.
+  markers against the operations it performs. `allowMutation()` identifies routes that may accept
+  ordinary writes in edit mode; it does not grant edit access or target authorization. View mode
+  blocks unsafe actions before route configuration is disclosed.
 - `UNCLASSIFIED` means the route has no recognized auth guard metadata. Decide whether it should be
   public, authenticated with the effective guard, or an intentional raw-guard control.
 

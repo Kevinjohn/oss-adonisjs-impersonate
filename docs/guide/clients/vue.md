@@ -59,6 +59,8 @@ export default defineConfig({
   policy: {
     canMasquerade: ({ actor, target }) =>
       Boolean(actor.user.isSupportOperator) && Boolean(target.user.active),
+    canEdit: ({ actor, target }) =>
+      Boolean(actor.user.isSupportOperator) && Boolean(target.user.active),
     canUseRequest: ({ actor, target }) => Boolean(actor.user.active) && Boolean(target.user.active),
   },
   store: async () => new LucidControlStore((await app.container.make(Database)).connection()),
@@ -69,7 +71,7 @@ Register the app's native adapter provider and the package provider. Add the pac
 
 ## Split raw controls from effective work
 
-Register `masqueradeContext` after body parsing, session, Shield, and auth initialization. The package's native routes and host support controls use the raw `web` guard. Customer reads and explicit reversible mutations use `web_effective`; mark allowed mutations with `allowMutation()` and sensitive actions with `sensitive()`:
+Register `masqueradeContext` after body parsing, session, Shield, and auth initialization. The package's native routes and host support controls use the raw `web` guard. Customer reads and reversible mutations use `web_effective`. A mode starts with `access: 'view'`; a start form may request edit, which the host's `canEdit` policy must approve. `allowMutation()` opts a route into ordinary mutation only in edit mode, and `sensitive()` always blocks:
 
 ```ts
 router
@@ -113,12 +115,17 @@ const originalContext = props.context
   <Form route="support.start">
     <input type="hidden" name="_masqueradeContext" :value="originalContext" />
     <!-- customer and reason inputs -->
+    <label for="access">Access</label>
+    <select id="access" name="access" defaultValue="view">
+      <option value="view" selected>View only</option>
+      <option value="edit">Can edit</option>
+    </select>
     <button type="submit">Start support mode</button>
   </Form>
 </template>
 ```
 
-Shield's CSRF token is separate. Do not replace an old form's context token after a props refresh. A 409 or 428 rejects the old intent; render a recovery page and ask the operator to inspect current status and deliberately create a new action. A 503 may leave the result of a transition unknown; inspect raw status without replaying the transition.
+Shield's CSRF token is separate. A start request may send `access: 'view' | 'edit'`; omission defaults to view. Active `ModeView` props include `access`, which stays fixed until stop. For `E_MASQUERADE_ACTION_BLOCKED`, the error item also contains `blockedBy: 'sensitive' | 'view_only' | 'mutation_not_allowed'`; the host chooses its own message and recovery page. Do not replace an old form's context token after a props refresh. A 409 or 428 rejects the old intent; render a recovery page and ask the operator to inspect current status and deliberately create a new action. A 503 may leave the result of a transition unknown; inspect raw status without replaying the transition.
 
 ## Refresh and protect restored pages
 

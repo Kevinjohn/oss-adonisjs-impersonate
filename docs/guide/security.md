@@ -44,11 +44,30 @@ request-local; a false result rejects only that request, leaving the shared mode
 unchanged. This is where tenant- or route-specific restrictions belong. Tenant context is derived
 after the effective identity is resolved, never inherited from the actor.
 
-On active business routes, GET/HEAD/OPTIONS are classified as reads. Other methods are mutations
-and are denied unless the route or group carries `allowMutation()`. This does not prove that a GET
-handler has no side effects. Password, credential, identity, recovery, security and billing
-mutations must carry `sensitive()`; the marker always wins over `allowMutation()`. The package does
-not infer billing or security behavior from a URL. The host owns this classification.
+Modes default to view access. The actor may request edit access when starting, but an
+optional host `canEdit` policy must return exactly `true`; omitting the callback or returning any
+other value never grants edit. `canMasquerade` keeps its existing role and input. For an edit start,
+`canEdit({ actor, target, reason, request })` runs after `canMasquerade` and before
+`canUseRequest`. View starts never call it.
+
+On active edit-mode admission, the package rechecks `canEdit({ actor, target })` after
+`canMasquerade`, without a reason or request. If it is absent or no longer returns exactly `true`,
+the package clears the whole mode with `edit_denied` and rejects that request with 409; it does not
+downgrade to view. A thrown callback returns 503 and leaves the mode unchanged. View-mode
+admission and stop do not call `canEdit`. The accepted details are in the
+[view-only and edit-access contract](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/SPEC-impersonation.md#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
+
+After context-token validation, active requests follow this order: `sensitive()` blocks any method
+with `blockedBy: 'sensitive'`; an unsafe method without edit access blocks with
+`blockedBy: 'view_only'`; then an unsafe method without route or group `allowMutation()` blocks
+with `blockedBy: 'mutation_not_allowed'`. Only an edit-mode request on an opted-in route proceeds
+to the customer's ordinary authorization. The view-only response does not reveal whether a route
+has `allowMutation()`. The host controls the error page, redirect or JSON response and its wording.
+
+This rule does not prove that a GET handler has no side effects. Password, credential, identity,
+recovery, security and billing mutations must carry `sensitive()`; the marker always wins over
+access and `allowMutation()`. The package does not infer billing or security behavior from a URL.
+The host owns this classification.
 
 Login, signup, logout and status/start/stop control routes use the explicitly selected raw actor
 guard. They never run target business handlers. Each covered business route selects one effective

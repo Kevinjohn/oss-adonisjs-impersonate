@@ -31,11 +31,11 @@ const response = await fetch('/masquerade/start', {
     'X-CSRF-TOKEN': csrfToken,
     'X-Masquerade-Context': idleStatus.contextToken,
   },
-  body: JSON.stringify({ targetId: customerId, reason: 'Customer requested help' }),
+  body: JSON.stringify({ targetId: customerId, reason: 'Customer requested help', access: 'edit' }),
 })
 ```
 
-The canonical raw controls are `GET /masquerade`, `POST /masquerade/start`, and `POST /masquerade/stop`. A start response carries a new token and a fixed `expiresAt`; an idle stop response carries another token. The host's `GET /support/json/customer` uses `web_effective` and returns actor and customer labels, the admitted context and deadline, and the customer's saved preference. `POST /support/json/customer/preference` requires effective admission, `allowMutation()`, the customer's Bouncer ability, an exact `emailUpdates` value of `"0"` or `"1"`, Shield CSRF, and the context header. It returns the confirmed preference. `POST /support/json/customer/sensitive` uses `sensitive()` and returns 403 during an active mode without touching customer data.
+The canonical raw controls are `GET /masquerade`, `POST /masquerade/start`, and `POST /masquerade/stop`. The start payload may include `access: 'view' | 'edit'`; omitting it selects view. An active `ModeView` includes its fixed `access` value, while an idle view omits the field. A start response carries a new token and a fixed `expiresAt`; an idle stop response carries another token. The host's `GET /support/json/customer` uses `web_effective` and returns actor and customer labels, the admitted context and deadline, and the customer's saved preference. `POST /support/json/customer/preference` requires effective admission, `allowMutation()`, the customer's Bouncer ability, an exact `emailUpdates` value of `"0"` or `"1"`, Shield CSRF, and the context header. It returns the confirmed preference. During view mode, the preference request is blocked even though its route is marked for mutation. In edit mode, the host's `canEdit` policy and the customer's Bouncer ability must both allow it. `POST /support/json/customer/sensitive` uses `sensitive()` and returns 403 during an active mode without touching customer data.
 
 For example, a successful customer read resembles:
 
@@ -43,7 +43,7 @@ For example, a successful customer read resembles:
 {
   "actor": { "id": 1, "email": "operator@example.test" },
   "customer": { "id": 2, "fullName": "Customer One", "email": "customer-one@example.test" },
-  "mode": { "contextToken": "1.<nonce>", "expiresAt": "2026-10-21T14:30:00.000Z" },
+  "mode": { "contextToken": "1.<nonce>", "expiresAt": "2026-10-21T14:30:00.000Z", "access": "edit" },
   "emailUpdates": false,
   "canEdit": true
 }
@@ -51,4 +51,4 @@ For example, a successful customer read resembles:
 
 The client checks HTTP status and content type before decoding and uses manual redirect handling. A native authentication or Shield failure may redirect to HTML instead of returning a package error; the client asks the operator to reload the shell for a new CSRF token and sign in again if needed. It handles 401/419 authentication or CSRF recovery, 403 admission or sensitive denial, 422 invalid input, 429 with `Retry-After`, and 503 unavailable or uncertain outcomes. Missing context gives 428; a stale context or expired mode gives 409. Both leave the old mutation unapplied. On any uncertain outcome, the client reads fresh raw status and customer data where effective admission succeeds, clears old drafts, and requires a new click or submission. It never updates a token and silently replays the old request.
 
-Raw status reports stored mode; it does not grant customer permission. The client freezes customer actions at the exact fixed deadline while keeping raw stop available for a stored expired mode. It checks status when a tab becomes visible and ignores late responses from an older context generation. A browser abort cannot undo work the server admitted. Raw status and stop remain available even when an effective customer read fails, so the operator can recover. For the underlying control and error contract, see [Usage](../usage.md) and [Security](../security.md).
+A blocked-action error uses `{ errors: [{ code, message, blockedBy }] }`, where `blockedBy` is `sensitive`, `view_only`, or `mutation_not_allowed`. The host owns the message and response handling. Raw status reports stored mode and its active `access`; it does not grant customer permission. The client freezes customer actions at the exact fixed deadline while keeping raw stop available for a stored expired mode. It checks status when a tab becomes visible and ignores late responses from an older context generation. A browser abort cannot undo work the server admitted. Raw status and stop remain available even when an effective customer read fails, so the operator can recover. For the underlying control and error contract, see [Usage](../usage.md) and [Security](../security.md).
