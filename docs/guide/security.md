@@ -81,6 +81,29 @@ If native session authentication fails, `check()` returns `false`; calling `getU
 that failed attempt raises the native session unauthorized error. Masquerade admission errors still
 propagate unchanged.
 
+## Account Kit admission and managed actions
+
+The optional [Account Kit integration](account-kit.md) keeps admission distinct from account
+restriction. Account Kit's `canAccess` decision controls authentication eligibility; it does not
+include the separate host admission gate. Resolve `AccountAdmission` from
+`adonisjs-account-kit/admission`. Gate the actor's protected control and business routes before the
+global `masqueradeContext` middleware; route-level admission middleware runs too late when that
+global middleware resolves the effective identity first. The [Account Kit guide](account-kit.md)
+shows a scoped pre-context gate. A denied actor then receives the admission response before
+Masquerade reads the mode, so the row remains unchanged. Use `changeRestriction` if the host intends
+to advance the account revision and invalidate an active mode.
+
+Check target admission from the host's `canMasquerade` callback with
+`(await app.container.make(AccountAdmission)).isAdmitted(target.id)`. The callback runs at start and
+active admission, so revoking a target's admission denies subsequent requests. Do not fold this
+check into `canAccess`.
+
+While a mode is active, the Account Kit provider's global blocker prevents managed account routes
+from changing the operator's own password, credentials, identity, recovery settings or sessions.
+The logout and CSRF endpoints remain available: logout must still work, and session clients need to
+fetch a CSRF token to stop the mode. The integration preview documents its current scope and
+verification status in the [Account Kit guide](account-kit.md).
+
 ## Context tokens and browser clients
 
 Every covered unsafe business request requires the current owner-bound context token, including

@@ -14,6 +14,16 @@ The report groups routes by matched authentication guard and shows the request m
 and a coverage label. It is a review aid, not a boot-time registry or an enforcement mechanism. It
 does not establish what an arbitrary host handler or middleware does.
 
+For Account Kit hosts, see the [integration preview](account-kit.md). Routes named `accountKit.*`
+are reported as managed and blocked while active only after the integration provider verifies that
+its global blocker is installed and the mounted routes match Account Kit's registration. If that
+check is missing or unverified, those routes remain `UNCLASSIFIED` with a note. Do not treat a
+managed-route label as proof that every route in the group is blocked: `accountKit.account.logout`
+and `accountKit.auth.csrf` are exempt so logout and CSRF token retrieval remain available. Account
+Kit's `except` option removes omitted endpoints from its registration, so they are not mounted by
+Account Kit; the remaining registered routes stay covered by the blocker. A host-added
+`accountKit.*` route absent from registration fails provider validation.
+
 ## Coverage labels
 
 - `CONTROL` means the report positively recognized a Masquerade controller handler. Check that the

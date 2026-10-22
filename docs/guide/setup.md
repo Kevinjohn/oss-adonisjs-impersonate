@@ -6,6 +6,7 @@ a target login or credential. For token-only or mixed session/token transport, s
 [opaque access-token guide](access-tokens.md). Also see [security](security.md) for the identity
 boundary and [custom authorities](custom-authorities.md) for the native authority contract. The
 [API entry-point map](../api-reference.md#supported-package-imports) links supported imports.
+Hosts using Account Kit should also read the [Account Kit integration preview](account-kit.md).
 
 ## Generate the starter files
 
