@@ -1,6 +1,15 @@
-# Account Kit Ace startup fails at the declared AdonisJS Core 7.0.0 peer floor
+# Historical: Account Kit Ace startup failure at the Core 7.0.0 peer floor
 
-Please investigate whether Account Kit's implementation or its declared Core peer floor needs to change. This is reproducible in Account Kit's own command import, before Masquerade's adapter or managed-route blocker runs.
+**Status:** Resolved upstream in Account Kit `0.1.1`; retained as reproduction context. The
+Masquerade compatibility matrix against this release is still pending maintainer verification.
+
+The original report below records the Core `7.0.0` startup failure observed with Account Kit source
+commit `b2814006b83673346fb5533db8b3443a067d7d6c` (manifest version `0.0.0`). Account Kit release
+`0.1.1` now imports `configProvider` from the Core package root in both `commands/openapi.ts` and
+`src/http/session_store_protection.ts`, and declares support for Core `7.0.0`. The correction is
+available in source commit `b1ae0d48fda29ff75a2edc9f021c61eff3b1267b` and the pinned GitHub artifact
+documented in the [integration guide](../guide/account-kit.md). This resolves the reported upstream
+import incompatibility; it does not by itself establish Masquerade's full database/strategy matrix.
 
 ## Source and environment
 
@@ -9,7 +18,10 @@ Please investigate whether Account Kit's implementation or its declared Core pee
 - Node `24.21.0`; pnpm `11.23.0`.
 - Exact floor host: Core `7.0.0`, Auth `10.0.0`, Lucid `22.4.2`, Session `8.1.0`, Bouncer `4.0.0`, TypeScript `5.9.3`.
 - SQLite and PostgreSQL hosts, session and access-token strategies, with session management enabled and disabled, are included in the consumer matrix.
-- Account Kit declares `@adonisjs/core: ^7.0.0` as a peer, while its development dependency starts at `^7.0.1`.
+- At the time of the report, Account Kit declared `@adonisjs/core: ^7.0.0` as a peer, while its
+  development dependency started at `^7.0.1`.
+
+## Original report (superseded by Account Kit 0.1.1)
 
 ## Failure
 
@@ -19,24 +31,24 @@ Please investigate whether Account Kit's implementation or its declared Core pee
 import { configProvider } from '@adonisjs/core/config'
 ```
 
-Core `7.0.0` does not export that symbol from this entry point. Ace loads Account Kit's command entry while booting its command kernel, so unrelated commands fail before their handlers run. The fresh consumer currently fails during `account-kit:admission:install`; `migration:run --force` has also reproduced the same import failure.
+Core `7.0.0` did not export that symbol from this entry point. Ace loaded Account Kit's command entry while booting its command kernel, so unrelated commands failed before their handlers ran. The original fresh consumer failed during `account-kit:admission:install`; `migration:run --force` also reproduced the same import failure.
 
 ```text
 SyntaxError: The requested module '@adonisjs/core/config' does not provide an export named 'configProvider'
 ```
 
-The built stack points to the Account Kit OpenAPI command bundle, then the Ace kernel boot path. The source uses `configProvider.resolve(this.app, session)` at `commands/openapi.ts:69`.
+The built stack pointed to the Account Kit OpenAPI command bundle, then the Ace kernel boot path. The affected source used `configProvider.resolve(this.app, session)` at `commands/openapi.ts:69`.
 
 ## Minimal checks
 
-In an AdonisJS 7 host with Core pinned to `7.0.0` and Account Kit's freshly packed artifact installed and configured:
+In an AdonisJS 7 host with Core pinned to `7.0.0` and the then-current Account Kit artifact installed and configured:
 
 ```sh
 pnpm exec node --input-type=module -e "const m = await import('@adonisjs/core/config'); console.log('configProvider' in m)"
 pnpm exec node ace.js migration:run --force
 ```
 
-The first prints `false`; the second fails on the Account Kit import during Ace boot. This can also be demonstrated directly, without invoking Masquerade:
+The first printed `false`; the second failed on the Account Kit import during Ace boot. This was also demonstrated directly, without invoking Masquerade:
 
 ```sh
 pnpm exec node --input-type=module -e "import { configProvider } from '@adonisjs/core/config'; console.log(configProvider)"
@@ -54,6 +66,9 @@ A host satisfying Account Kit's declared peer range should boot Ace and run its 
 
 Core `7.6.0` exports the symbol and allows the consumer to proceed. Intermediate releases have not been bisected, so `7.6.0` is a known working comparison, not a proposed minimum. Making the OpenAPI command lazy could reduce unrelated-command impact, but would not alone make that command compatible with the declared Core 7.0.0 floor.
 
-## Integration boundary
+## Integration boundary (original report)
 
-Masquerade is continuing draft development against the approved local Account Kit source without patching Account Kit or increasing either package's peer floor. The floor failure remains visible in acceptance evidence. The published-alpha pin and published-package release gate are also pending separately because `adonisjs-account-kit` was unavailable from the public registry when checked. Please treat registry availability and this Core compatibility defect as separate questions.
+At report time, Masquerade continued draft development against the approved local Account Kit source
+without patching Account Kit or increasing either package's peer floor. The defect and registry
+availability were tracked separately. Current status is summarized at the top of this historical
+report; public registry publication remains separate from use of the pinned GitHub artifact.

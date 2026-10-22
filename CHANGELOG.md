@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Add a prerelease Account Kit integration preview covering the optional adapter, actor and target admission gates, managed-route blocker, route report, and current SQLite/PostgreSQL verification boundary. No registry alpha version is available yet.
+- Add a prerelease Account Kit integration preview for GitHub release artifact `0.1.1`, with pinned pnpm installation instructions, optional adapter, actor and target admission gates, managed-route blocker, route report, and SQLite/PostgreSQL verification boundary. Public registry publication remains separate, and the maintainer matrix is pending.
 - Add view-only-by-default starts with optional per-start edit access gated by `canEdit`, include
   `access` in active mode and audit projections, and return typed `blockedBy` details for blocked
   actions. Add nullable `access` columns to the mode and event tables by editing the unpublished

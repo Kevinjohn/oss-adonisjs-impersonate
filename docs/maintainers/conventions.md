@@ -10,8 +10,11 @@ AdonisJS Plus compatibility.
 - Core depends on explicit ports: `ControlStore`, `NativeAuthority` and `MasqueradePolicy`.
 - Framework and database integrations use narrow subpaths. Root import does not resolve Lucid or
   Account Kit. Lucid supports SQLite and PostgreSQL. Account Kit support is a v1.2 prerelease
-  preview; there is no published Account Kit alpha, and its supported database and strategy matrix
-  must be verified before release. See the [integration guide](../guide/account-kit.md).
+  preview pinned to GitHub release artifact `0.1.1`; public registry publication is separate. The
+  upstream Core `7.0.0` Ace-startup import failure was addressed in `0.1.1`; the Masquerade database
+  and strategy matrix still must be verified before acceptance. See the
+  [integration guide](../guide/account-kit.md) and
+  [historical compatibility brief](account-kit-core-floor-feedback.md).
 - The raw native session guard authenticates the actor. The effective guard is used on business
   routes. The package never issues target credentials or unions permissions.
 - Routes stay host-mounted. The host wires `masqueradeContext` after auth initialization and before
