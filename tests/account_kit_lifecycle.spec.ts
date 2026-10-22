@@ -21,20 +21,12 @@ type AccountKitHttpApi = {
   managedRouteRegistration(router: Router): { routes: readonly unknown[] } | undefined
 }
 
-async function loadAccountKitHttp(): Promise<AccountKitHttpApi | undefined> {
+async function loadAccountKitHttp(): Promise<AccountKitHttpApi> {
   const source = process.env.ACCOUNT_KIT_SOURCE
-  if (source) {
-    const entry = pathToFileURL(resolve(source, 'build/http/main.js')).href
-    return (await import(entry)) as AccountKitHttpApi
-  }
-
-  try {
-    const packagePath = 'adonisjs-account-kit/http'
-    return (await import(packagePath)) as AccountKitHttpApi
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ERR_MODULE_NOT_FOUND') return undefined
-    throw error
-  }
+  const entry = source
+    ? pathToFileURL(resolve(source, 'build/http/main.js')).href
+    : 'adonisjs-account-kit/http'
+  return (await import(entry)) as AccountKitHttpApi
 }
 
 function canResolveAccountKitHttp(): boolean {
@@ -139,7 +131,6 @@ test.group('Account Kit integration lifecycle', () => {
   }) => {
     const events: string[] = []
     const accountKitHttp = await loadAccountKitHttp()
-    assert.exists(accountKitHttp)
 
     class BlockManagedRoutesMiddleware {
       async handle(ctx: HttpContext, next: NextFn): Promise<unknown> {
@@ -156,7 +147,7 @@ test.group('Account Kit integration lifecycle', () => {
     const readyProvider = readyProbe(
       readyObservations,
       false,
-      (router) => accountKitHttp!.managedRouteRegistration(router)?.routes.length ?? 0
+      (router) => accountKitHttp.managedRouteRegistration(router)?.routes.length ?? 0
     )
     const app = new IgnitorFactory()
       .withCoreProviders()
@@ -177,8 +168,8 @@ test.group('Account Kit integration lifecycle', () => {
       await app.boot()
       const router = await app.container.make('router')
       router.use([initializeAuthImport, blockerImport])
-      accountKitHttp!.registerManagedRoutes(router, registrationOptions())
-      const registrationBeforeStart = accountKitHttp!.managedRouteRegistration(router)
+      accountKitHttp.registerManagedRoutes(router, registrationOptions())
+      const registrationBeforeStart = accountKitHttp.managedRouteRegistration(router)
       assert.exists(registrationBeforeStart, 'registration should be available immediately')
       assert.isAbove(registrationBeforeStart!.routes.length, 0)
 
@@ -187,7 +178,7 @@ test.group('Account Kit integration lifecycle', () => {
         await server.boot()
       })
 
-      const registered = accountKitHttp!.managedRouteRegistration(router)
+      const registered = accountKitHttp.managedRouteRegistration(router)
       assert.exists(registered)
       assert.isAbove(registered!.routes.length, 0)
       assert.deepEqual(readyObservations, [
@@ -240,7 +231,7 @@ test.group('Account Kit integration lifecycle', () => {
         await noBlockerApp.init()
         await noBlockerApp.boot()
         const noBlockerRouter = await noBlockerApp.container.make('router')
-        accountKitHttp!.registerManagedRoutes(noBlockerRouter, registrationOptions())
+        accountKitHttp.registerManagedRoutes(noBlockerRouter, registrationOptions())
         noBlockerRouter.commit()
         assert.isAbove(
           (noBlockerRouter.toJSON().root ?? []).filter((route) =>
