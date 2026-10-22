@@ -11,9 +11,9 @@ AdonisJS Plus compatibility.
 - Framework and database integrations use narrow subpaths. Root import does not resolve Lucid or
   Account Kit. Lucid supports SQLite and PostgreSQL. Account Kit support is a v1.2 prerelease
   preview pinned to GitHub release artifact `0.1.1`; public registry publication is separate. The
-  upstream Core `7.0.0` Ace-startup import failure was addressed in `0.1.1`; the Masquerade database
-  and strategy matrix still must be verified before acceptance. See the
-  [integration guide](../guide/account-kit.md) and
+  upstream Core `7.0.0` startup compatibility and the Masquerade floor/latest database and strategy
+  matrix are verified. See the [integration guide](../guide/account-kit.md),
+  [acceptance evidence](requirement-ledger.md#v12-account-kit-acceptance-t-kit-and-t-kit-http), and
   [historical compatibility brief](account-kit-core-floor-feedback.md).
 - The raw native session guard authenticates the actor. The effective guard is used on business
   routes. The package never issues target credentials or unions permissions.

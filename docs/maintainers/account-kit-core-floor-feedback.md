@@ -1,7 +1,8 @@
 # Historical: Account Kit Ace startup failure at the Core 7.0.0 peer floor
 
 **Status:** Resolved upstream in Account Kit `0.1.1`; retained as reproduction context. The
-Masquerade compatibility matrix against this release is still pending maintainer verification.
+Masquerade floor/latest matrix against this release has passed; see the
+[acceptance evidence](requirement-ledger.md#v12-account-kit-acceptance-t-kit-and-t-kit-http).
 
 The original report below records the Core `7.0.0` startup failure observed with Account Kit source
 commit `b2814006b83673346fb5533db8b3443a067d7d6c` (manifest version `0.0.0`). Account Kit release
@@ -9,7 +10,7 @@ commit `b2814006b83673346fb5533db8b3443a067d7d6c` (manifest version `0.0.0`). Ac
 `src/http/session_store_protection.ts`, and declares support for Core `7.0.0`. The correction is
 available in source commit `b1ae0d48fda29ff75a2edc9f021c61eff3b1267b` and the pinned GitHub artifact
 documented in the [integration guide](../guide/account-kit.md). This resolves the reported upstream
-import incompatibility; it does not by itself establish Masquerade's full database/strategy matrix.
+import incompatibility; the full Masquerade database/strategy matrix has since passed.
 
 ## Source and environment
 

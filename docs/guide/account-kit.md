@@ -13,6 +13,9 @@ The artifact SHA-256 is
 `b1ae0d48fda29ff75a2edc9f021c61eff3b1267b`. This pin supports local development from the GitHub
 release artifact; a future public registry publication is a separate release step.
 
+Account Kit's HTTP integration requires the host-provided `@vinejs/vine` `^4.4.0` dependency. The
+standard AdonisJS native-auth host already includes it.
+
 Masquerade remains optional and core does not import Account Kit. The Account Kit integration
 provides the native authority, checks the actor's configured credential, and installs middleware to
 block managed account actions while a mode is active. Configure exactly one transport: the session
@@ -268,12 +271,14 @@ than becoming an unprotected replacement. During its `ready` hook, the provider 
 and validates route registration and blocker installation, including when the host is starting an
 Ace command.
 
-This prerelease interface is being validated against the pinned GitHub release artifact. Account Kit
-`0.1.1` also resolves `configProvider` through `@adonisjs/core` in its OpenAPI command and session
-store protection code, addressing the Core `7.0.0` Ace-startup failure documented in the
-[0.1.1 release notes](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/tag/v0.1.1). The complete
-Masquerade Account Kit matrix remains pending; this guide does not claim acceptance before that
-verification is recorded.
+This prerelease interface was verified against the pinned GitHub release artifact. Account Kit
+`0.1.1` resolves `configProvider` through `@adonisjs/core` in its OpenAPI command and session store
+protection code, addressing the Core `7.0.0` Ace-startup failure documented in the
+[0.1.1 release notes](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/tag/v0.1.1).
+The complete Masquerade matrix passed for both strategies, with session management on and off, on
+SQLite and PostgreSQL at the declared floor and latest compatible peers. The tested artifact hashes
+and matrix are recorded in the
+[maintainer ledger](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/docs/maintainers/requirement-ledger.md#v12-account-kit-acceptance-t-kit-and-t-kit-http).
 
 With an active mode, the global blocker prevents Account Kit's own password, identity, recovery,
 session and other managed account operations from changing the operator's account while the UI
@@ -310,7 +315,6 @@ callbacks, including `canAccess`, so keep them safe to retry. PostgreSQL locks t
 account row. Masquerade supports this integration only on SQLite and PostgreSQL, matching its
 existing database support; this preview does not claim MySQL support.
 
-This integration remains a prerelease preview until the maintainer matrix passes for both strategies
-on SQLite and PostgreSQL. The GitHub release artifact is installable for local development; public
-registry publication is tracked separately. Check the [troubleshooting guide](troubleshooting.md) for
-common configuration failures.
+This integration remains a prerelease preview. The GitHub release artifact is installable for local
+development; public registry publication is separate from integration acceptance. Check the
+[troubleshooting guide](troubleshooting.md) for common configuration failures.
