@@ -513,18 +513,28 @@ try {
                 .sort()
               if (specFiles.length === 0) throw new Error(`${label}: no Account Kit cases found`)
               cell.specFiles = specFiles
-              const journey = await run(
-                app,
-                [
-                  'exec',
-                  'node',
-                  'ace.js',
-                  'test',
-                  '--files=tests/functional/account_kit_*.spec.ts',
-                ],
-                `${label}_cases`,
-                env
-              )
+              const caseOutputs: string[] = []
+              const caseFailures: string[] = []
+              for (const name of specFiles) {
+                const caseLabel = `${label}_${name.replace(/\.spec\.ts$/, '')}`
+                try {
+                  const result = await run(
+                    app,
+                    ['exec', 'node', 'ace.js', 'test', `--files=tests/functional/${name}`],
+                    caseLabel,
+                    env
+                  )
+                  if (result.includes('NO TESTS EXECUTED'))
+                    throw new Error(`${caseLabel}: Ace selected no tests`)
+                  caseOutputs.push(result)
+                } catch (error) {
+                  caseFailures.push(`${name}: ${String(error)}`)
+                  if (interrupted) break
+                }
+              }
+              if (caseFailures.length)
+                throw new Error(`${label}: Account Kit cases failed:\n${caseFailures.join('\n')}`)
+              const journey = caseOutputs.join('\n')
               const timing = journey
                 .split('\n')
                 .filter((line) => line.includes('ACCOUNT_KIT_TIMING '))
@@ -614,10 +624,14 @@ try {
             }
             if (primaryError) throw primaryError
           } catch (error) {
+            const caseNames = (cell.specFiles as string[] | undefined) ?? []
             const caseLogs = await Promise.all(
-              ['cases'].map(async (name) => {
+              caseNames.map(async (name) => {
                 try {
-                  return await readFile(join(logs, `${label}_${name}.log`), 'utf8')
+                  return await readFile(
+                    join(logs, `${label}_${name.replace(/\.spec\.ts$/, '')}.log`),
+                    'utf8'
+                  )
                 } catch {
                   return ''
                 }
