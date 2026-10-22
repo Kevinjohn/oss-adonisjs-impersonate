@@ -13,7 +13,11 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     const http = await import('adonisjs-masquerade/http')
     const native = await import('adonisjs-masquerade/native')
     const accountKitPath = 'adonisjs-masquerade/account-kit'
+    const accountKitProviderPath = 'adonisjs-masquerade/account-kit/provider'
+    const accountKitMiddlewarePath = 'adonisjs-masquerade/account-kit/middleware'
     const accountKit = await import(accountKitPath)
+    const accountKitProvider = await import(accountKitProviderPath)
+    const accountKitMiddleware = await import(accountKitMiddlewarePath)
     const lucid = await import('adonisjs-masquerade/stores/lucid')
     const testing = await import('adonisjs-masquerade/testing')
     assert.equal(typeof root, 'object')
@@ -29,6 +33,8 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     assert.isFunction(native.accessTokensAuthority)
     assert.isFunction(native.nativeAuthorities)
     assert.isFunction(accountKit.accountKitAuthority)
+    assert.isFunction(accountKitProvider.default)
+    assert.isFunction(accountKitMiddleware.default)
     for (const name of [
       'MasqueradeController',
       'masqueradeContext',
@@ -96,7 +102,10 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
             },
           })
           const integration = await import('adonisjs-masquerade/account-kit')
-          if (typeof integration.accountKitAuthority !== 'function') {
+          const provider = await import('adonisjs-masquerade/account-kit/provider')
+          const middleware = await import('adonisjs-masquerade/account-kit/middleware')
+          if (typeof integration.accountKitAuthority !== 'function' ||
+              typeof provider.default !== 'function' || typeof middleware.default !== 'function') {
             throw new Error('Account Kit integration export is missing')
           }
         `,

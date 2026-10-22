@@ -30,9 +30,11 @@
     "./auth": "./build/auth/main.js",
     "./http": "./build/http/main.js",
     "./native": "./build/native/main.js",
+    "./account-kit": "./build/account_kit/main.js",
+    "./account-kit/provider": "./build/account_kit/provider.js",
+    "./account-kit/middleware": "./build/account_kit/middleware.js",
     "./stores/lucid": "./build/stores/lucid.js",
-    "./testing": "./build/testing/main.js",
-    "./account-kit": "./build/account_kit/main.js"
+    "./testing": "./build/testing/main.js"
   },
   "scripts": {
     "copy:templates": "copyfiles \"stubs/**/*.stub\" build",
@@ -142,9 +144,11 @@
       "./auth/main.ts",
       "./http/main.ts",
       "./native/main.ts",
+      "./account_kit/main.ts",
+      "./account_kit/provider.ts",
+      "./account_kit/middleware.ts",
       "./stores/lucid.ts",
-      "./testing/main.ts",
-      "./account_kit/main.ts"
+      "./testing/main.ts"
     ],
     "outDir": "./build",
     "clean": true,

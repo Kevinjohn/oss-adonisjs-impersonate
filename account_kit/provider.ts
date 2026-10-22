@@ -1,0 +1,65 @@
+import type { ApplicationService } from '@adonisjs/core/types'
+import { AccountKitBlocker } from './middleware.js'
+import type { AccountKitAdapter } from './main.js'
+import { assertManagedRouteRegistration } from './route_validation.js'
+import { recordAccountKitBlocker } from '../integration/account_kit_status.js'
+import { managedRegistration } from './registration.js'
+
+async function installed(
+  domains: Record<string, { name?: string; middleware: { all(): Set<unknown> } }[]>
+): Promise<boolean> {
+  const managed = Object.values(domains)
+    .flat()
+    .filter((route) => route.name?.startsWith('accountKit.'))
+  if (!managed.length) return false
+  for (const route of managed) {
+    let found = false
+    for (const item of route.middleware.all()) {
+      const reference = (item as { reference?: unknown }).reference ?? item
+      if (reference === AccountKitBlocker) {
+        found = true
+        continue
+      }
+      if (typeof reference !== 'function') continue
+      if (/^class\s/.test(Function.prototype.toString.call(reference))) continue
+      try {
+        const loaded = await (reference as () => Promise<{ default?: unknown }>)()
+        if (loaded?.default === AccountKitBlocker) found = true
+      } catch {
+        /* A class reference or an unrelated loader is not the blocker. */
+      }
+    }
+    if (!found) return false
+  }
+  return true
+}
+
+/** Validates the Account Kit guard and registered routes after HTTP router startup. */
+export default class AccountKitProvider {
+  constructor(protected app: ApplicationService) {}
+
+  async ready(): Promise<void> {
+    const adapter = (await this.app.container.make(
+      'masquerade.native'
+    )) as AccountKitAdapter<unknown>
+    if (!adapter.kit || !adapter.managedGuard)
+      throw new TypeError('Account Kit native adapter required')
+    const kit = await adapter.kit()
+    if (!kit.managedHttp?.assertGuard)
+      throw new TypeError('Account Kit managed HTTP service required')
+    kit.managedHttp.assertGuard(adapter.managedGuard)
+    const router = await this.app.container.make('router')
+    const registration = await managedRegistration(router)
+    // Ace command startup reaches ready before the router has committed.
+    router.commit()
+    const domains = router.toJSON()
+    assertManagedRouteRegistration(domains, registration)
+    const mounted = Object.values(domains)
+      .flat()
+      .some((route) => route.name?.startsWith('accountKit.'))
+    if (!mounted) return
+    if (!(await installed(domains)))
+      throw new TypeError('Account Kit blocker middleware is missing')
+    recordAccountKitBlocker(this.app)
+  }
+}
