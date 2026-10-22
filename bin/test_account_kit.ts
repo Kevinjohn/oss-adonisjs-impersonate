@@ -30,17 +30,15 @@ if (
 if (Number(process.versions.node.split('.')[0]) !== 24)
   throw new Error('Account Kit consumer requires Node 24')
 
-const published = process.env.ACCOUNT_KIT_ALPHA
 const source = process.env.ACCOUNT_KIT_SOURCE
-if (source && published) throw new Error('Set only ACCOUNT_KIT_ALPHA or ACCOUNT_KIT_SOURCE')
-if (!source && !published)
-  throw new Error(
-    'Set ACCOUNT_KIT_ALPHA to an exact published adonisjs-account-kit alpha version; for interim evidence only, set ACCOUNT_KIT_SOURCE to an absolute local checkout'
-  )
 if (source && !source.startsWith('/'))
   throw new Error('ACCOUNT_KIT_SOURCE must be an absolute path')
-if (published && !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/.test(published))
-  throw new Error('ACCOUNT_KIT_ALPHA must be an exact version, not a range or dist-tag')
+
+const kitReleaseUrl =
+  'https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.1.1/adonisjs-account-kit-0.1.1.tgz'
+const kitReleaseSha256 = '38fd950b08990a95b780d3077ad65f3a98bb898cb858b7b2f9eaabaae236a3d2'
+const kitReleaseVersion = '0.1.1'
+const kitSourceRevision = 'b1ae0d48fda29ff75a2edc9f021c61eff3b1267b'
 
 const output = resolve(
   process.env.ACCOUNT_KIT_EVIDENCE_DIR ?? (await mkdtemp(join(tmpdir(), 'masquerade-account-kit-')))
@@ -48,8 +46,7 @@ const output = resolve(
 const logs = join(output, 'logs')
 await mkdir(logs, { recursive: true })
 const evidence: Record<string, unknown> = {
-  mode: source ? 'local-source-interim' : 'published-alpha',
-  requestedAlpha: published ?? null,
+  mode: source ? 'local-source' : 'release-artifact',
   node: process.versions.node,
   requested: { profile, database, strategy, sessionManagement },
   matrix: [],
@@ -58,6 +55,7 @@ const evidence: Record<string, unknown> = {
 }
 let interrupted: string | undefined
 let activeChild: ChildProcess | undefined
+let activeDownload: AbortController | undefined
 let terminationGrace: ReturnType<typeof setTimeout> | undefined
 function signalGroup(child: ChildProcess, signal: NodeJS.Signals): void {
   if (!child.pid) return
@@ -78,6 +76,7 @@ function terminateActive(signal: NodeJS.Signals): void {
 for (const signal of ['SIGINT', 'SIGTERM'] as const)
   process.on(signal, () => {
     interrupted = signal
+    activeDownload?.abort(new Error(`Interrupted by ${signal}`))
     terminateActive(signal)
   })
 const baseEnv: NodeJS.ProcessEnv = {
@@ -98,7 +97,6 @@ const baseEnv: NodeJS.ProcessEnv = {
   NO_COLOR: '1',
 }
 delete baseEnv.ACCOUNT_KIT_SOURCE
-delete baseEnv.ACCOUNT_KIT_ALPHA
 
 async function run(
   cwd: string,
@@ -209,38 +207,15 @@ async function setupPostgres(
 }
 
 try {
-  let kitArtifact: string | undefined
+  const kitArtifact = join(output, 'account-kit.tgz')
   if (source) {
     const checkout = resolve(source)
-    const baseline = 'b2814006b83673346fb5533db8b3443a067d7d6c'
-    const selectedRevision = process.env.ACCOUNT_KIT_SOURCE_REVISION ?? baseline
+    const baseline = kitSourceRevision
+    const selectedRevision = process.env.ACCOUNT_KIT_SOURCE_REVISION ?? kitSourceRevision
     const head = execFileSync('git', ['-C', checkout, 'rev-parse', selectedRevision], {
       encoding: 'utf8',
     }).trim()
-    const changed = execFileSync('git', ['-C', checkout, 'diff', '--name-only', baseline, head], {
-      encoding: 'utf8',
-    })
-      .trim()
-      .split('\n')
-      .filter(Boolean)
-    if (head !== baseline && head !== 'fb2ac430b5fe1cf1da2949c37fb3ac32aa62b193')
-      throw new Error(`Unapproved Account Kit revision ${head}`)
-    if (changed.some((name) => name !== 'package.json'))
-      throw new Error(`Account Kit source differs from approved baseline: ${changed.join(', ')}`)
-    const baselineManifest = JSON.parse(
-      execFileSync('git', ['-C', checkout, 'show', `${baseline}:package.json`], {
-        encoding: 'utf8',
-      })
-    )
-    const headManifest = JSON.parse(
-      execFileSync('git', ['-C', checkout, 'show', `${head}:package.json`], { encoding: 'utf8' })
-    )
-    for (const key of ['name', 'version']) {
-      delete baselineManifest[key]
-      delete headManifest[key]
-    }
-    if (JSON.stringify(baselineManifest) !== JSON.stringify(headManifest))
-      throw new Error('Account Kit metadata differs beyond name/version')
+    if (head !== baseline) throw new Error(`Unapproved Account Kit revision ${head}`)
     const dirty = execFileSync('git', ['-C', checkout, 'status', '--porcelain'], {
       encoding: 'utf8',
     }).trim()
@@ -255,14 +230,74 @@ try {
     execFileSync('tar', ['-xf', archive, '-C', kitCopy])
     await run(kitCopy, ['install', '--frozen-lockfile'], 'local_kit_install')
     await run(kitCopy, ['build'], 'local_kit_build')
-    kitArtifact = join(output, 'account-kit.tgz')
     await run(
       kitCopy,
       ['--config.verify-deps-before-run=false', 'pack', '--out', kitArtifact],
       'local_kit_pack'
     )
+    const localManifest = JSON.parse(
+      execFileSync('tar', ['-xOf', kitArtifact, 'package/package.json'], { encoding: 'utf8' })
+    ) as { name?: string; version?: string }
+    if (
+      localManifest.name !== 'adonisjs-account-kit' ||
+      localManifest.version !== kitReleaseVersion
+    )
+      throw new Error(
+        `Expected local Account Kit adonisjs-account-kit@${kitReleaseVersion}, found ${localManifest.name}@${localManifest.version}`
+      )
+    evidence.accountKit = {
+      url: null,
+      sha256: createHash('sha256')
+        .update(await readFile(kitArtifact))
+        .digest('hex'),
+      version: localManifest.version,
+      sourceRevision: head,
+    }
+  } else {
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as {
+      devDependencies?: Record<string, string>
+    }
+    const configuredUrl = manifest.devDependencies?.['adonisjs-account-kit']
+    if (configuredUrl !== kitReleaseUrl)
+      throw new Error(
+        `Expected devDependency adonisjs-account-kit to pin ${kitReleaseUrl}; found ${configuredUrl ?? 'missing'}`
+      )
+    const download = new AbortController()
+    activeDownload = download
+    let artifact: Buffer
+    try {
+      const signal = AbortSignal.any([download.signal, AbortSignal.timeout(120_000)])
+      const response = await fetch(configuredUrl, { signal })
+      if (!response.ok)
+        throw new Error(`Account Kit release download failed with HTTP ${response.status}`)
+      artifact = Buffer.from(await response.arrayBuffer())
+    } finally {
+      activeDownload = undefined
+    }
+    if (interrupted) throw new Error(`Interrupted by ${interrupted}`)
+    const sha256 = createHash('sha256').update(artifact).digest('hex')
+    if (sha256 !== kitReleaseSha256)
+      throw new Error(
+        `Account Kit release SHA-256 mismatch: expected ${kitReleaseSha256}, found ${sha256}`
+      )
+    await writeFile(kitArtifact, artifact)
+    const releaseManifest = JSON.parse(
+      execFileSync('tar', ['-xOf', kitArtifact, 'package/package.json'], { encoding: 'utf8' })
+    ) as { name?: string; version?: string }
+    if (
+      releaseManifest.name !== 'adonisjs-account-kit' ||
+      releaseManifest.version !== kitReleaseVersion
+    )
+      throw new Error(
+        `Expected Account Kit adonisjs-account-kit@${kitReleaseVersion}, found ${releaseManifest.name}@${releaseManifest.version}`
+      )
+    evidence.accountKit = {
+      url: configuredUrl,
+      sha256,
+      version: releaseManifest.version,
+      sourceRevision: kitSourceRevision,
+    }
   }
-  const kitSpec = kitArtifact ? `file:${kitArtifact}` : published!
   const pnpmVersion = await run(root, ['--version'], 'pnpm_version')
   evidence.pnpm = pnpmVersion.trim()
   await run(root, ['build'], 'masquerade_build')
@@ -272,7 +307,7 @@ try {
     await Promise.all(
       [
         ['masquerade', masqueradeArtifact],
-        ...(kitArtifact ? [['accountKit', kitArtifact]] : []),
+        ['accountKit', kitArtifact],
       ].map(async ([name, path]) => [
         name,
         createHash('sha256')
@@ -328,16 +363,14 @@ try {
           })
           await mkdir(join(app, 'tmp'), { recursive: true })
           await cp(masqueradeArtifact, join(app, 'masquerade.tgz'))
-          if (kitArtifact) await cp(kitArtifact, join(app, 'account-kit.tgz'))
+          await cp(kitArtifact, join(app, 'account-kit.tgz'))
           const manifest = JSON.parse(await readFile(join(app, 'package.json'), 'utf8'))
           for (const [name, version] of Object.entries(versions))
             (name === 'typescript' ? manifest.devDependencies : manifest.dependencies)[name] =
               version
           if (selectedProfile === 'floor') manifest.dependencies['@adonisjs/vite'] = '6.0.1'
           manifest.dependencies['adonisjs-masquerade'] = 'file:./masquerade.tgz'
-          manifest.dependencies['adonisjs-account-kit'] = kitArtifact
-            ? 'file:./account-kit.tgz'
-            : kitSpec
+          manifest.dependencies['adonisjs-account-kit'] = 'file:./account-kit.tgz'
           await writeFile(join(app, 'package.json'), JSON.stringify(manifest, null, 2) + '\n')
           await writeFile(
             join(app, 'pnpm-workspace.yaml'),
@@ -387,8 +420,10 @@ try {
                 masquerade: resolvedMasquerade,
                 resolvedPeers,
               })
-              if (published && resolvedKit !== published)
-                throw new Error(`Expected Account Kit ${published}, installed ${resolvedKit}`)
+              if (resolvedKit !== kitReleaseVersion)
+                throw new Error(
+                  `Expected Account Kit ${kitReleaseVersion}, installed ${resolvedKit}`
+                )
               if (selectedDb === 'pg') {
                 const pgVersion = await run(
                   app,
@@ -477,7 +512,18 @@ try {
                 `${label}_migrate`,
                 env
               )
-              await run(app, ['exec', 'node', 'ace.js', 'codegen'], `${label}_codegen`, env)
+              const commands = JSON.parse(
+                await run(
+                  app,
+                  ['exec', 'node', 'ace.js', 'list', '--json'],
+                  `${label}_commands`,
+                  env
+                )
+              ) as { commandName: string }[]
+              const hasCodegen = commands.some(({ commandName }) => commandName === 'codegen')
+              cell.codegen = hasCodegen ? 'available' : 'unsupported'
+              if (hasCodegen)
+                await run(app, ['exec', 'node', 'ace.js', 'codegen'], `${label}_codegen`, env)
               await run(app, ['typecheck'], `${label}_typecheck`, env)
               await run(app, ['exec', 'node', 'ace.js', 'list:routes'], `${label}_routes`, env)
               const report = await run(

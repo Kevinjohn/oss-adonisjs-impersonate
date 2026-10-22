@@ -21,7 +21,6 @@ jobs:
       matrix:
         database: [pg, better-sqlite3]
     env:
-      ACCOUNT_KIT_ALPHA: ${{ vars.ACCOUNT_KIT_ALPHA }}
       DB_CLIENT: ${{ matrix.database }}
       DB_HOST: 127.0.0.1
       DB_PORT: 5432
@@ -106,16 +105,8 @@ jobs:
           PORT: 3378
           SESSION_DRIVER: memory
         run: pnpm test:inertia-vue
-      - uses: actions/checkout@v7
-        if: ${{ env.ACCOUNT_KIT_ALPHA == '' }}
-        with:
-          repository: Kevinjohn/oss-adonisjs-account-kit
-          ref: b2814006b83673346fb5533db8b3443a067d7d6c
-          path: tmp/account-kit-source
       - name: Exercise packed Account Kit consumer
         env:
-          ACCOUNT_KIT_ALPHA: ${{ vars.ACCOUNT_KIT_ALPHA }}
-          ACCOUNT_KIT_SOURCE: ${{ vars.ACCOUNT_KIT_ALPHA == '' && format('{0}/tmp/account-kit-source', github.workspace) || '' }}
           ACCOUNT_KIT_EVIDENCE_DIR: ${{ github.workspace }}/tmp/account-kit-evidence-${{ matrix.database }}
           ACCOUNT_KIT_PG_EXTERNAL: '1'
         run: pnpm test:account-kit --profile=all --database=${{ matrix.database == 'pg' && 'pg' || 'sqlite' }} --strategy=all --session-management=all
