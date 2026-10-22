@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { setTimeout as delay } from 'node:timers/promises'
 
-function groupExists(pid: number): boolean {
+export function groupExists(pid: number): boolean {
   try {
     process.kill(-pid, 0)
     return true
@@ -10,7 +10,7 @@ function groupExists(pid: number): boolean {
   }
 }
 
-function signalGroup(pid: number, signal: NodeJS.Signals): void {
+export function signalGroup(pid: number, signal: NodeJS.Signals): void {
   try {
     process.kill(-pid, signal)
   } catch (error) {

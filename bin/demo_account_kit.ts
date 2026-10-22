@@ -8,7 +8,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
 import { childDemoEnv, readDemoEnv } from './helpers/account_kit_demo_environment.js'
 import { formatDemoSchema } from './helpers/account_kit_demo_format.js'
-import { runDemoCommand } from './helpers/account_kit_demo_process.js'
+import { groupExists, runDemoCommand, signalGroup } from './helpers/account_kit_demo_process.js'
 import { validateDemoWorkspace } from './helpers/account_kit_demo_workspace.js'
 import { prepare } from './helpers/prepare_account_kit_demo.js'
 
@@ -53,23 +53,6 @@ async function resetSqliteFiles(app: string): Promise<void> {
   }
   for (const name of entries) {
     if (/^db\.sqlite3(?:-(?:wal|shm|journal))?$/.test(name)) await rm(join(tmp, name))
-  }
-}
-
-function groupExists(pid: number): boolean {
-  try {
-    process.kill(-pid, 0)
-    return true
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === 'EPERM'
-  }
-}
-
-function signalGroup(pid: number, signal: NodeJS.Signals): void {
-  try {
-    process.kill(-pid, signal)
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error
   }
 }
 
