@@ -15,7 +15,12 @@ async function installed(
   for (const route of managed) {
     let found = false
     for (const item of route.middleware.all()) {
-      const reference = (item as { reference?: unknown }).reference ?? item
+      if (item === AccountKitBlocker) {
+        found = true
+        continue
+      }
+      if (!item || typeof item !== 'object' || !('reference' in item)) continue
+      const reference = (item as { reference: unknown }).reference
       if (reference === AccountKitBlocker) {
         found = true
         continue

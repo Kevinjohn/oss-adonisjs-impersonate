@@ -149,6 +149,29 @@ test.group('Account Kit provider', () => {
     }
   }).skip(!canLoadKit(), 'requires installed Account Kit or ACCOUNT_KIT_SOURCE')
 
+  test('does not invoke raw inline route middleware while verifying blocker installation', async ({
+    assert,
+  }) => {
+    const host = await fixture()
+    try {
+      host.router.commit()
+      let calls = 0
+      const rawRequestMiddleware = async () => {
+        calls++
+      }
+      for (const route of host.router.toJSON().root ?? []) {
+        if (!route.name?.startsWith('accountKit.')) continue
+        const original = route.middleware.all.bind(route.middleware)
+        route.middleware.all = () => new Set([...original(), rawRequestMiddleware])
+      }
+      await host.provider.ready()
+      assert.equal(calls, 0)
+      assert.isTrue(hasVerifiedAccountKitBlocker(host.providerApp))
+    } finally {
+      await host.app.terminate()
+    }
+  }).skip(!canLoadKit(), 'requires installed Account Kit or ACCOUNT_KIT_SOURCE')
+
   for (const [label, values] of [
     ['name', { name: 'wrong' }],
     ['strategy', { strategy: 'access_tokens' }],
