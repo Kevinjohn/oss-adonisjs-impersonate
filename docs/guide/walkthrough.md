@@ -11,7 +11,7 @@ This walkthrough follows the working [fictional native-session demo](https://git
 
 Start the demo using its [local setup instructions](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session/README.md), then sign in as the seeded operator and open the support workspace. In this example, Customer One asks for help understanding email-update preferences.
 
-![The signed-in operator's support workspace with a customer chooser and reason field.](../assets/walkthrough/support_workspace.png)
+![The signed-in operator's support workspace with a customer chooser, reason field and access-level choice defaulting to View only.](../assets/walkthrough/support_workspace.png)
 
 _The raw operator session offers only eligible customers. Enter a short, useful reason before starting; avoid secrets and unnecessary personal details._
 
@@ -19,11 +19,10 @@ Choose Customer One, select **Can edit** for this reversible preference task, en
 requested help with email settings”, and start support mode. View-only is the default; edit is
 available only because the host's `canEdit` policy approves this operator and customer. The customer page shows both identities and the fixed deadline. The operator remains authenticated; Masquerade does not sign in as the customer.
 
-![The customer view with a visible support banner naming the operator, effective customer, account-wide scope and deadline.](../assets/walkthrough/support_customer_active.png)
+![The customer view with a visible support banner naming the operator, effective customer, account-wide scope, Can edit access and deadline.](../assets/walkthrough/support_customer_active.png)
 
 _The operator is the actor; Customer One is the effective identity for this business page. The
-current screenshot predates the access-level label; before release, it should show the selected edit
-access, account-wide scope, and deadline._
+banner shows the edit access selected at start, the account-wide scope and the fixed deadline._
 
 The current email-update setting is off. The demo permits this reversible preference change because the customer's ordinary authorization allows it. Save the change and confirm that the customer view now shows it on.
 
@@ -58,5 +57,4 @@ is 15 minutes, with a one-hour maximum; an application may choose shorter limits
 For an existing application, start with [Install and configure](setup.md) and follow [Use a support mode](usage.md). Its [Edge form recipe](usage.md#edge-forms-and-host-redirects) matches the journey above; the [native-session demo](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session) is runnable and includes the fictional accounts.
 
 For a same-origin browser client, follow the [JSON client guide](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/docs/guide/clients/json.md) and try it in the same [native-session example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session) at `/support/json`. For React and Inertia, follow the [React client guide](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/235ce0e44bc74fb088960ba91ea13a9a70cc71e3/docs/guide/clients/react.md) and run its [Inertia example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/235ce0e44bc74fb088960ba91ea13a9a70cc71e3/examples/inertia-react). The [Security and operations guide](security.md) explains authorization, expiry, account-wide
-behavior, recovery and side effects. The walkthrough screenshots still show the prior chooser and
-banner; they remain unchanged pending the planned pre-release recapture.
+behavior, recovery and side effects.
