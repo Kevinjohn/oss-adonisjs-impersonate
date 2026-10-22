@@ -2,7 +2,7 @@
 
 **Status:** M4 verification is complete for the current release candidate. M0–M3 evidence is recorded in [M3-RESULT.md](../../M3-RESULT.md). After the async migration correction, `pnpm test` passed 162 SQLite tests, `pnpm test:pg` passed 158 PostgreSQL 16 tests (server stopped cleanly), and build, typecheck and two built-export checks passed. Six configure/migration cases pass; floor/latest generated scaffolds compile; the native credential case passes 1/1. All four packed floor/latest × SQLite/PostgreSQL 16.15 cells passed, for 72 functional, report and credential executions. Exact versions and artifact identity are recorded below. This verification does not imply publication.
 
-**Authority and scope:** The accepted `DEVELOPMENT-PLAN.md` wins where it narrows SPEC/PRD. v1 is native session only; opaque access-token adapter is v1.1 and JWT is out. The Account Kit adapter and managed-route blocker are accepted v1.2 scope and are implemented in the current working tree; diagnostic SQLite evidence is recorded below, while the packed peer/database release matrix remains pending. Core retains the native `securityStamp`/`inspectAccount` contract and no Account Kit dependency. Cut JSON:API, package i18n, and 4x2x2 consumer matrix. FR-09 uses route-report release gate; FR-14 owner-bound revision.nonce + report/enforce; FR-21/22 SHA-256 stamps; FR-30 emit-and-forget; indeterminate commit 503 + transition ID + status recovery. Consumer target is one native-session packed consumer at floor/latest on SQLite/PostgreSQL.
+**Authority and scope:** The accepted `DEVELOPMENT-PLAN.md` wins where it narrows SPEC/PRD. v1 is native session only; opaque access-token adapter is v1.1 and JWT is out. The Account Kit adapter and managed-route blocker are accepted v1.2 scope and are implemented in the open PR stack; the local packed latest-peer SQLite/PostgreSQL matrix passes, while the Core-floor and published-alpha release gates remain pending. Core retains the native `securityStamp`/`inspectAccount` contract and no Account Kit dependency. Cut JSON:API, package i18n, and 4x2x2 consumer matrix. FR-09 uses route-report release gate; FR-14 owner-bound revision.nonce + report/enforce; FR-21/22 SHA-256 stamps; FR-30 emit-and-forget; indeterminate commit 503 + transition ID + status recovery. Consumer target is one native-session packed consumer at floor/latest on SQLite/PostgreSQL.
 
 Legend: evidence names a concrete current test case; statements explicitly identified as optional are integration-depth opportunities, not uncovered acceptance requirements. M3 outcomes are recorded in M3-RESULT.md. Documentation obligations are linked to user guides; link checks do not establish semantic completeness.
 
@@ -129,23 +129,26 @@ latest 7.6.0/10.1.0/4.0.1/22.4.2/8.3.0/6.0.3.
 The owner accepted D1–D13 on 22 October 2026. The technical contract is
 [SPEC §15](../../SPEC-impersonation.md#15-v12-account-kit-integration), and the product boundary is
 the [PRD v1.2 addendum](../../PRD-impersonation.md#v12-account-kit-integration-accepted-22-october-2026).
-The implementation and diagnostic evidence below are from the current working tree and approved
-local Account Kit source revision `b2814006`; they do not establish evidence against a published
-alpha. Contract and lifecycle PRs #100 and #101 remain open; authority and blocker PRs #102 and
-#103 remain open drafts. Packed-consumer PR #104 is also an open draft.
-The final clean-host packed consumer and peer/database matrix have not been completed. The alpha
-package was unavailable from the registry (404), and the Core 7.0.0 consumer host could not start
-because Account Kit's OpenAPI command imports `configProvider` from `@adonisjs/core/config`, which Core 7.0.0 does not export; these limitations are not
-treated as passing runtime evidence.
+The six deliverables are implemented in open, unmerged PRs #100–#105 for issues #94–#99.
+The authority, blocker, consumer and documentation PRs remain drafts. Independent reviews are
+complete with reported findings resolved.
 
-| Decision range | Recorded contract in the design                                                                                                                                                                                                                                                               | Evidence status                                                                                                                                                                                                                                                            |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1–D3          | Optional `account-kit` subpath and alpha peer; lazy kit resolver; raw guard name from `managedGuard.name`; no host `securityStamp`/`isActive` options; equality-only revision stamp; coherent active account inspection maps access denial to ineligible and propagates operational failures. | Adapter implemented; the exact optional peer and development-dependency alpha pin remain pending publication. Authority/service tests and diagnostic SQLite credential/eligibility coverage pass locally. Published-package and PostgreSQL matrix evidence remain pending. |
-| D4–D5          | Authenticate with raw guard then Account Kit `current`; keep admission separate and host-owned, including actor route middleware and target admission policy.                                                                                                                                 | Implemented; `account_kit_admission.spec.ts` covers actor and target revocation, plus authority and credentials suites. Diagnostic SQLite coverage passes; final matrix remains pending.                                                                                   |
-| D6–D8          | Globally block authenticated `accountKit.*` requests during active mode except logout/CSRF; classify by route name; report managed routes protected only when blocker installation is verified.                                                                                               | Implemented; blocker/provider tests cover registration, guard, route report, exemptions and active-mode enforcement. Diagnostic SQLite route coverage passes; final matrix remains pending.                                                                                |
-| D9, D12        | Support SQLite and PostgreSQL; one transport matching Account Kit's configured strategy.                                                                                                                                                                                                      | SQLite diagnostic coverage passes for both strategies and session-management settings. PostgreSQL release-matrix coverage remains pending; MySQL and a second composed transport are outside accepted scope.                                                               |
-| D10–D11        | Add SPEC §15 and supersession pointers; read/validate the owner row through the existing service using a symbol-keyed internal method, with no second store or mode mutation.                                                                                                                 | Contract and service path are implemented. `account_kit_blocker.spec.ts` covers active/inactive row inspection and malformed/store failures; diagnostic HTTP tests cover reads and no-read cases. Final matrix remains pending.                                            |
-| D13            | Provider checks guard identity/strategy and managed-route registration, then records verified blocker installation; startup fails on failed checks, subject to the specified first-request fallback if router timing requires it.                                                             | Implemented; `account_kit_provider.spec.ts` and `account_kit_lifecycle.spec.ts` cover route verification, startup rejection and ready timing. Final clean-host evidence remains pending.                                                                                   |
+The final local-source packed matrix at consumer commit `735f6e6` passed all eight latest-peer
+cells. All eight floor cells failed before test execution during Account Kit Ace startup:
+its OpenAPI command imports `configProvider` from `@adonisjs/core/config`, which Core 7.0.0 does
+not export. The runner exits nonzero and preserves these failures. This is not a full release-gate
+pass. See the [upstream compatibility brief](account-kit-core-floor-feedback.md).
+The exact optional peer and development-dependency alpha pins and published-package acceptance
+remain pending; the public registry still returned 404 on 22 October 2026 at 11:12 UTC.
+
+| Decision range | Implementation and evidence                                                                                                                                                                                                                                                  |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1–D3          | Lazy optional subpaths, coherent active snapshot, captured equality-only revision stamp, native provider identity and denial/error mapping are implemented. Exact alpha dependency pins remain pending. Authority/service tests and the eight latest-peer packed cells pass. |
+| D4–D5          | Raw credential plus Kit current validation and separate host-owned actor/target admission pass in the real HTTP credential and admission suites.                                                                                                                             |
+| D6–D8          | Global managed-route blocker, exemptions, store outage, mounted-method/custom-prefix coverage and verified route-report classifications pass in provider/blocker tests and the packed routes suite.                                                                          |
+| D9, D12        | SQLite and PostgreSQL pass with both strategies and session management on/off at latest peers. Each host configures one transport. MySQL and a second composed transport remain outside scope.                                                                               |
+| D10–D11        | Contract pointers and the existing service's symbol-keyed validated row accessor are implemented; no second store or mode mutation is introduced. Accessor and HTTP tests cover active, expired, absent, malformed and unavailable rows.                                     |
+| D13            | Provider guard identity/strategy, committed registration and actual blocker installation are verified. Console readiness explicitly commits routes; lifecycle/provider regressions and packed route reports pass.                                                            |
 
 **T-KIT obligations:** prove null and timestamp revisions encode differently and start stores the
 inspection snapshot's stamp. Missing, restricted and inactive targets are indistinguishable 403s
@@ -179,21 +182,90 @@ timing. The route report lists the managed group only when blocker installation 
 otherwise leaves routes unclassified with a missing or unverified note. `node ace` works without
 Account Kit.
 
-| Acceptance family            | Release evidence required                                                                                                                                                                                                                | Current status                                                                                                                                                                                                                                                                                                                                                                            |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T-KIT                        | Adapter tests on SQLite and PostgreSQL for both strategies and session management modes, including stamp, eligibility, actor authentication, admission, credential and startup cases above.                                              | Implemented and diagnostic SQLite tests pass for both strategies and session-management on/off. Trace: `tests/account_kit_authority.spec.ts`, `tests/account_kit_service.spec.ts`, `examples/account-kit/tests/functional/account_kit_credentials.spec.ts`, `account_kit_eligibility.spec.ts`, and `account_kit_admission.spec.ts`. PostgreSQL and published-alpha matrix remain pending. |
-| T-KIT-HTTP                   | Managed-route blocker and report cases on SQLite and PostgreSQL for both strategies, with store-free exemptions and outage behavior above.                                                                                               | Implemented and diagnostic SQLite route/admission/cost tests pass. Trace: `tests/account_kit_blocker.spec.ts`, `tests/account_kit_provider.spec.ts`, `tests/account_kit_lifecycle.spec.ts`, `examples/account-kit/tests/functional/account_kit_routes.spec.ts`, `account_kit_journey.spec.ts`, and `account_kit_cost.spec.ts`. PostgreSQL and published-alpha matrix remain pending.      |
-| Packed consumer release gate | A fresh AdonisJS 7 host uses the published exact Account Kit alpha; both families pass for peer floor and latest, across both strategies and both supported databases; exact dependency versions and results are recorded here when run. | Pending. Consumer PR #104 is an open draft; the registry alpha was unavailable and the Core 7.0.0 host startup is blocked because Account Kit's OpenAPI command imports `configProvider` from `@adonisjs/core/config`, which Core 7.0.0 does not export. No packed published-alpha matrix result is claimed.                                                                              |
+| Acceptance family              | Verified evidence and remaining boundary                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T-KIT                          | Latest-peer packed credential, eligibility, admission and journey suites pass on both databases/strategies and management settings. `tests/account_kit_authority.spec.ts` and `tests/account_kit_service.spec.ts` cover stamp capture/null encoding, incarnation callback and controlled operational-error propagation. Real host tests exercise SQLite revision-read and PostgreSQL incomparable-ID SQL failures. Post-commit failure mapping uses controlled error injection; an actual Account Kit post-commit hook failure was not induced. |
+| T-KIT-HTTP                     | Latest-peer packed routes/journey suites and root blocker/provider/lifecycle tests pass, including all mounted methods, custom prefix/omissions, no-ability token blocking, canonical owner isolation, store-free exceptions, outage behavior and missing installation/registration.                                                                                                                                                                                                                                                            |
+| Published-package release gate | Pending: exact released alpha pins, floor compatibility and full published-alpha matrix. Local-source latest passes are interim evidence. No floor runtime tests executed after the startup failure.                                                                                                                                                                                                                                                                                                                                            |
 
-The six repository scripts (`pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm quick:test`,
-`pnpm test:pg` and `pnpm test:built-exports`) have been reported passing on Node 24 for the
-current implementation. Issues 4 and 5 also require `pnpm test:account-kit`; diagnostic SQLite
-coverage is green, but the final clean-host packed run is pending. Mutation evidence for each new
-guard and the exact peer-floor/latest × SQLite/PostgreSQL release matrix must be recorded before
-the v1.2 acceptance gate is complete.
+### Exact local-source matrix — 22 October 2026
 
-The guide session snippets were installed in a separate disposable host using the same packed
-artifacts. Its provider setup, route report and `pnpm typecheck` passed. A view-mode journey
-passed (1 case) and admission passed (3 cases). The copied smoke requests were changed from edit
-to view to match the guide policy, and the business route was given a matching `business.*` name.
-This is runtime setup evidence, not a usability study or published-alpha evidence.
+The runner freshly archived, installed, built and packed Account Kit
+`b2814006b83673346fb5533db8b3443a067d7d6c` (manifest version `0.0.0`) and Masquerade consumer
+commit `735f6e6` (version `0.0.0`). The final test-only guard regression commit `15f5dd0`
+was repacked after all six repository checks and produced the identical Masquerade archive hash
+below, so the packed runtime evidence applies to that consumer head. Node was `24.21.0`, pnpm `11.23.0`; PostgreSQL was `16.15`.
+Each cell installs its own packed host and runs each selected spec in a fresh Ace process.
+An empty test selection is rejected. Configuration-specific skips are explicit.
+
+| Dependency | Floor (startup failed) | Latest (all cells passed) |
+| ---------- | ---------------------- | ------------------------- |
+| Core       | 7.0.0                  | 7.6.0                     |
+| Auth       | 10.0.0                 | 10.1.0                    |
+| Lucid      | 22.4.2                 | 22.4.2                    |
+| Session    | 8.1.0                  | 8.3.0                     |
+| Bouncer    | 4.0.0                  | 4.0.1                     |
+| TypeScript | 5.9.3                  | 6.0.3                     |
+
+| Latest database | Strategy      | Session management | Passed | Explicitly skipped |
+| --------------- | ------------- | ------------------ | ------ | ------------------ |
+| sqlite          | session       | on                 | 22     | 2                  |
+| sqlite          | session       | off                | 17     | 7                  |
+| sqlite          | access_tokens | on                 | 22     | 2                  |
+| sqlite          | access_tokens | off                | 18     | 6                  |
+| pg              | session       | on                 | 21     | 3                  |
+| pg              | session       | off                | 16     | 8                  |
+| pg              | access_tokens | on                 | 21     | 3                  |
+| pg              | access_tokens | off                | 17     | 7                  |
+
+The SQLite concurrency case passed in all four configurations: eight idle and eight active
+requests at concurrency four, zero failures in each state, and positive SQL observations.
+Idle requests recorded 16 BEGIN/COMMIT pairs versus 32 while active; session writes were 24/40
+and token writes 32/48 (idle/active). This includes the host admission gate and Kit work;
+it is combined HTTP/transaction evidence, not isolated writer-lock timing or a capacity claim.
+Latency and throughput samples are retained in the structured runner output.
+
+Artifact SHA-256 values:
+
+- masquerade: `853a472ebb4455947074fe69dc2594d0d8594196f0a34a6f6e0d6bbfa23e19cd`.
+- accountKit: `2bd47b226ca93546151be547677fe9b147d0041a720ca3a61d987531923be59f`.
+
+Reproduce with Node 24 and an accessible PostgreSQL 16 instance:
+
+```sh
+ACCOUNT_KIT_SOURCE=/absolute/path/to/account-kit-checkout \
+ACCOUNT_KIT_SOURCE_REVISION=b2814006b83673346fb5533db8b3443a067d7d6c \
+DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=account_kit DB_DATABASE=account_kit_test \
+pnpm test:account-kit --profile=all --database=all --strategy=all --session-management=all
+```
+
+The command intentionally remains red while the floor startup defect exists. Runner JSON records
+all 16 cells, exact dependencies, archive hashes, named timings and per-command logs.
+The PostgreSQL CI artifact for [consumer run 39768914533](https://github.com/Kevinjohn/oss-adonisjs-impersonate/actions/runs/39768914533)
+independently records four latest passes and four identical Core-floor startup failures.
+
+### Repository, mutation and guide evidence
+
+All six required scripts passed under Node 24 in clean candidates: `pnpm lint`, `pnpm typecheck`,
+`pnpm build`, `pnpm quick:test` (271 passed, 1 existing skip), `pnpm test:pg` (267 passed,
+1 existing skip) and `pnpm test:built-exports` (8 passed), including the final guard regressions
+at consumer commit `15f5dd0`. The documentation candidate `03b78ef`
+also passed `pnpm docs:build`; its root suite includes four documentation-link cases.
+Root dependencies use locked TypeScript 5.9.3; the packed latest host above separately verifies 6.0.3.
+
+Fifteen temporary adapter mutations were caught by named authority/service tests. They cover
+ability denial/capture, stamp reuse/encoding/access, denial-class matching, mandatory Kit current
+validation, operational propagation, provider/snapshot/canonical identity, missing users, actor
+owner consistency, driver strategy and runtime options. Twenty-four blocker/provider/accessor
+mutations cover expiry, registered names/methods/paths, guard configuration, installed blocker,
+router commitment, exemptions, raw authentication, active blocking, report labels, inline middleware
+non-invocation, error mapping, native binding/managed HTTP availability, user/identifier validation
+and owner namespace. All mutations were restored and focused suites passed. Some mutation results
+were recorded from named failures without retained raw logs; setup-error attempts were excluded.
+Independent review of the added guard regressions found no remaining issues.
+
+The guide session snippets were installed in a separate disposable host with the same artifacts.
+Its provider setup, route report and `pnpm typecheck` passed. A view-mode journey passed (1 case)
+and admission passed (3 cases). Only the copied smoke requests changed edit to view to match the
+guide policy, and the business route received a matching `business.*` name. This verifies setup
+and runtime behavior; it is not a usability study or published-alpha evidence.
