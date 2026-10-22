@@ -18,6 +18,7 @@ export class DemoPreferenceSchema extends BaseModel {
 
 export class MasqueradeEventSchema extends BaseModel {
   static $columns = [
+    'access',
     'actorId',
     'actorIncarnation',
     'at',
@@ -32,6 +33,8 @@ export class MasqueradeEventSchema extends BaseModel {
     'targetIncarnation',
   ] as const
   $columns = MasqueradeEventSchema.$columns
+  @column()
+  declare access: string | null
   @column()
   declare actorId: string
   @column()
@@ -60,6 +63,7 @@ export class MasqueradeEventSchema extends BaseModel {
 
 export class MasqueradeModeSchema extends BaseModel {
   static $columns = [
+    'access',
     'actorId',
     'actorIncarnation',
     'actorStampHash',
@@ -78,6 +82,8 @@ export class MasqueradeModeSchema extends BaseModel {
     'updatedAt',
   ] as const
   $columns = MasqueradeModeSchema.$columns
+  @column()
+  declare access: string | null
   @column()
   declare actorId: string
   @column()

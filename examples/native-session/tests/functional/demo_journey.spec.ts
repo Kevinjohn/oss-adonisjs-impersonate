@@ -13,6 +13,53 @@ test.group('support operator browser journey', (group) => {
     await cleanUsers()
   })
 
+  test('view-only start blocks the edit and renders the host page', async ({ client, assert }) => {
+    const { actor, target } = await createUsers()
+    const idle = await client.get('/masquerade').loginAs(actor)
+    const started = await client
+      .post('/support/start')
+      .redirects(0)
+      .withCsrfToken()
+      .header('Accept', 'text/html')
+      .form({
+        targetId: String(target.id),
+        reason: 'Read-only customer review',
+        _masqueradeContext: idle.body().contextToken,
+      })
+      .loginAs(actor)
+    started.assertStatus(302)
+
+    const active = await client.get('/masquerade').loginAs(actor)
+    assert.equal(active.body().access, 'view')
+    const blocked = await client
+      .post('/support/customer/preference')
+      .withCsrfToken()
+      .header('Accept', 'text/html')
+      .form({ emailUpdates: '1', _masqueradeContext: active.body().contextToken })
+      .loginAs(actor)
+    blocked.assertStatus(403)
+    assert.include(blocked.text(), 'View-only support mode')
+    assert.include(blocked.text(), 'cannot change it')
+    assert.notInclude(blocked.text(), 'route configuration')
+    assert.isNull(await db.from('demo_preferences').where('user_id', target.id).first())
+
+    const customer = await client
+      .get('/support/customer')
+      .header('Accept', 'text/html')
+      .loginAs(actor)
+    customer.assertStatus(200)
+    assert.include(customer.text(), 'View only')
+    assert.include(customer.text(), 'Off')
+    const stopped = await client
+      .post('/support/stop')
+      .redirects(0)
+      .withCsrfToken()
+      .header('Accept', 'text/html')
+      .form({ _masqueradeContext: active.body().contextToken })
+      .loginAs(actor)
+    stopped.assertStatus(302)
+  })
+
   test('renders raw control, customer read, reversible mutation and sensitive denial', async ({
     client,
     assert,

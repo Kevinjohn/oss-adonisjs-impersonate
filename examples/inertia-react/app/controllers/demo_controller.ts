@@ -113,9 +113,11 @@ export default class DemoController {
 
   async recovery(ctx: HttpContext) {
     noStore(ctx)
+    const title = ctx.session.flashMessages.get('supportRecoveryTitle') as string | undefined
     const message = ctx.session.flashMessages.get('supportRecovery') as string | undefined
     prepareHistory(ctx)
     return ctx.inertia.render('support/recovery', {
+      title: title ?? 'Support action needs review',
       message: message ?? 'Check current support status before creating a new action.',
     })
   }

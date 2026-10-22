@@ -266,6 +266,57 @@ test.group('real HTTP masquerade context and actions', (group) => {
     }
   })
 
+  test('default start is view-only and blocks the preference change; edit start permits it; stop works in view mode', async ({
+    client,
+    assert,
+  }) => {
+    const { actor, target } = await createUsers()
+    const idle = await status(client, actor)
+    const viewStart = await client
+      .post('/masquerade/start')
+      .withCsrfToken()
+      .header('Accept', 'application/json')
+      .header('X-Masquerade-Context', idle.contextToken)
+      .json({ targetId: target.id, reason: 'default view-only mode' })
+      .loginAs(actor)
+    viewStart.assertStatus(200)
+    assert.equal(viewStart.body().access, 'view')
+    const viewToken = viewStart.body().contextToken as string
+
+    const blocked = await client
+      .post('/support/customer/preference')
+      .withCsrfToken()
+      .header('Accept', 'application/json')
+      .form({ emailUpdates: '1', _masqueradeContext: viewToken })
+      .loginAs(actor)
+    blocked.assertStatus(403)
+    assert.equal(blocked.body().errors[0].code, 'E_MASQUERADE_ACTION_BLOCKED')
+    assert.equal(blocked.body().errors[0].blockedBy, 'view_only')
+    assert.isNull(await db.from('demo_preferences').where('user_id', target.id).first())
+    const stopped = await client
+      .post('/masquerade/stop')
+      .withCsrfToken()
+      .header('Accept', 'application/json')
+      .header('X-Masquerade-Context', viewToken)
+      .json({})
+      .loginAs(actor)
+    stopped.assertStatus(200)
+
+    const editStart = await startMode(client, actor, target.id, stopped.body().contextToken, 'edit')
+    editStart.assertStatus(200)
+    assert.equal(editStart.body().access, 'edit')
+    const edited = await client
+      .post('/support/customer/preference')
+      .redirects(0)
+      .withCsrfToken()
+      .header('Accept', 'text/html')
+      .form({ emailUpdates: '1', _masqueradeContext: editStart.body().contextToken })
+      .loginAs(actor)
+    edited.assertStatus(302)
+    const saved = await db.from('demo_preferences').where('user_id', target.id).first()
+    assert.equal(saved?.email_updates, 1)
+  })
+
   test('fails closed before admission on mixed raw/effective guard routes in either order', async ({
     client,
     assert,
@@ -495,13 +546,19 @@ function fetchBusinessResponse(session: RealSession) {
   })
 }
 
-function startMode(client: ApiClient, actor: User, targetId: number, token: string) {
+function startMode(
+  client: ApiClient,
+  actor: User,
+  targetId: number,
+  token: string,
+  access: 'view' | 'edit' = 'edit'
+) {
   return client
     .post('/masquerade/start')
     .withCsrfToken()
     .header('Accept', 'application/json')
     .header('X-Masquerade-Context', token)
-    .json({ targetId, reason: 'support case 1042', access: 'edit' })
+    .json({ targetId, reason: 'support case 1042', access })
     .loginAs(actor)
 }
 

@@ -30,9 +30,10 @@ Sign in with the fictional local operator account:
 | -------- | ----------------------- | -------------------- |
 | Operator | `operator@example.test` | `demo-operator-2026` |
 
-From the dashboard, open the support workspace, choose a customer, enter a reason and start
-support mode. Open the customer page to read the customer's email and reversible email-update
-preference, change that preference, then return to the workspace and stop support mode.
+From the dashboard, open the support workspace, choose a customer, enter a reason, and choose
+**View only** or **Can edit** before starting support mode. View-only mode lets you read the
+customer's email and preference; edit mode also lets you change the reversible email-update
+preference. Return to the workspace and stop support mode when finished.
 
 ## Bearer API lifecycle
 
@@ -191,8 +192,9 @@ Reset does not drop tables or wipe unrelated accounts. Stop the server with Ctrl
 `.env.test` belong only to repeatable tests and are not suitable for an interactive app.
 
 The authenticated dashboard links to `/support`. Sign in as the seeded operator, choose a customer,
-enter a reason and start support mode. The workspace keeps the signed-in operator distinct from the
-effective customer, shows the fixed deadline and account-wide scope, and offers a stop control.
+enter a reason, and choose **View only** or **Can edit** before starting support mode. The workspace
+keeps the signed-in operator distinct from the effective customer, shows the selected access level,
+fixed deadline and account-wide scope, and offers a stop control.
 The customer page reads that customer's email and demo email-update preference. Changing the
 preference is reversible and uses the customer's Bouncer permission; the operator's own permission
 does not carry over. The sensitive-action example is blocked during support mode. Ordinary signup

@@ -14,6 +14,31 @@ test.group('native access-token authority', (group) => {
   group.setup(() => testUtils.db().migrate())
   group.each.teardown(() => cleanUsers())
 
+  test('bearer requests in a view mode are blocked with view_only', async ({ client, assert }) => {
+    const { actor, target } = await createUsers()
+    const { value } = await createAccessToken(actor)
+    const idle = await status(client, value)
+    idle.assertStatus(200)
+    const started = await client
+      .post('/api/masquerade/start')
+      .header('Authorization', bearer(value))
+      .header('Accept', 'application/json')
+      .header('X-Masquerade-Context', idle.body().contextToken)
+      .json({ targetId: target.id, reason: 'Read-only token review' })
+    started.assertStatus(200)
+    assert.equal(started.body().access, 'view')
+
+    const blocked = await client
+      .post('/api/business/mutate')
+      .header('Authorization', bearer(value))
+      .header('Accept', 'application/json')
+      .header('X-Masquerade-Context', started.body().contextToken)
+      .json({})
+    blocked.assertStatus(403)
+    assert.equal(blocked.body().errors[0].code, 'E_MASQUERADE_ACTION_BLOCKED')
+    assert.equal(blocked.body().errors[0].blockedBy, 'view_only')
+  })
+
   test('uses an opaque token for idle, status, start, effective reads, mutation and stop', async ({
     client,
     assert,

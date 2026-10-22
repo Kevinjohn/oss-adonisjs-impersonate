@@ -33,7 +33,8 @@
             <span class="support-badge" data-mode-badge>Recorded</span>
           </div>
           <p class="support-deadline">
-            Fixed deadline:
+            Access:
+            {{ mode.access === 'edit' ? 'Can edit' : 'View only' }}. Fixed deadline:
             <time datetime="{{ mode.expiresAt }}">{{ expiresText }}</time>.
           </p>
           @if(!beforeDeadline)

@@ -49,7 +49,14 @@ export default function Workspace({
       </p>
       {mode.isMasquerading ? (
         <>
-          {target && <SupportBanner actor={actor} customer={target} expiresAt={mode.expiresAt} />}
+          {target && (
+            <SupportBanner
+              actor={actor}
+              customer={target}
+              expiresAt={mode.expiresAt}
+              access={mode.access}
+            />
+          )}
           {!targetAvailable && (
             <p role="alert">
               This customer is unavailable. Stop support mode from this operator workspace.

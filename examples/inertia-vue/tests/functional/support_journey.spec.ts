@@ -165,6 +165,41 @@ test.group('Inertia Vue support journey', (group) => {
     assert.isNull(preferenceForCustomerB)
   })
 
+  test('view-only start blocks the edit and renders the host page', async ({ client, assert }) => {
+    const { actor, target } = await createUsers()
+    const idle = await client.get('/support').loginAs(actor)
+    const started = await client
+      .post('/support/start')
+      .redirects(0)
+      .withCsrfToken()
+      .form({
+        targetId: String(target.id),
+        reason: 'Read customer details',
+        _masqueradeContext: pageData(idle.text()).props.mode.contextToken,
+      })
+      .loginAs(actor)
+    started.assertStatus(302)
+
+    const active = await client.get('/masquerade').loginAs(actor)
+    const token = active.body().contextToken as string
+    const blocked = await client
+      .post('/support/customer/preference')
+      .redirects(0)
+      .header('Accept', 'text/html')
+      .withCsrfToken()
+      .form({ emailUpdates: '1', _masqueradeContext: token })
+      .loginAs(actor)
+    blocked.assertStatus(302)
+    assert.equal(blocked.header('location'), '/support/recovery')
+
+    const recovery = await client.get('/support/recovery').loginAs(actor)
+    const props = pageData(recovery.text()).props
+    assert.equal(props.title, 'Edit blocked in view-only mode')
+    assert.include(props.message, 'This support session is view only')
+    const preference = await db.from('demo_preferences').where('user_id', target.id).first()
+    assert.isNull(preference)
+  })
+
   test('rejects covered work at the fixed expiry instant', async ({ client, assert }) => {
     const { actor, target } = await createUsers()
     try {

@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react'
 import { useEffect, useRef } from 'react'
 
-export default function Recovery({ message }: { message: string }) {
+export default function Recovery({ title, message }: { title: string; message: string }) {
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
     heading.current?.focus()
@@ -9,7 +9,7 @@ export default function Recovery({ message }: { message: string }) {
   return (
     <section className="support-page" role="alert" aria-live="assertive">
       <h1 ref={heading} tabIndex={-1}>
-        Support action needs review
+        {title}
       </h1>
       <p>{message}</p>
       <p>The previous form was not replayed and its context remains unchanged.</p>

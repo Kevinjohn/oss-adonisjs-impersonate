@@ -56,7 +56,11 @@ test.group('Inertia Vue browser journey', (group) => {
 
     await page.getByRole('button', { name: 'Try sensitive account action' }).press('Enter')
     await page.waitForURL('**/support/recovery')
-    await page.getByRole('heading', { name: 'Support action needs review' }).waitFor()
+    await page.getByRole('heading', { level: 1 }).waitFor()
+    assert.equal(
+      await page.getByRole('heading', { level: 1 }).innerText(),
+      'Sensitive action blocked'
+    )
     assert.equal(await page.evaluate('document.activeElement?.tagName'), 'H1')
     await page.getByRole('link', { name: 'Check current status' }).click()
     await page.getByRole('button', { name: 'Stop support mode' }).waitFor()
@@ -64,6 +68,58 @@ test.group('Inertia Vue browser journey', (group) => {
     await page.getByRole('button', { name: 'Start support mode' }).waitFor()
     await page.getByRole('button', { name: 'Log out' }).click()
     await page.waitForURL('**/login')
+  })
+
+  test('view-only start blocks the edit and renders the host page', async ({
+    browserContext,
+    assert,
+  }) => {
+    const page = await browserContext.newPage()
+    await signIn(page)
+    assert.isTrue(await page.getByRole('radio', { name: 'View only' }).isChecked())
+    await selectCustomer(page, 1)
+    await page.getByRole('radio', { name: 'View only' }).check()
+    await page.getByLabel('Reason for support').fill('Read customer details')
+    await page.getByRole('button', { name: 'Start support mode' }).click()
+    await page.waitForURL('**/support/customer')
+    await page.getByRole('status').waitFor()
+    assert.include(await page.getByRole('status').innerText(), 'View only support mode is active')
+    await page.getByRole('button', { name: 'Save preference' }).click()
+    await page.waitForURL('**/support/recovery')
+    await page.getByRole('heading', { level: 1 }).waitFor()
+    assert.equal(
+      await page.getByRole('heading', { level: 1 }).innerText(),
+      'Edit blocked in view-only mode'
+    )
+    assert.include(
+      await page.locator('[role="alert"]').innerText(),
+      'This support session is view only'
+    )
+
+    await page.getByRole('link', { name: 'Check current status' }).click()
+    await page.getByRole('link', { name: 'Open customer details' }).click()
+    await page.getByText('Customer email updates: Off').waitFor()
+    await page.reload()
+    await page.getByText('Customer email updates: Off').waitFor()
+    assert.include(await page.getByRole('status').innerText(), 'View only support mode is active')
+  })
+
+  test('banner shows the level fixed at start after a reload', async ({
+    browserContext,
+    assert,
+  }) => {
+    const page = await browserContext.newPage()
+    await signIn(page)
+    await selectCustomer(page, 1)
+    await page.getByLabel('Reason for support').fill('Read customer details')
+    await page.getByRole('button', { name: 'Start support mode' }).click()
+    await page.waitForURL('**/support/customer')
+    await page.getByRole('status').waitFor()
+    assert.include(await page.getByRole('status').innerText(), 'Can edit support mode is active')
+
+    await page.reload()
+    await page.getByRole('status').waitFor()
+    assert.include(await page.getByRole('status').innerText(), 'Can edit support mode is active')
   })
 
   test('rejects retained forms across tabs and redirects old Back history to current customer B', async ({

@@ -67,10 +67,15 @@ test.group('Inertia support journey', (group) => {
 
     const sensitive = await client
       .post('/support/customer/sensitive')
+      .header('Accept', 'text/html')
+      .redirects(0)
       .withCsrfToken()
       .form({ _masqueradeContext: activeToken })
       .loginAs(actor)
-    sensitive.assertStatus(403)
+    sensitive.assertStatus(302)
+    assert.equal(sensitive.header('location'), '/support/recovery')
+    const sensitiveRecovery = await client.get('/support/recovery').loginAs(actor)
+    assert.equal(pageData(sensitiveRecovery.text()).props.title, 'Sensitive action is unavailable')
     const afterSensitive = await db.from('demo_preferences').where('user_id', target.id).first()
     assert.equal(afterSensitive?.email_updates, 1)
 
@@ -89,6 +94,48 @@ test.group('Inertia support journey', (group) => {
     stale.assertStatus(409)
     const afterStale = await db.from('demo_preferences').where('user_id', target.id).first()
     assert.equal(afterStale?.email_updates, 1)
+  })
+
+  test('view-only start blocks the edit and renders the host page', async ({ client, assert }) => {
+    const { actor, target } = await createUsers()
+    const idle = await client.get('/masquerade').loginAs(actor)
+    const start = await client
+      .post('/support/start')
+      .redirects(0)
+      .withCsrfToken()
+      .form({
+        targetId: String(target.id),
+        reason: 'Read-only support request',
+        access: 'view',
+        _masqueradeContext: idle.body().contextToken,
+      })
+      .loginAs(actor)
+    start.assertStatus(302)
+
+    const customer = await client.get('/support/customer').loginAs(actor)
+    customer.assertStatus(200)
+    assert.equal(pageData(customer.text()).props.mode.access, 'view')
+    const context = pageData(customer.text()).props.mode.contextToken as string
+    const blocked = await client
+      .post('/support/customer/preference')
+      .header('Accept', 'text/html')
+      .redirects(0)
+      .withCsrfToken()
+      .form({ emailUpdates: '1', _masqueradeContext: context })
+      .loginAs(actor)
+    blocked.assertStatus(302)
+    assert.equal(blocked.header('location'), '/support/recovery')
+
+    const recovery = await client.get('/support/recovery').loginAs(actor)
+    assert.equal(
+      pageData(recovery.text()).props.title,
+      'View-only support mode blocked this change'
+    )
+    assert.include(
+      pageData(recovery.text()).props.message,
+      'This support mode can read customer information but cannot change it.'
+    )
+    assert.isNull(await db.from('demo_preferences').where('user_id', target.id).first())
   })
 
   test('rejects missing idle context and old A intent after stopping and starting B', async ({
