@@ -614,12 +614,18 @@ configured per-token ability. Then call `managedGuard.current(ctx)` and
 errors map to 503. There is no actor fallback. Account Kit's current check retains its normal
 session-touch behavior.
 
-Account Kit admission remains a separate host gate. The host mounts `admissionMiddleware` (or calls
-`admission.require`) on Masquerade control and business routes. Revoked actor admission returns
-Account Kit's 403 and leaves the mode row untouched; the mode can resume after re-approval if no
-other invalidation occurred. Hosts that need revocation to end a mode use `changeRestriction`.
-The host's `canMasquerade` resolves the `AccountAdmission` service from
-`adonisjs-account-kit/admission` and checks `isAdmitted(target.id)` so target admission is
+Account admission remains a separate host gate. Obtain `AccountAdmission` from
+`adonisjs-account-kit/admission`; its provider is `adonisjs-account-kit/admission/provider`.
+The provider supplies the DI binding; import `admissionMiddleware` separately from
+`adonisjs-account-kit/admission`. On host-selected Masquerade control and business routes, register
+`admissionMiddleware({ admission: async () => app.container.make(AccountAdmission), guard: managedGuard })`
+before `masqueradeContext`. The middleware calls the admission service's `.require`. The context
+middleware can read mode and admit business requests, so a route-level admission middleware placed
+after it is too late. A revoked actor is denied with
+Account Kit's 403 before the mode row is read or changed; the mode can resume after re-approval if
+no other invalidation occurred. Hosts that need revocation to end a mode use `changeRestriction`.
+For target policy, resolve `const admission = await app.container.make(AccountAdmission)` and call
+`await admission.isAdmitted(target.id)` inside `canMasquerade`. Target admission is therefore
 re-evaluated on each active admission and denial follows the existing `policy_denied` behavior.
 `canAccess` remains Account Kit's restriction check and is not extended to include admission.
 
@@ -642,9 +648,15 @@ subject to this blocker when the raw guard authenticates it.
 
 The provider's `ready` hook checks `kit.managedHttp.assertGuard(managedGuard)`, verifies that every
 mounted `accountKit.*` route corresponds to a `managedRouteRegistration` entry, and records that the
-blocker is installed for the route report. A failed check fails startup. If verification shows the
-router is not committed or middleware installation cannot be detected at `ready`, move route
-checks to first request and have the report say the blocker is unverified.
+blocker is installed for the route report. A failed check fails startup. The HTTP lifecycle runs
+`ready` after the router commits. The console lifecycle used by `masquerade:routes` runs `ready`
+before command execution and before router commit, so when `app.getEnvironment()` is `console` and
+the router is not yet committed the provider calls `router.commit()` itself, then performs the same
+registration and middleware checks. The provider never commits in any other environment: the test
+lifecycle also runs `ready` before the host's tests start the HTTP server, and a commit there would
+drop routes a test registers later. The lifecycle behavior has focused
+regression coverage in `tests/account_kit_lifecycle.spec.ts`. Keep the first-request fallback only
+for a future lifecycle change that makes this commit-and-check sequence unavailable.
 
 `masquerade:routes` recognizes names beginning `accountKit.` from `router.toJSON()` without
 importing Account Kit. It groups these as “Account Kit managed (blocked while active)” only when
