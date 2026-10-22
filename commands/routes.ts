@@ -3,6 +3,7 @@ import { MasqueradeController } from '../http/controllers.js'
 import type { MasqueradeConfig } from '../src/types.js'
 import { routeGuards, routeMarkers } from '../integration/route_metadata.js'
 import { effectiveFactoryRawGuard, isEffectiveFactory } from '../integration/guard_registration.js'
+import { hasVerifiedAccountKitBlocker } from '../integration/account_kit_status.js'
 
 /** Print a route coverage report from the router's committed route definitions. */
 export default class RoutesCommand extends BaseCommand {
@@ -31,7 +32,8 @@ export default class RoutesCommand extends BaseCommand {
       config.authority.guard,
       String(auth.defaultGuard),
       effectiveGuardNames,
-      effectiveRawGuards
+      effectiveRawGuards,
+      hasVerifiedAccountKitBlocker(this.app)
     ))
       this.logger.info(section)
   }
@@ -51,13 +53,33 @@ export function routeCoverageReport(
   rawGuard: string,
   effectiveGuardName = 'default guard',
   effectiveGuardNames: readonly string[] = [effectiveGuardName],
-  effectiveRawGuards: Readonly<Record<string, string>> = {}
+  effectiveRawGuards: Readonly<Record<string, string>> = {},
+  verifiedAccountKitBlocker = false
 ): Promise<string[]> {
   const grouped = new Map<string, string[]>()
   const controllerCache = new Map<Function, Promise<ControllerResult>>()
   return (async () => {
     for (const [domain, routes] of Object.entries(domains)) {
       for (const route of routes) {
+        if (route.name?.startsWith('accountKit.')) {
+          const action = route.methods.some(
+            (method) => !['GET', 'HEAD', 'OPTIONS'].includes(method)
+          )
+            ? 'MUTATION'
+            : 'READ'
+          const exempt = ['accountKit.account.logout', 'accountKit.auth.csrf'].includes(route.name)
+          const category =
+            verifiedAccountKitBlocker && !exempt
+              ? 'Account Kit managed (blocked while active)'
+              : verifiedAccountKitBlocker
+                ? 'Account Kit managed (exempt)'
+                : 'UNCLASSIFIED'
+          const note = verifiedAccountKitBlocker ? '' : ' (blocker missing or unverified)'
+          const line = `  ${route.methods.join(',').padEnd(18)} ${route.pattern}${domain === 'root' ? '' : ` [${domain}]`} [${category} ${action}]${note}`
+          const group = verifiedAccountKitBlocker ? 'Account Kit managed' : 'unprotected'
+          grouped.set(group, [...(grouped.get(group) ?? []), line])
+          continue
+        }
         const guards = routeGuards(route, effectiveGuardName)
         const labels = guards.length ? guards : ['unprotected']
         const hasEffectiveGuard = guards.some((guard) => effectiveGuardNames.includes(guard))

@@ -15,6 +15,7 @@ import {
   UnknownCommit,
 } from './mode_transition.js'
 import { admission } from './request_admission.js'
+import { activeMode } from './active_mode.js'
 import { reportDiagnostic } from './observers.js'
 import type { RequestAdmission } from './request_admission.js'
 import type {
@@ -112,6 +113,16 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       reportDiagnostic(this.dependencies, 'store', 'read', 'E_MASQUERADE_UNAVAILABLE')
       throw unavailable()
     }
+  }
+  async [activeMode](owner: OwnerKey): Promise<boolean> {
+    if (
+      owner.namespace !== this.config.authority.namespace ||
+      typeof owner.actorId !== 'string' ||
+      typeof owner.actorIncarnation !== 'string'
+    )
+      throw unavailable()
+    const row = await this.read(owner)
+    return row?.state === 'active' && this.now() < row.expiresAt
   }
   private event(
     owner: OwnerKey,

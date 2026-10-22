@@ -4,8 +4,10 @@ import type { ApplicationService } from '@adonisjs/core/types'
 import { defineConfig } from '../src/define_config.js'
 import { createMasqueradeService } from '../src/service.js'
 import { admission } from '../src/request_admission.js'
+import { activeMode } from '../src/active_mode.js'
 import type { RequestAdmission } from '../src/request_admission.js'
 import type { MasqueradeConfig, ObserverEvent } from '../src/types.js'
+import type { OwnerKey } from '../src/types.js'
 import type { NativeRuntimeAdapter } from './native_binding.js'
 import type { MasqueradeRuntime } from './runtime.js'
 import { effectiveFactoryRawGuard, isEffectiveFactory } from './guard_registration.js'
@@ -139,6 +141,7 @@ export async function createRuntime(
   })
   const internal = service as typeof service & {
     [admission](ctx: HttpContext): Promise<RequestAdmission<unknown>>
+    [activeMode](owner: OwnerKey): Promise<boolean>
   }
   return Object.freeze({
     service,
@@ -147,5 +150,6 @@ export async function createRuntime(
     effectiveGuardNames: wiring.effectiveGuardNames,
     selectGuard,
     admit: (ctx: HttpContext) => internal[admission](ctx),
+    activeMode: (owner: OwnerKey) => internal[activeMode](owner),
   })
 }
