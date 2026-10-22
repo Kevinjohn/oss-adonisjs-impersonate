@@ -131,24 +131,24 @@ The exact native access-validation contract, target security-stamp policy, and s
 
 ## Authorization and request policy
 
-| Situation                                                                   | Required behavior                                                                                                                                      |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| No explicit start authorization callback                                    | Deny start and leave mode unchanged.                                                                                                                   |
-| Callback denies or errors                                                   | Deny start and leave mode unchanged.                                                                                                                   |
-| Mode already active for actor                                               | Deny nested start; do not replace target or extend expiry.                                                                                             |
-| Native actor credential invalid                                             | Deny through native authentication; do not treat target as the authenticated actor.                                                                    |
-| Current actor credential revoked but another actor credential remains valid | Proposed policy: valid credential may continue the same account-level mode; review whether the app must distinguish credential and account revocation. |
-| Actor account security epoch revoked/changed                                | Clear mode and deny target authority.                                                                                                                  |
-| Target globally invalid or account-wide target eligibility lost             | Clear mode, reject the triggering business request as context changed, and do not fall through to an actor action.                                     |
-| Request-local tenant or route access denied                                 | Reject this request without clearing mode or falling through to actor behavior.                                                                        |
-| Request is a safe method                                                    | Resolve target as effective principal if mode is valid; still apply ordinary target authorization. Safe method does not guarantee no side effects.     |
-| Request is unsafe and mode access is not `edit`                              | Deny with `view_only` while mode is active, even if route marker is absent.                                                                                                                             |
+| Situation                                                                       | Required behavior                                                                                                                                      |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| No explicit start authorization callback                                        | Deny start and leave mode unchanged.                                                                                                                   |
+| Callback denies or errors                                                       | Deny start and leave mode unchanged.                                                                                                                   |
+| Mode already active for actor                                                   | Deny nested start; do not replace target or extend expiry.                                                                                             |
+| Native actor credential invalid                                                 | Deny through native authentication; do not treat target as the authenticated actor.                                                                    |
+| Current actor credential revoked but another actor credential remains valid     | Proposed policy: valid credential may continue the same account-level mode; review whether the app must distinguish credential and account revocation. |
+| Actor account security epoch revoked/changed                                    | Clear mode and deny target authority.                                                                                                                  |
+| Target globally invalid or account-wide target eligibility lost                 | Clear mode, reject the triggering business request as context changed, and do not fall through to an actor action.                                     |
+| Request-local tenant or route access denied                                     | Reject this request without clearing mode or falling through to actor behavior.                                                                        |
+| Request is a safe method                                                        | Resolve target as effective principal if mode is valid; still apply ordinary target authorization. Safe method does not guarantee no side effects.     |
+| Request is unsafe and mode access is not `edit`                                 | Deny with `view_only` while mode is active, even if route marker is absent.                                                                            |
 | Request is unsafe, mode access is `edit`, and route opts into ordinary mutation | Permit only if target authorization and current mode context pass and the action is not sensitive.                                                     |
-| Unsafe request has stale context token/version                              | Reject with HTTP 409 context changed; do not run the business action.                                                                                  |
-| Unsafe request has no context token/version                                 | Reject with HTTP 428 context required; do not run the business action.                                                                                 |
-| Sensitive credential, identity, recovery, security, or billing mutation     | Deny as `sensitive` even if the mode is edit and the route otherwise allows mutation.                                                                                                      |
-| Request reaches a route outside mode enforcement                            | This is a launch-blocking coverage defect.                                                                                                             |
-| Mode changes after request admission                                        | The already-admitted request may finish; later requests use the new revision. Applications must handle downstream/asynchronous work.                   |
+| Unsafe request has stale context token/version                                  | Reject with HTTP 409 context changed; do not run the business action.                                                                                  |
+| Unsafe request has no context token/version                                     | Reject with HTTP 428 context required; do not run the business action.                                                                                 |
+| Sensitive credential, identity, recovery, security, or billing mutation         | Deny as `sensitive` even if the mode is edit and the route otherwise allows mutation.                                                                  |
+| Request reaches a route outside mode enforcement                                | This is a launch-blocking coverage defect.                                                                                                             |
+| Mode changes after request admission                                            | The already-admitted request may finish; later requests use the new revision. Applications must handle downstream/asynchronous work.                   |
 
 The default policy blocks unsafe methods but cannot prove a GET handler has no side effects. Applications own side-effecting GET routes, jobs, queue consumers, webhooks, and external systems. The package must not promise transaction rollback or cancellation of already-admitted work.
 
@@ -288,7 +288,7 @@ The default policy blocks unsafe methods but cannot prove a GET handler has no s
 [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md) is the accepted v1 development contract and answers the nine review questions above. The settled boundaries and document-review decisions are unchanged. The following items from the scope and requirements sections are deferred or cut for v1:
 
 - **v1.1:** opaque access-token transport (FR-25 adapter clause, PRD boundary 10 coverage question). v1 covers the native session guard only; token guards stay raw actor guards.
-- **v1.2:** the optional Account Kit adapter, the proposed account-access inspection operation and managed-route blocking (FR-24, AC-15 adapter clause). Core keeps the native `securityStamp`/`inspectAccount` contract; Account Kit implements it later in its own repository.
+- **v1.2 (accepted 22 October 2026):** the optional Account Kit adapter, existing account-access inspection operation and managed-route blocking (FR-24, AC-15 adapter clause), as recorded in the [v1.2 addendum](#v12-account-kit-integration-accepted-22-october-2026). Implementation and acceptance evidence remain pending.
 - **Out:** JWT adapter; JSON:API error negotiation; package `@adonisjs/i18n` lookup (stable codes with English messages, host localises); the 4x2x2 consumer matrix (v1 is one native-session consumer on SQLite and PostgreSQL at floor and latest).
 - **Simplified in the SPEC, requirement unchanged:** FR-09 coverage is a `masquerade:routes` release-gate report with `sensitive()`/`allowMutation()` markers, not a boot-time registry; FR-14 context token is an owner-bound `revision.nonce` value with `report`/`enforce` modes, not a MAC; FR-21/FR-22 stamps are stored as sha256 hashes, not sealed; FR-30 is satisfied by emit-and-forget observers with caught rejections; the outcome-unknown case maps to 503 `E_MASQUERADE_UNAVAILABLE` with GET status as recovery.
 - **Resolved proposals:** 15-minute default and 60-minute maximum, host may only narrow; reason normalisation order fixed in the SPEC; credential revocation denies that credential while an advanced security stamp clears mode; one row per namespace, actor and incarnation; retention is `{ days }` or host-managed with a prune command and a documented erasure recipe.
@@ -297,20 +297,53 @@ The default policy blocks unsafe methods but cannot prove a GET handler has no s
 
 The technical design in [SPEC-impersonation.md](SPEC-impersonation.md) should map these requirements to package boundaries, identity resolution, actor/effective-principal contracts, transport adapters, revisioned mode storage, endpoints, context-token handling, and verification scenarios. Any proposal that changes a settled boundary should be called out for product review. Proposed defaults and review-sensitive transport/revocation choices should be resolved before implementation. This PRD and the companion design are review artifacts, not implementation authorization.
 
-
 ## Issue #86 access decisions (accepted 22 October 2026)
 
 The owner accepted all D1–D10 decisions from issue #85 on 22 October 2026. This addendum records that acceptance; implementation may proceed within the stated scope.
 
-| Decision | Accepted rule | Owner status |
-| --- | --- | --- |
-| D1 | No `defaultAccess` configuration. Every mode starts in view; edit is selected per start. | Accepted 2026-10-22 |
-| D2 | Add optional `canEdit`; absent, non-`true`, or throwing never grants edit. Keep `canMasquerade` unchanged. | Accepted 2026-10-22 |
-| D3 | If `canEdit` no longer returns exact `true` during active edit-mode admission, invalidate with `edit_denied`; do not downgrade. | Accepted 2026-10-22 |
-| D4 | Blocked business requests produce no package event or diagnostic; hosts use `blockedBy` for diagnostics. | Accepted 2026-10-22 |
-| D5 | `blockedBy` is a flat error-item field, present exactly for `E_MASQUERADE_ACTION_BLOCKED`. | Accepted 2026-10-22 |
-| D6 | Access values are exactly `'view' | 'edit'`. | Accepted 2026-10-22 |
-| D7 | Add SPEC §14 with explicit supersession pointers at the old D09, I12, route rule, admission step, and start body. | Accepted 2026-10-22 |
-| D8 | Edit the create migration in place; add no upgrade migration because there are no external deployments. | Accepted 2026-10-22 |
-| D9 | Use nullable `string(8)` access columns in both mode and event tables. | Accepted 2026-10-22 |
-| D10 | Project active-row access onto all corresponding audit events from both event producers; validate event access against the projected mode. | Accepted 2026-10-22 |
+| Decision | Accepted rule                                                                                                                              | Owner status        |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
+| D1       | No `defaultAccess` configuration. Every mode starts in view; edit is selected per start.                                                   | Accepted 2026-10-22 |
+| D2       | Add optional `canEdit`; absent, non-`true`, or throwing never grants edit. Keep `canMasquerade` unchanged.                                 | Accepted 2026-10-22 |
+| D3       | If `canEdit` no longer returns exact `true` during active edit-mode admission, invalidate with `edit_denied`; do not downgrade.            | Accepted 2026-10-22 |
+| D4       | Blocked business requests produce no package event or diagnostic; hosts use `blockedBy` for diagnostics.                                   | Accepted 2026-10-22 |
+| D5       | `blockedBy` is a flat error-item field, present exactly for `E_MASQUERADE_ACTION_BLOCKED`.                                                 | Accepted 2026-10-22 |
+| D6       | Access values are exactly `'view'                                                                                                          | 'edit'`.            | Accepted 2026-10-22 |
+| D7       | Add SPEC §14 with explicit supersession pointers at the old D09, I12, route rule, admission step, and start body.                          | Accepted 2026-10-22 |
+| D8       | Edit the create migration in place; add no upgrade migration because there are no external deployments.                                    | Accepted 2026-10-22 |
+| D9       | Use nullable `string(8)` access columns in both mode and event tables.                                                                     | Accepted 2026-10-22 |
+| D10      | Project active-row access onto all corresponding audit events from both event producers; validate event access against the projected mode. | Accepted 2026-10-22 |
+
+## v1.2 Account Kit integration (accepted 22 October 2026)
+
+The owner accepted decisions D1–D13 for the Account Kit integration in issue #94 on 22 October 2026. This addendum changes the
+v1.2 status from deferred proposal to accepted product scope; implementation and verification are
+not yet claimed. The complete technical contract is [SPEC §15](SPEC-impersonation.md#15-v12-account-kit-integration),
+and delivery sequencing is in the [development plan](DEVELOPMENT-PLAN.md#accepted-v12-change).
+
+- Ship the optional adapter as `adonisjs-masquerade/account-kit`, with its provider at
+  `adonisjs-masquerade/account-kit/provider` and an optional peer dependency pinned to the
+  released Account Kit alpha. Core remains usable without resolving Account Kit, and there is no
+  separate adapter package.
+- Use Account Kit's coherent `inspectAccountAccess` snapshot for actor and target eligibility and
+  revision stamps. Denied or missing accounts are ineligible; operational failures fail closed.
+  Masquerade issues no target credential and adds no Account Kit storage.
+- Revalidate the actor through both the native raw guard and Account Kit's configured managed
+  guard. Account Kit credential rejection remains unauthenticated behavior. Admission stays a
+  separate host gate: hosts apply admission middleware to controls/business routes and check
+  target admission through their `canMasquerade` policy.
+- While a mode is active, block all `accountKit.*` routes except the operator's logout and the
+  session CSRF endpoint. The blocker reads the existing mode row only for authenticated managed
+  requests; logout, CSRF and unauthenticated public proof flows remain store-free. A blocked
+  action reports `E_MASQUERADE_ACTION_BLOCKED` with `blockedBy: 'sensitive'`.
+- The provider verifies the configured guard and mounted managed-route registration. The route
+  report marks Account Kit routes as protected only when blocker installation is recorded;
+  otherwise they remain unclassified with a missing or unverified note.
+- Support one Masquerade transport matching the Account Kit strategy (`session` or
+  `access_tokens`) and SQLite/PostgreSQL. A second composed transport and MySQL are outside this
+  scope. Account Kit admission revocation leaves the actor mode row intact; hosts that require
+  mode invalidation use `changeRestriction`.
+
+T-KIT and T-KIT-HTTP are the release acceptance families. Both must pass for session and
+access-token strategies, SQLite and PostgreSQL, and peer floor/latest. Their cases are enumerated
+in SPEC §15 and [the requirement ledger](docs/maintainers/requirement-ledger.md#v12-account-kit-acceptance-t-kit-and-t-kit-http).

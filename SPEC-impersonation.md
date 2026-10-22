@@ -204,6 +204,7 @@ interface ResolvedContext {
 - Routes under an effective guard are business routes. GET, HEAD and OPTIONS are `read`; other methods are `mutation`. While active, unsafe methods require edit access and route/group `allowMutation()`; `sensitive()` denies regardless of access or `allowMutation()`. The access rules are superseded by [§14](#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
 - Markers are explicit route or group middleware; an unsafe verb is at least `mutation` whatever the markers say. Idle requests follow ordinary actor policy and still need the context token.
 - Routes under a raw guard are control routes only if they are the package's start, stop and status routes or the host's login, signup, logout and public routes. A raw-guard route that runs business behaviour is a coverage defect.
+  **Superseded for Account Kit managed routes only by [§15](#15-v12-account-kit-integration).**
 - `node ace masquerade:routes` prints every route grouped by guard with its classification and flags raw-guard routes that are not recognised control routes. The host reviews that report as a release gate (PRD FR-09); it is not a boot gate.
 - One Edge share exposes the safe `ModeView` and renders the hidden field. Inertia and API clients read status and send the header.
 
@@ -307,11 +308,11 @@ interface ControlStore {
 
 ## 8. HTTP contract
 
-| Method/path              | Operation | Input                                               | Success               |
-| ------------------------ | --------- | --------------------------------------------------- | --------------------- |
-| `GET /masquerade`        | Status    | Raw actor credential                                | 200 `ModeView`        |
+| Method/path              | Operation | Input                                                        | Success               |
+| ------------------------ | --------- | ------------------------------------------------------------ | --------------------- |
+| `GET /masquerade`        | Status    | Raw actor credential                                         | 200 `ModeView`        |
 | `POST /masquerade/start` | Start     | `{ targetId, reason, durationSeconds?, access? }` plus token | 200 active `ModeView` |
-| `POST /masquerade/stop`  | Stop      | `{}` plus token                                     | 200 idle `ModeView`   |
+| `POST /masquerade/stop`  | Stop      | `{}` plus token                                              | 200 idle `ModeView`   |
 
 - Routes are opt-in and mounted by the host under a prefix behind Shield CSRF and the host limiter. Server-rendered controllers may redirect to fixed same-origin paths.
 - Control, status and effective-user responses send `Cache-Control: no-store` and appropriate `Vary`.
@@ -336,7 +337,7 @@ Limiter rejections are the host limiter's own 429. Shield CSRF errors remain fra
 
 The Account Kit adapter, the proposed public account-access inspection operation and managed-route blocking are not part of v1. Core keeps the native authority contract in section 4 as the only contract: `securityStamp` and `inspectAccount` callbacks. v1.2 implements that contract on top of Account Kit's existing actor credential checks, where the inspection read must return a coherent `{account, revision}` snapshot under Account Kit's account lock or an equivalent, and the adapter performs the comparison. The inspection API lands in the Account Kit repository first, with its own API review.
 
-Until then, hosts using Account Kit may wire the native contract by hand against Account Kit's public API, but no test family (T-KIT, T-KIT-HTTP) or packed consumer claims that integration in v1. Account Kit MUST NOT depend on this package; core MUST NOT import Account Kit. Nothing in v1 adds an Account Kit column, flag or route.
+Until then, hosts using Account Kit may wire the native contract by hand against Account Kit's public API, but no test family (T-KIT, T-KIT-HTTP) or packed consumer claims that integration in v1. Account Kit MUST NOT depend on this package; core MUST NOT import Account Kit. Nothing in v1 adds an Account Kit column, flag or route. **Superseded for the accepted v1.2 scope by [§15](#15-v12-account-kit-integration).**
 
 ## 10. Operational limits and retention
 
@@ -464,6 +465,8 @@ start, and stop operations all require the one configured ability, even while id
 distinct from `canMasquerade`: host start and active-admission policy remain as in v1, and stop does
 not read start policy, actor or target stamps, or target account data.
 
+**Superseded for Account Kit managed routes only by [§15](#15-v12-account-kit-integration).**
+
 ### 13.3 Account mode, context, and credential boundaries
 
 For an account shared across session and token transports, both adapters use the exact same
@@ -519,6 +522,7 @@ This family defines required acceptance evidence; it does not claim that a test 
 matrix has passed. Current evidence and any remaining gaps belong in the
 [requirement ledger](docs/maintainers/requirement-ledger.md).
 
+**Superseded for Account Kit managed routes only by [§15](#15-v12-account-kit-integration).**
 
 ## 14. View-only default and per-start edit access (accepted 22 October 2026)
 
@@ -563,3 +567,108 @@ The view-only check MUST use `access !== 'edit'`, so a missing or unknown access
 Add transition rows: a denied edit start leaves the current mode unchanged; failed edit admission invalidates the edit mode with `edit_denied` and rejects that request with 409. Existing view admission and stop behavior are unchanged.
 
 Add cases to these test families: T-AUTH (edit policy absent, false/non-true, throw, call order and arguments); T-INVALIDATION (`edit_denied`, no downgrade, triggering request rejected); T-ACTIONS (request-rule order, all `blockedBy` values, unknown/missing access fail-closed); T-AUDIT (active-row access projection for service and prune producers); T-STORE (nullable columns and access equality validation); T-TOKEN (shared account mode/access across supported transports).
+
+## 15. V1.2 Account Kit integration
+
+This section records the v1.2 Account Kit contract accepted by the owner in issue #94 on 22
+October 2026. It supersedes only the specifically identified v1/v1.1 rules below; all other requirements remain in force. The Account Kit package
+name and alpha version remain release-time values until the alpha is published. The v1.2 subpath is
+optional, and the core package must remain usable without resolving Account Kit.
+
+### 15.1 Package and authority boundary
+
+- Export the adapter from `adonisjs-masquerade/account-kit` and its provider from
+  `adonisjs-masquerade/account-kit/provider`. Declare the Account Kit alpha as an optional peer
+  dependency pinned to its released alpha version. Do not create a separate package.
+- Adapter construction accepts the host namespace, incarnation, lazy `kit` resolver, framework
+  provider and Account Kit `managedGuard`; the access-token strategy also supplies its required
+  ability. Resolve Account Kit lazily. The raw guard name comes from `managedGuard.name`. The host
+  does not supply `securityStamp` or `isActive` callbacks; Account Kit provides these semantics.
+- The adapter returns the native authority and actor-authentication contract. Core MUST NOT import
+  Account Kit, and Account Kit MUST NOT depend on Masquerade. Do not add Account Kit persistence,
+  migrations, or public core APIs.
+- v1.2 supports one Masquerade transport, matching the Account Kit instance's configured
+  `session` or `access_tokens` strategy. A second transport composed alongside it is unsupported.
+  SQLite and PostgreSQL are supported; MySQL is not claimed.
+
+### 15.2 Account inspection and stamp
+
+For actor and target inspection, call
+`kit.authentication.inspectAccountAccess({ userId, requireActive: true })`. Map
+`AccountAccessDeniedError` to ineligible (`null`), using its code as a fallback when needed; let
+other errors propagate so the core fails closed with 503. This inspection is not authentication,
+does not issue credentials, and does not evaluate Account Kit admission.
+
+Encode a null revision as `account-kit:null` and any other revision as
+`account-kit:revision:<revision>`; compare stamps only by equality. Use the coherent account and
+revision snapshot returned by inspection. Load the framework user by the snapshot's canonical
+account ID; a missing user is ineligible, while a mismatched canonical ID is an operational error.
+The adapter associates each returned user object with its captured stamp and rejects stamp reads
+for objects it did not inspect.
+
+### 15.3 Actor authentication and admission
+
+Authenticate through the named native raw guard. For the `access_tokens` strategy, require its
+configured per-token ability. Then call `managedGuard.current(ctx)` and
+`kit.authentication.current(input)`. Account Kit rejection maps to native 401; other operational
+errors map to 503. There is no actor fallback. Account Kit's current check retains its normal
+session-touch behavior.
+
+Account Kit admission remains a separate host gate. The host mounts `admissionMiddleware` (or calls
+`admission.require`) on Masquerade control and business routes. Revoked actor admission returns
+Account Kit's 403 and leaves the mode row untouched; the mode can resume after re-approval if no
+other invalidation occurred. Hosts that need revocation to end a mode use `changeRestriction`.
+The host's `canMasquerade` checks `kit.admission.isAdmitted(target.id)` so target admission is
+re-evaluated on each active admission and denial follows the existing `policy_denied` behavior.
+`canAccess` remains Account Kit's restriction check and is not extended to include admission.
+
+### 15.4 Managed-route blocker
+
+The host installs the adapter global router middleware after session and `initialize_auth`
+middleware, in `start/kernel.ts`. It identifies managed requests by route name beginning `accountKit.`. While a mode is
+active, it blocks every such route except `accountKit.account.logout` and
+`accountKit.auth.csrf`, returning `E_MASQUERADE_ACTION_BLOCKED` with `blockedBy: 'sensitive'` before
+the handler. This applies to each HTTP method and to custom prefixes or excluded endpoints.
+
+Non-Account-Kit routes pass without a store read. The two exemptions pass without a store read.
+Other managed requests whose raw guard does not authenticate pass without a store read, preserving
+unauthenticated public proof flows. An authenticated actor's request reads the existing owner row through a new
+symbol-keyed internal service method re-exported through the runtime, using the service's
+validation, canonical owner key and clock. It opens no second store, does not call Account Kit
+`current`, and does not clear or extend mode. Active and unexpired mode is blocked; absent, idle or
+expired mode passes; store failure returns 503. A token lacking the Masquerade ability is still
+subject to this blocker when the raw guard authenticates it.
+
+The provider's `ready` hook checks `kit.managedHttp.assertGuard(managedGuard)`, verifies that every
+mounted `accountKit.*` route corresponds to a `managedRouteRegistration` entry, and records that the
+blocker is installed for the route report. A failed check fails startup. If verification shows the
+router is not committed or middleware installation cannot be detected at `ready`, move route
+checks to first request and have the report say the blocker is unverified.
+
+`masquerade:routes` recognizes names beginning `accountKit.` from `router.toJSON()` without
+importing Account Kit. It groups these as “Account Kit managed (blocked while active)” only when
+the provider recorded successful blocker installation. Otherwise it reports them as `UNCLASSIFIED`
+with a missing or unverified blocker note. Hosts without Account Kit must still be able to run
+`node ace`.
+
+### 15.5 Acceptance and supersession
+
+T-KIT covers stamp encoding and snapshot capture; actor and target eligibility; operational
+inspection failures; actor/target stamp invalidation; credential-specific actor rejection; host
+admission behavior; both supported strategies, session management on/off, incarnation callbacks;
+and provider guard validation. T-KIT-HTTP covers blocking every mounted managed route before its
+handler, exemptions and store-free cases, idle and unauthenticated behavior, store outage, route
+registration checks and route-report classification. Both families must pass on SQLite and
+PostgreSQL for both strategies and peer floor/latest before release. Every issue runs `pnpm lint`,
+`pnpm typecheck`, `pnpm build`, `pnpm quick:test`, `pnpm test:pg` and
+`pnpm test:built-exports` on Node 24. Issues 4 and 5 also run `pnpm test:account-kit`. Mutation-check
+each new guard by breaking it, observing its named test fail, then restoring it. The packed consumer
+uses a fresh AdonisJS 7 host and the published exact Account Kit alpha; record exact dependency
+versions for the strategy × database × peer floor/latest matrix. These are acceptance obligations,
+not claims that implementation or verification has occurred; the requirement ledger tracks
+evidence.
+
+This section supersedes DEVELOPMENT-PLAN items 3 and 4 only for Account Kit managed routes,
+SPEC §5.4's raw-business-route coverage rule only for those routes, §9's deferred status, and
+§13.2/§13.4's store-free/raw-route classification only for those routes. Raw routes outside
+`accountKit.*` retain their existing rules.
