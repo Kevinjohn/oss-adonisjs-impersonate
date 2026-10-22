@@ -267,9 +267,12 @@ middleware stack so it covers every mounted route named `accountKit.*`. Account 
 option removes an endpoint from its route registration, so that omitted endpoint is not mounted by
 Account Kit. The remaining registered routes are still covered by the global blocker. A host-added
 `accountKit.*` route that is absent from Account Kit's registration fails provider validation rather
-than becoming an unprotected replacement. During its `ready` hook, the provider commits the router
-and validates route registration and blocker installation, including when the host is starting an
-Ace command.
+than becoming an unprotected replacement. During its `ready` hook, the provider validates route
+registration and blocker installation once the router is committed; when the host is starting an
+Ace command it commits the router itself first, and it never commits in other environments. Call
+`registerManagedRoutes` outside any route group that has its own name: a group name prefix would
+commit the routes as `<group>.accountKit.*`, which the blocker does not match, so startup fails with
+`is not mounted`.
 
 This prerelease interface was verified against the pinned GitHub release artifact. Account Kit
 `0.1.1` resolves `configProvider` through `@adonisjs/core` in its OpenAPI command and session store
