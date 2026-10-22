@@ -131,7 +131,7 @@ function startMode(client: ApiClient, actor: User, targetId: number, contextToke
     .withCsrfToken()
     .header('Accept', 'application/json')
     .header('X-Masquerade-Context', contextToken)
-    .json({ targetId, reason: 'support case 1042' })
+    .json({ targetId, reason: 'support case 1042', access: 'edit' })
     .loginAs(actor)
 }
 

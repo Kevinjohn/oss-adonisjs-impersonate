@@ -23,6 +23,8 @@ export function memberMasquerade() {
       policy: {
         canMasquerade: ({ actor, target }) =>
           actor.user.active && target.user.active && actor.id !== target.id,
+        canEdit: ({ actor, target }) =>
+          actor.user.active && target.user.active && actor.id !== target.id,
       },
       store: async () => new LucidControlStore(db.connection()),
       contextEnforcement: 'enforce',

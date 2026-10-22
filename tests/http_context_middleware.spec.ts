@@ -3,8 +3,9 @@ import { fixture } from './helpers/core.js'
 import { requestContext } from './helpers/http_context.js'
 import { errors } from '@adonisjs/auth'
 import { masqueradeContext } from '../http/context_middleware.js'
-import { allowMutation } from '../integration/route_metadata.js'
+import { allowMutation, sensitive } from '../integration/route_metadata.js'
 import { MasqueradeError } from '../src/errors.js'
+import type { MasqueradeBlockedBy } from '../index.js'
 
 test.group('masquerade HTTP boundary', () => {
   test('rejects mixed native-effective and other guards before authentication or downstream fallback', async ({
@@ -70,6 +71,7 @@ test.group('masquerade HTTP boundary', () => {
     assert.equal(downstreamCalls, 1)
     assert.equal(reads, 0)
     assert.equal(responseState.headers.get('cache-control'), 'no-store')
+
   })
 
   test('requires context on idle unsafe routes in report mode and ignores query state', async ({
@@ -118,7 +120,7 @@ test.group('masquerade HTTP boundary', () => {
     assert.isTrue(continued)
   })
 
-  test('enforces mutations and preserves package error JSON and no-store headers', async ({
+  test('blocked responses carry blockedBy and other codes do not', async ({
     assert,
   }) => {
     const f = fixture()
@@ -129,6 +131,7 @@ test.group('masquerade HTTP boundary', () => {
       body: { _masqueradeContext: mode.contextToken },
     })
     let continued = false
+    const blockedBy: MasqueradeBlockedBy = 'mutation_not_allowed'
     try {
       await masqueradeContext(ctx, async () => {
         continued = true
@@ -141,10 +144,34 @@ test.group('masquerade HTTP boundary', () => {
     assert.equal(responseState.status, 403)
     assert.deepEqual(responseState.json, {
       errors: [
-        { code: 'E_MASQUERADE_ACTION_BLOCKED', message: 'Action is blocked while masquerading' },
+        {
+          code: 'E_MASQUERADE_ACTION_BLOCKED',
+          message: 'Action is blocked while masquerading',
+          blockedBy,
+        },
       ],
     })
     assert.equal(responseState.headers.get('cache-control'), 'no-store')
+
+    const { ctx: sensitiveRoute, responseState: sensitiveResponse } = requestContext(f, {
+      method: 'GET',
+      routeMiddleware: [
+        { name: 'auth', args: [{ guards: ['web_effective'] }] },
+        sensitive(),
+      ],
+    })
+    await handleWithDefaultExceptionHandler(sensitiveRoute, () =>
+      masqueradeContext(sensitiveRoute, async () => {})
+    )
+    assert.deepEqual(sensitiveResponse.json, {
+      errors: [
+        {
+          code: 'E_MASQUERADE_ACTION_BLOCKED',
+          message: 'Action is blocked while masquerading',
+          blockedBy: 'sensitive',
+        },
+      ],
+    })
   })
 
   test('passes business context errors to the host exception handler', async ({ assert }) => {
@@ -164,6 +191,10 @@ test.group('masquerade HTTP boundary', () => {
     assert.isFalse(continued)
     assert.instanceOf(received, MasqueradeError)
     assert.equal((received as MasqueradeError).code, 'E_MASQUERADE_CONTEXT_REQUIRED')
+    ;(received as MasqueradeError).handle(received, ctx)
+    assert.deepEqual(responseState.json, {
+      errors: [{ code: 'E_MASQUERADE_CONTEXT_REQUIRED', message: 'Masquerade context required' }],
+    })
     assert.equal(responseState.headers.get('cache-control'), 'no-store')
   })
 

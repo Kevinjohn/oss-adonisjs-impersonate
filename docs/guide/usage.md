@@ -97,7 +97,7 @@ and changes after committed transitions. It prevents stale/replayed context; it 
 authentication credential and does not replace CSRF.
 
 Submit `POST /masquerade/start` with `targetId`, a required `reason`, optional numeric
-`durationSeconds`, and the token captured with this form. Send the token as
+`durationSeconds`, optional `access` (`'view'` or `'edit'`), and the token captured with this form. Send the token as
 `X-Masquerade-Context` or `_masqueradeContext`; if both are sent they must agree. For a
 cookie-authenticated request, also send the host's Shield CSRF token. A JSON request body can look
 like this:
@@ -106,9 +106,14 @@ like this:
 {
   "targetId": 42,
   "reason": "Investigating a reported invoice display issue",
-  "durationSeconds": 900
+  "durationSeconds": 900,
+  "access": "view"
 }
 ```
+
+Omitting `access` selects view. Choose **Can edit** deliberately in the start form and send
+`access: 'edit'` when the host's `canEdit` policy permits it. The level stays fixed until stop;
+restart to choose another level. See the [access contract](../../SPEC-impersonation.md#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
 
 The default duration is 900 seconds and the default maximum is 3600 seconds. A host can configure
 a shorter duration and maximum. When duration is omitted, the configured default is used;
@@ -125,13 +130,14 @@ A successful start returns an active `ModeView` with a fresh token:
   "isMasquerading": true,
   "contextToken": "1.<new-owner-specific-nonce>",
   "targetId": "42",
+  "access": "view",
   "startedAt": "2026-10-20T10:15:00.000Z",
   "expiresAt": "2026-10-20T10:30:00.000Z"
 }
 ```
 
 The request accepts a string target ID or a safe integer; the response uses its canonical string
-form. Only these fields are returned: the state, token, target ID, start time, and fixed deadline. The
+form. Only these fields are returned: the state, token, target ID, access level, start time, and fixed deadline. The
 view does not contain the reason, actor or target model, stamps, or raw revision. Treat the token
 as a hidden concurrency value, not something to display. A persisted active row is usable only
 while `expiresAt` is strictly later than the current time. Status is read-only; an expired row can
@@ -141,8 +147,8 @@ still appear active until business admission or cleanup handles it. See
 ## Use the effective customer identity
 
 Attach the route markers from the public HTTP entry point and the effective guard to business
-routes. Reads remain available under the effective identity. `allowMutation()` permits an
-ordinary, non-sensitive mutation through route classification; the customer's normal Bouncer
+routes. Reads remain available under the effective identity. With edit access, `allowMutation()`
+permits an ordinary, non-sensitive mutation through route classification; the customer's normal Bouncer
 policy still decides whether the handler may act. `sensitive()` always blocks an active support
 mode, even if a route also has `allowMutation()`.
 
@@ -176,8 +182,8 @@ router
 
 The handler authorizes the effective customer, never the raw actor. The complete controller recipe
 below includes the `Bouncer<User>` helper and a customer-owned reversible preference mutation. The
-customer's normal business ability still applies; `allowMutation()` only classifies the route as a
-permitted non-sensitive mutation. The sensitive route is rejected before its handler runs. Do not
+customer's normal business ability still applies; edit access and `allowMutation()` are both
+required for a non-sensitive mutation. The sensitive route is rejected before its handler runs. Do not
 offer a bypass for it during support mode.
 
 ## Stop with the refreshed token
@@ -247,7 +253,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { StartInput, StopInput } from 'adonisjs-masquerade/types'
 
 const bodyLimit = 8 * 1024
-const startKeys = new Set(['targetId', 'reason', '_masqueradeContext', '_csrf'])
+const startKeys = new Set(['targetId', 'reason', 'access', '_masqueradeContext', '_csrf'])
 const stopKeys = new Set(['_masqueradeContext', '_csrf'])
 
 /** Keep the HTML forms within the canonical control input and audit boundary. */
@@ -257,6 +263,7 @@ export function demoStartInput(ctx: HttpContext): StartInput {
   return {
     targetId: body.targetId as StartInput['targetId'],
     reason: body.reason as StartInput['reason'],
+    access: body.access as StartInput['access'],
     expectedContext: controlToken(ctx, body),
   }
 }
@@ -482,6 +489,21 @@ response with this start intent. This excerpt is copied from the
         Required for the audit record. Up to 500 characters; do not enter secrets.
       </p>
     </div>
+    <fieldset class="field">
+      <legend class="field__label">Access level</legend>
+      <label class="field__choice">
+        <input type="radio" name="access" value="view" checked />
+        
+        View only
+
+      </label>
+      <label class="field__choice">
+        <input type="radio" name="access" value="edit" />
+        
+        Can edit
+
+      </label>
+    </fieldset>
     <button class="btn btn--primary" type="submit">Start support mode</button>
   @end
 @else
@@ -491,7 +513,7 @@ response with this start intent. This excerpt is copied from the
 @end
 ```
 
-For the effective business route, `allowMutation()` only permits route classification; the
+For the effective business route, edit access and `allowMutation()` are both required; the
 controller's Bouncer ability still checks the effective customer's ordinary permission before the
 write. The `@form` component adds Shield's CSRF field, and the hidden field supplies the context
 token captured with this page. This is the form in the
@@ -541,7 +563,8 @@ the raw status page and the customer workspace; the forms are in the same
 
 ## Recover from errors
 
-The default JSON error body is `{ "errors": [{ "code", "message" }] }`; package messages are
+The default JSON error item carries `code` and `message`, plus `blockedBy` exactly for
+`E_MASQUERADE_ACTION_BLOCKED`; package messages are
 English. A host exception handler may choose how to present errors, but this guide does not assume
 that it translates them. For HTML, render a message and recovery link rather than retrying behind
 the operator's back.
@@ -551,9 +574,48 @@ the operator's back.
 | Missing control or business context                               | `428 E_MASQUERADE_CONTEXT_REQUIRED` | Read status and rebuild the action using its current token.                                                     |
 | Stale token, expired mode, or another tab/device changed the mode | `409 E_MASQUERADE_CONTEXT_CHANGED`  | Refresh status; require deliberate resubmission of rebuilt input. Never refresh a token and replay old intent.  |
 | Start submitted while a mode is active                            | `409 E_MASQUERADE_ALREADY_ACTIVE`   | Read current status and stop before starting another mode.                                                      |
-| Active-mode mutation is not marked, or route is sensitive         | `403 E_MASQUERADE_ACTION_BLOCKED`   | Keep the sensitive action unavailable. A mutation marker does not grant customer permission.                    |
+| View-mode mutation, unmarked edit mutation, or sensitive route    | `403 E_MASQUERADE_ACTION_BLOCKED`   | Use `blockedBy` to explain the denial. Edit and a mutation marker do not grant customer permission.             |
 | Store or service unavailable                                      | `503 E_MASQUERADE_UNAVAILABLE`      | After an uncertain control response, GET status before deciding what to do. Do not blindly retry the old start. |
 | Invalid fields, duration, or reason                               | `422 E_MASQUERADE_INVALID_INPUT`    | Show the validation problem and ask the operator to submit corrected data with the current token.               |
+
+The host can branch on `blockedBy` before its normal exception handling. This helper shows
+three presentation paths: JSON passes to the standard handler, HTML renders a host page, and
+a host workflow can choose a flash-and-redirect response. Supply your own `errors/blocked_action`
+Edge template (or use `ctx.inertia.render` for a host Inertia page). The template receives only
+the host's explanation and should offer a link to status or stop.
+
+```ts
+import { MasqueradeError } from 'adonisjs-masquerade'
+import type { HttpContext } from '@adonisjs/core/http'
+
+export async function handleBlockedAction(
+  error: unknown,
+  ctx: HttpContext,
+  presentation: 'page' | 'redirect' = 'page'
+): Promise<boolean> {
+  if (!(error instanceof MasqueradeError) || error.code !== 'E_MASQUERADE_ACTION_BLOCKED')
+    return false
+  if (ctx.request.accepts(['html', 'json']) !== 'html') return false
+  const explanations = {
+    sensitive: 'This action is unavailable during support mode. Stop and use your own account.',
+    view_only: 'This session is view only. Stop and choose Can edit if your role permits it.',
+    mutation_not_allowed:
+      'This action is unavailable during support mode. Return to the customer page.',
+  }
+  const explanation = explanations[error.blockedBy ?? 'sensitive']
+  if (presentation === 'redirect') {
+    ctx.session.flash('error', explanation)
+    ctx.response.redirect().back()
+  } else {
+    ctx.response.status(403).send(await ctx.view.render('errors/blocked_action', { explanation }))
+  }
+  return true
+}
+```
+
+In the host exception handler, call `if (await handleBlockedAction(error, ctx)) return` before
+`super.handle(error, ctx)`. The default path preserves the package JSON response. The host owns
+its wording, flash rendering, redirect destination and templates; no package translation is used.
 
 The native-session browser fixture keeps status and stop on the raw actor guard so an operator can
 inspect or end a recorded mode if the target, actor eligibility, or start permission changes. A

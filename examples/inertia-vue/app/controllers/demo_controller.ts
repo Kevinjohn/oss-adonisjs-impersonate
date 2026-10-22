@@ -77,6 +77,7 @@ export default class DemoController {
       customer: label(customer),
       mode: {
         isMasquerading: true as const,
+        access: mode.access,
         targetId: mode.targetId,
         expiresAt: mode.expiresAt,
         contextToken: mode.contextToken,
@@ -142,6 +143,7 @@ function publicMode(mode: Awaited<ReturnType<MasqueradeRuntime<User>['service'][
   return mode.isMasquerading
     ? {
         isMasquerading: true as const,
+        access: mode.access,
         targetId: mode.targetId,
         expiresAt: mode.expiresAt,
         contextToken: mode.contextToken,

@@ -130,6 +130,17 @@
                   Required for the audit record. Up to 500 characters; do not enter secrets.
                 </p>
               </div>
+              <fieldset class="field">
+                <legend class="field__label">Access level</legend>
+                <label class="field__choice">
+                  <input type="radio" name="access" value="view" checked />
+                  View only
+                </label>
+                <label class="field__choice">
+                  <input type="radio" name="access" value="edit" />
+                  Can edit
+                </label>
+              </fieldset>
               <button class="btn btn--primary" type="submit">Start support mode</button>
             @end
           @else

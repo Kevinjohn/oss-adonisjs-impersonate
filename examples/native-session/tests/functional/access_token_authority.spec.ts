@@ -433,7 +433,7 @@ function start(client: ApiClient, token: string, targetId: number, contextToken:
     .header('Accept', 'application/json')
     .header('Authorization', bearer(token))
     .header('X-Masquerade-Context', contextToken)
-    .json({ targetId, reason: 'token acceptance journey' })
+    .json({ targetId, reason: 'token acceptance journey', access: 'edit' })
 }
 
 function stop(client: ApiClient, token: string, contextToken: string) {

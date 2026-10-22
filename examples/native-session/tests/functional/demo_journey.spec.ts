@@ -37,6 +37,7 @@ test.group('support operator browser journey', (group) => {
       .form({
         targetId: String(target.id),
         reason: 'Customer request',
+        access: 'edit',
         _masqueradeContext: idleToken,
       })
       .loginAs(actor)
@@ -218,6 +219,7 @@ test.group('support operator browser journey', (group) => {
       .form({
         targetId: String(target.id),
         reason: 'Permission test',
+        access: 'edit',
         _masqueradeContext: idle.body().contextToken,
       })
       .loginAs(actor)

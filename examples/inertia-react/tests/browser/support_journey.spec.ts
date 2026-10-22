@@ -37,8 +37,10 @@ test.group('React support browser journey', (group) => {
     await page.getByRole('button', { name: 'Log in' }).press('Enter')
     await page.waitForURL('**/support')
     const idleHistoryKey = await page.evaluate("sessionStorage.getItem('historyKey')")
+    assert.isTrue(await page.getByLabel('View only').isChecked())
     await page.getByLabel('Customer').selectOption({ label: 'Customer One' })
     await page.getByLabel('Reason for support').fill('Customer requested email update help')
+    await page.getByLabel('Can edit').check()
     await page.getByRole('button', { name: 'Start support mode' }).press('Enter')
     await page.waitForURL('**/support/customer')
     const activeHistoryKey = await page.evaluate("sessionStorage.getItem('historyKey')")
@@ -109,6 +111,7 @@ test.group('React support browser journey', (group) => {
 
     await first.getByLabel('Customer').selectOption({ label: 'Customer One' })
     await first.getByLabel('Reason for support').fill('Customer One requested help')
+    await first.getByLabel('Can edit').check()
     await first.getByRole('button', { name: 'Start support mode' }).click()
     await first.waitForURL('**/support/customer')
     assert.include(await first.locator('main').innerText(), 'customer-one@example.test')
@@ -127,6 +130,7 @@ test.group('React support browser journey', (group) => {
       await second.getByRole('button', { name: 'Start support mode' }).waitFor()
       await second.getByLabel('Customer').selectOption({ label: 'Customer Two' })
       await second.getByLabel('Reason for support').fill('Customer Two requested help')
+      await second.getByLabel('Can edit').check()
       await second.getByRole('button', { name: 'Start support mode' }).click()
       await second.waitForURL('**/support/customer')
 

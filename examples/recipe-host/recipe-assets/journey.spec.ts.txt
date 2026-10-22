@@ -41,7 +41,12 @@ test.group('fresh host public recipe', (group) => {
 
     const csrfDenied = await client
       .post('/support/start')
-      .form({ targetId: String(target.id), reason: 'Recipe check', _masqueradeContext: idleToken })
+      .form({
+        targetId: String(target.id),
+        reason: 'Recipe check',
+        access: 'edit',
+        _masqueradeContext: idleToken,
+      })
       .loginAs(actor)
     csrfDenied.assertStatus(403)
 
@@ -49,7 +54,12 @@ test.group('fresh host public recipe', (group) => {
       .post('/support/start')
       .redirects(0)
       .withCsrfToken()
-      .form({ targetId: String(target.id), reason: 'Recipe check', _masqueradeContext: idleToken })
+      .form({
+        targetId: String(target.id),
+        reason: 'Recipe check',
+        access: 'edit',
+        _masqueradeContext: idleToken,
+      })
       .loginAs(actor)
     assert.equal(started.status(), 302, 'recipe form start')
     assert.equal(started.header('location'), '/support/customer')

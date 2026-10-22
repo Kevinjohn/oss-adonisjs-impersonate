@@ -6,7 +6,13 @@ import { useIdentityFreshness } from './use_identity_freshness'
 type Label = { id: number; fullName: string | null; email: string }
 type Mode =
   | { isMasquerading: false; contextToken: string }
-  | { isMasquerading: true; contextToken: string; targetId: string; expiresAt: string }
+  | {
+      isMasquerading: true
+      contextToken: string
+      targetId: string
+      expiresAt: string
+      access: 'view' | 'edit'
+    }
 
 export default function Workspace({
   actor,
@@ -78,6 +84,17 @@ export default function Workspace({
           </select>
           <label htmlFor="reason">Reason for support</label>
           <textarea id="reason" name="reason" minLength={1} maxLength={500} required />
+          <fieldset>
+            <legend>Access level</legend>
+            <label>
+              <input type="radio" name="access" value="view" defaultChecked />
+              View only
+            </label>
+            <label>
+              <input type="radio" name="access" value="edit" />
+              Can edit
+            </label>
+          </fieldset>
           <button type="submit">Start support mode</button>
         </ContextForm>
       ) : (

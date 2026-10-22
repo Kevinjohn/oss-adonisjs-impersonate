@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { initJsonClient } from '../../resources/js/demo_json.js'
 
 function fixture(fetchRef, now = () => 1000) {
+  const selectedAccess = { value: 'view' }
   const ids = [
     'json-client',
     'json-notice',
@@ -50,12 +51,15 @@ function fixture(fetchRef, now = () => 1000) {
     getElementById(id) {
       return elements[id]
     },
+    querySelector() {
+      return selectedAccess
+    },
     addEventListener(name, callback) {
       this.listeners[name] = callback
     },
   }
   initJsonClient({ documentRef, fetchRef, now, schedule() {} })
-  return { elements, documentRef }
+  return { elements, documentRef, selectedAccess }
 }
 
 function json(data, status = 200) {
@@ -88,7 +92,7 @@ const tick = () => new Promise((resolve) => setImmediate(resolve))
 
 test('captures context and Shield CSRF with the constructed preference intent', async () => {
   const requests = []
-  const { elements } = fixture(async (path, options) => {
+  const { elements, selectedAccess } = fixture(async (path, options) => {
     requests.push({ path, options })
     if (path === '/masquerade') return json(active('revision-1'))
     if (path === '/support/json/customer')
@@ -132,7 +136,7 @@ test('ignores a delayed customer A response after a newer context loads customer
 
 test('reads status after an uncertain transition without replaying the old start', async () => {
   const requests = []
-  const { elements } = fixture(async (path, options) => {
+  const { elements, selectedAccess } = fixture(async (path, options) => {
     requests.push({ path, options })
     if (path === '/masquerade') return json({ isMasquerading: false, contextToken: 'idle' })
     return json({ code: 'E_MASQUERADE_UNAVAILABLE', message: 'Unavailable' }, 503)
@@ -140,12 +144,14 @@ test('reads status after an uncertain transition without replaying the old start
   await tick()
   elements['json-target'].value = '2'
   elements['json-reason'].value = 'Customer request'
+  selectedAccess.value = 'edit'
   elements['json-start'].listeners.submit({ preventDefault() {} })
   await tick()
   assert.deepEqual(
     requests.map(({ path }) => path),
     ['/masquerade', '/masquerade/start', '/masquerade']
   )
+  assert.equal(requests[1].options.body.access, 'edit')
   assert.match(elements['json-notice'].textContent, /may have completed/)
   assert.equal(elements['json-target'].value, '')
   assert.equal(elements['json-reason'].value, '')

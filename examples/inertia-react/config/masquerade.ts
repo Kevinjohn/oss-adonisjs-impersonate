@@ -20,6 +20,8 @@ const config = defineConfig({
   policy: {
     canMasquerade: ({ actor, target }) =>
       Boolean(actor.user.masqueradeOperator) && Boolean(target.user.active),
+    canEdit: ({ actor, target }) =>
+      Boolean(actor.user.masqueradeOperator) && Boolean(target.user.active),
     canUseRequest: ({ actor, target }) => Boolean(actor.user.active) && Boolean(target.user.active),
   },
   store: async () => {

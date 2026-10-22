@@ -238,7 +238,12 @@ test.group('real HTTP masquerade context and actions', (group) => {
       .post('/masquerade/start')
       .withCsrfToken()
       .header('Accept', 'application/json')
-      .form({ targetId: String(target.id), reason: 'repeat attempt', _masqueradeContext: token })
+      .form({
+        targetId: String(target.id),
+        reason: 'repeat attempt',
+        access: 'edit',
+        _masqueradeContext: token,
+      })
       .loginAs(actor)
     formControl.assertStatus(409)
     const rejected = await mutation(client, actor, token, '/business/denied-mutation')
@@ -496,7 +501,7 @@ function startMode(client: ApiClient, actor: User, targetId: number, token: stri
     .withCsrfToken()
     .header('Accept', 'application/json')
     .header('X-Masquerade-Context', token)
-    .json({ targetId, reason: 'support case 1042' })
+    .json({ targetId, reason: 'support case 1042', access: 'edit' })
     .loginAs(actor)
 }
 

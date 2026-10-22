@@ -51,6 +51,8 @@ const config = defineConfig({
       if (shouldThrowFromAuthorityCallbacks()) throw new Error('Test policy callback fault')
       return Boolean(actor.user.masqueradeOperator) && Boolean(target.user.active)
     },
+    canEdit: ({ actor, target }) =>
+      Boolean(actor.user.masqueradeOperator) && Boolean(target.user.active),
     canUseRequest: ({ actor, target }) => {
       if (shouldThrowFromAuthorityCallbacks()) throw new Error('Test request-policy callback fault')
       return Boolean(actor.user.active) && Boolean(target.user.active)

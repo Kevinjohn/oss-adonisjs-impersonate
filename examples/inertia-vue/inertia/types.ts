@@ -3,7 +3,13 @@ import type { Data } from '@generated/data'
 type PublicUser = { id: number; fullName: string; email: string }
 type PublicMode =
   | { isMasquerading: false; contextToken: string }
-  | { isMasquerading: true; contextToken: string; targetId: string; expiresAt: string }
+  | {
+      isMasquerading: true
+      access: 'view' | 'edit'
+      contextToken: string
+      targetId: string
+      expiresAt: string
+    }
 
 declare module '@adonisjs/inertia/types' {
   interface InertiaPages {

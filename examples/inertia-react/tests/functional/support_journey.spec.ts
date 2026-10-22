@@ -39,6 +39,7 @@ test.group('Inertia support journey', (group) => {
       .form({
         targetId: String(target.id),
         reason: 'Customer request',
+        access: 'edit',
         _masqueradeContext: idleToken,
       })
       .loginAs(actor)
@@ -47,6 +48,7 @@ test.group('Inertia support journey', (group) => {
     const activeToken = active.body().contextToken as string
     const page = await client.get('/support/customer').loginAs(actor)
     page.assertStatus(200)
+    assert.equal(pageData(page.text()).props.mode.access, 'edit')
     assert.equal(pageData(page.text()).props.customer.id, target.id)
     assert.equal(pageData(page.text()).props.actor.id, actor.id)
     assert.equal(pageData(page.text()).props.user.email, actor.email)
@@ -159,6 +161,7 @@ test.group('Inertia support journey', (group) => {
         .form({
           targetId: String(target.id),
           reason: 'Deadline test',
+          access: 'edit',
           _masqueradeContext: idle.body().contextToken,
         })
         .loginAs(actor)

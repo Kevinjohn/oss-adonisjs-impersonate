@@ -13,7 +13,7 @@ export function sensitive(): MarkedMiddleware {
   return createMarker('sensitive')
 }
 
-/** Allow unsafe business actions while a masquerade is active, except sensitive routes. */
+/** Allow unsafe business actions in edit mode, except on sensitive routes. */
 export function allowMutation(): MarkedMiddleware {
   return createMarker('allowMutation')
 }

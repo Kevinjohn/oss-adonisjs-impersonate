@@ -34,6 +34,7 @@ test.group('Inertia Vue support journey', (group) => {
       .form({
         targetId: String(target.id),
         reason: 'Customer asked for help',
+        access: 'edit',
         _masqueradeContext: idleToken,
       })
       .loginAs(actor)
@@ -48,6 +49,7 @@ test.group('Inertia Vue support journey', (group) => {
     assert.equal(props.actor.id, actor.id)
     assert.equal(props.user.email, actor.email)
     assert.equal(props.mode.contextToken, activeToken)
+    assert.equal(props.mode.access, 'edit')
     assert.notProperty(props.customer, 'password')
     assert.notProperty(props.mode, 'reason')
 
@@ -118,6 +120,7 @@ test.group('Inertia Vue support journey', (group) => {
       .form({
         targetId: String(customerA.id),
         reason: 'First customer',
+        access: 'edit',
         _masqueradeContext: idleToken,
       })
       .loginAs(actor)
@@ -139,6 +142,7 @@ test.group('Inertia Vue support journey', (group) => {
       .form({
         targetId: String(customerB.id),
         reason: 'Second customer',
+        access: 'edit',
         _masqueradeContext: idleAgain.body().contextToken,
       })
       .loginAs(actor)
@@ -172,6 +176,7 @@ test.group('Inertia Vue support journey', (group) => {
         .form({
           targetId: String(target.id),
           reason: 'Fixed deadline',
+          access: 'edit',
           _masqueradeContext: idle.body().contextToken,
         })
         .loginAs(actor)

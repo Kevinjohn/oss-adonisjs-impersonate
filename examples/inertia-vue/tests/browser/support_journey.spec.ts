@@ -34,7 +34,9 @@ test.group('Inertia Vue browser journey', (group) => {
     await signIn(page)
     const idleToken = await page.locator('input[name="_masqueradeContext"]').inputValue()
     assert.isTrue(idleToken.length > 20)
+    assert.isTrue(await page.getByRole('radio', { name: 'View only' }).isChecked())
     await selectCustomer(page, 1)
+    await page.getByRole('radio', { name: 'Can edit' }).check()
     await page.getByLabel('Reason for support').fill('Customer requested help')
     await page.getByRole('button', { name: 'Start support mode' }).press('Enter')
     await page.waitForURL('**/support/customer')
@@ -414,6 +416,7 @@ async function signIn(page: any) {
 async function selectCustomer(page: any, index: number) {
   const customer = await User.findByOrFail('email', demoAccounts[index].email)
   await page.getByLabel('Customer').selectOption({ value: String(customer.id) })
+  await page.getByRole('radio', { name: 'Can edit' }).check()
 }
 
 function base() {

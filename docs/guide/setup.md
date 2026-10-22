@@ -175,6 +175,8 @@ export default defineConfig<User, HttpContext>({
   policy: {
     canMasquerade: ({ actor, target }) =>
       actor.user.masqueradeOperator && target.user.active && actor.id !== target.id,
+    canEdit: ({ actor, target }) =>
+      actor.user.masqueradeOperator && target.user.active && actor.id !== target.id,
     // Add canUseRequest only when the application needs a request-local rule.
   },
   // Keep the generated store and retention settings. Enforce only after every
@@ -210,6 +212,12 @@ starts with `reason` and `request` available, and again on each active admission
 value. A `false` result at start denies the start. A `false` result during active admission is a
 global denial: Masquerade invalidates the mode and rejects that request with context-changed (409).
 A thrown callback fails the request with unavailable (503) and leaves the mode unchanged.
+
+`canEdit` is optional and grants edit only when it returns literal `true`. View is always the
+default. An explicit `access: 'edit'` start calls it after `canMasquerade` and before
+`canUseRequest`, with `reason` and `request`. Each active edit admission rechecks it without
+those values. A denial invalidates the whole mode with `edit_denied`; a throw returns 503
+without changing the mode. View starts and admissions never call it.
 
 `canUseRequest` is optional. Add it only for request-local rules such as tenant or route access. It
 runs during start and during active-mode admission, with the request in both cases. A `false` at

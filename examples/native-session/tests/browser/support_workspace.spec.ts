@@ -55,6 +55,8 @@ test.group('support workspace browser journey', (group) => {
     await page.waitForURL('**/support')
     assert.equal(await page.getByLabel('Customer', { exact: true }).count(), 1)
     assert.equal(await page.getByLabel('Reason for access').count(), 1)
+    assert.equal(await page.getByRole('radio', { name: 'View only' }).isChecked(), true)
+    assert.equal(await page.getByRole('radio', { name: 'Can edit' }).isChecked(), false)
 
     const start = page.getByRole('button', { name: 'Start support mode' })
     await start.focus()
@@ -64,6 +66,7 @@ test.group('support workspace browser journey', (group) => {
     await customerSelect.focus()
     await page.keyboard.press('c')
     assert.equal(await customerSelect.inputValue(), String(customer.id))
+    await page.getByRole('radio', { name: 'Can edit' }).check()
     await start.focus()
     await page.keyboard.press('Enter')
     assert.equal(await page.evaluate('document.activeElement.id'), 'reason')
@@ -149,6 +152,7 @@ test.group('support workspace browser journey', (group) => {
     await second
       .getByLabel('Customer', { exact: true })
       .selectOption({ label: 'Customer One — customer-one@example.test' })
+    await second.getByRole('radio', { name: 'Can edit' }).check()
     await second.getByLabel('Reason for access').fill('First tab requested support')
     await second.getByRole('button', { name: 'Start support mode' }).click()
     await second.waitForURL('**/support/customer')
@@ -156,6 +160,7 @@ test.group('support workspace browser journey', (group) => {
     await first
       .getByLabel('Customer', { exact: true })
       .selectOption({ label: 'Customer Two — customer-two@example.test' })
+    await first.getByRole('radio', { name: 'Can edit' }).check()
     await first.getByLabel('Reason for access').fill('Stale tab must not replace the customer')
     await first.getByRole('button', { name: 'Start support mode' }).click()
     await first.getByRole('heading', { name: 'Support context changed' }).waitFor()
@@ -206,6 +211,7 @@ test.group('support workspace browser journey', (group) => {
       await page
         .getByLabel('Customer', { exact: true })
         .selectOption({ label: 'Customer One — customer-one@example.test' })
+      await page.getByRole('radio', { name: 'Can edit' }).check()
       await page.getByLabel('Reason for access').fill('Expiry recovery demonstration')
       await page.getByRole('button', { name: 'Start support mode' }).click()
       await page.waitForURL('**/support/customer')
@@ -255,6 +261,7 @@ test.group('support workspace browser journey', (group) => {
       await page
         .getByLabel('Customer', { exact: true })
         .selectOption({ label: 'Customer One — customer-one@example.test' })
+      await page.getByRole('radio', { name: 'Can edit' }).check()
       await page.getByLabel('Reason for access').fill('Recover after the outage demonstration')
       await page.getByRole('button', { name: 'Start support mode' }).click()
       await page.waitForURL('**/support/customer')

@@ -61,6 +61,7 @@ test.group('same-origin JSON support client', (group) => {
       .json({
         targetId: String(target.id),
         reason: 'JSON mutation',
+        access: 'edit',
         _masqueradeContext: idle.body().contextToken,
       })
       .loginAs(actor)
@@ -112,6 +113,7 @@ test.group('same-origin JSON support client', (group) => {
       .json({
         targetId: String(target.id),
         reason: 'Customer permission',
+        access: 'edit',
         _masqueradeContext: idle.body().contextToken,
       })
       .loginAs(actor)

@@ -8,6 +8,7 @@ type Mode =
       contextToken: string
       targetId: string
       expiresAt: string
+      access: 'view' | 'edit'
     }
 
 declare module '@adonisjs/inertia/types' {

@@ -2,7 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { StartInput, StopInput } from 'adonisjs-masquerade/types'
 
 const bodyLimit = 8 * 1024
-const startKeys = new Set(['targetId', 'reason', '_masqueradeContext', '_csrf'])
+const startKeys = new Set(['targetId', 'reason', 'access', '_masqueradeContext', '_csrf'])
 const stopKeys = new Set(['_masqueradeContext', '_csrf'])
 
 /** Keep the HTML forms within the canonical control input and audit boundary. */
@@ -12,6 +12,7 @@ export function demoStartInput(ctx: HttpContext): StartInput {
   return {
     targetId: body.targetId as StartInput['targetId'],
     reason: body.reason as StartInput['reason'],
+    access: body.access as StartInput['access'],
     expectedContext: controlToken(ctx, body),
   }
 }
