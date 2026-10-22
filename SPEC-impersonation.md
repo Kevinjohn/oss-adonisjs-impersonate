@@ -12,7 +12,7 @@
 - The PRD's settled boundaries and document-review decisions are requirements. The development plan's twenty agreed items and four owner decisions are the v1 contract; where the plan narrows an earlier proposal, the plan wins.
 - Masquerade is an account-level setting: an authenticated operator selects "masquerade as this user" and the server resolves that operator's effective identity on later requests. Start and stop never log in as the target, change the authenticated actor, replace a session or mint target credentials. Native remember-me and cookie maintenance keep their ordinary behaviour.
 - This document authorises the milestones in section 11.2. It does not authorise publication, repository naming or merging.
-- v1 decisions in one line each: one mode per actor per namespace, visible to all of that actor's sessions (D01); native session transport only, opaque tokens v1.1, JWT out (D02); 15-minute default, 60-minute ceiling, hosts may only narrow (D03); mandatory normalised reason (D04); one `ControlStore` contract with a Lucid SQLite/PostgreSQL subpath (D05); owner-bound context token on every covered unsafe request with report and enforce modes (D06); one revoked credential never clears the mode, an advanced stamp does (D07); hashed stamps captured at start and rechecked on every active admission (D08); unsafe methods denied while active unless `allowMutation()`, `sensitive()` always denied (D09); an invalidated request never continues as the actor (D10); Account Kit integration is v1.2 (D11).
+- v1 decisions in one line each: one mode per actor per namespace, visible to all of that actor's sessions (D01); native session transport only, opaque tokens v1.1, JWT out (D02); 15-minute default, 60-minute ceiling, hosts may only narrow (D03); mandatory normalised reason (D04); one `ControlStore` contract with a Lucid SQLite/PostgreSQL subpath (D05); owner-bound context token on every covered unsafe request with report and enforce modes (D06); one revoked credential never clears the mode, an advanced stamp does (D07); hashed stamps captured at start and rechecked on every active admission (D08); active mode defaults to view-only; edit mode plus `allowMutation()` permits ordinary mutations and `sensitive()` always denies (D09; superseded by [§14](#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026)); an invalidated request never continues as the actor (D10); Account Kit integration is v1.2 (D11).
 
 ## 2. Architecture and ownership
 
@@ -54,7 +54,7 @@ Control routes (start, stop, status), login, signup, logout and public routes us
 - **I09:** Observers cannot turn a committed success into a failure or trigger a second transition. Process-local caches and locks are not authoritative.
 - **I10:** A request's identity snapshot is immutable after admission; admitted work is not recalled.
 - **I11:** Responses, events and observers never receive raw stamps, credentials or whole user records.
-- **I12:** While active, `sensitive()` routes and billing mutations cannot be allowed by `allowMutation()`.
+- **I12:** While active, `sensitive()` routes and billing mutations cannot be allowed by `allowMutation()`. Superseded by [§14](#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
 
 ## 4. Identity and policy contracts
 
@@ -201,7 +201,7 @@ interface ResolvedContext {
 
 ### 5.4 Route classification and markers
 
-- Routes under an effective guard are business routes. GET, HEAD and OPTIONS are `read`; other methods are `mutation` and denied while active unless the route or group carries `allowMutation()`. `sensitive()` denies while active regardless of `allowMutation()`.
+- Routes under an effective guard are business routes. GET, HEAD and OPTIONS are `read`; other methods are `mutation`. While active, unsafe methods require edit access and route/group `allowMutation()`; `sensitive()` denies regardless of access or `allowMutation()`. The access rules are superseded by [§14](#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
 - Markers are explicit route or group middleware; an unsafe verb is at least `mutation` whatever the markers say. Idle requests follow ordinary actor policy and still need the context token.
 - Routes under a raw guard are control routes only if they are the package's start, stop and status routes or the host's login, signup, logout and public routes. A raw-guard route that runs business behaviour is a coverage defect.
 - `node ace masquerade:routes` prints every route grouped by guard with its classification and flags raw-guard routes that are not recognised control routes. The host reviews that report as a release gate (PRD FR-09); it is not a boot gate.
@@ -293,7 +293,7 @@ interface ControlStore {
 2. If idle, the effective user is the actor; the context middleware still validates unsafe requests and no active-mode restrictions apply.
 3. If active, check expiry, both stamp hashes, both accounts' eligibility and `canMasquerade`. Any global invalidity CASes to idle and returns 409; a CAS conflict is re-read, never treated as permission. Then `canUseRequest` when configured: `false` is 403, a throw is 503, mode unchanged.
 4. Validate the context token on unsafe requests under the configured enforcement mode.
-5. While active, deny `sensitive()` routes and billing mutations and unsafe routes without `allowMutation()`; then ordinary Bouncer checks run as the target.
+5. While active, apply §14 request-action rules after token validation; then ordinary Bouncer checks run as the target. This step is superseded by [§14](#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
 6. Freeze the actor/effective snapshot and return the effective user through the guard.
 
 ### 7.3 Stop, expiry and logout
@@ -310,20 +310,20 @@ interface ControlStore {
 | Method/path              | Operation | Input                                               | Success               |
 | ------------------------ | --------- | --------------------------------------------------- | --------------------- |
 | `GET /masquerade`        | Status    | Raw actor credential                                | 200 `ModeView`        |
-| `POST /masquerade/start` | Start     | `{ targetId, reason, durationSeconds? }` plus token | 200 active `ModeView` |
+| `POST /masquerade/start` | Start     | `{ targetId, reason, durationSeconds?, access? }` plus token | 200 active `ModeView` |
 | `POST /masquerade/stop`  | Stop      | `{}` plus token                                     | 200 idle `ModeView`   |
 
 - Routes are opt-in and mounted by the host under a prefix behind Shield CSRF and the host limiter. Server-rendered controllers may redirect to fixed same-origin paths.
 - Control, status and effective-user responses send `Cache-Control: no-store` and appropriate `Vary`.
-- Input: reject unknown fields, oversized bodies (8 KiB), fractional or out-of-range durations, and client-supplied expiry.
+- Input: reject unknown fields, oversized bodies (8 KiB), fractional or out-of-range durations, and client-supplied expiry. The optional `access` field is specified in §14; this start-body clause is superseded by [§14](#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
 - Reason normalisation order: trim with `String.prototype.trim()`, replace `\r\n` with `\n`, reject any C0 or C1 control except `\n` and `\t`, then require 1–500 Unicode code points and at most 2,000 UTF-8 bytes. Persist the normalised value; never truncate. Acceptable: `Ticket 4821: cannot see invoices`. Unacceptable: a tab-only string, or text containing `\u0007`.
-- JSON errors are `{ errors: [{ code, message }] }` with stable codes and English messages. The host exception handler localises; the package ships no translations, i18n lookup or JSON:API negotiation.
+- JSON errors are `{ errors: [{ code, message }] }` with stable codes and English messages, except §14 defines the `blockedBy` field for `E_MASQUERADE_ACTION_BLOCKED`. The host exception handler localises; the package ships no translations, i18n lookup or JSON:API negotiation.
 
 | HTTP | Code                            | Meaning                                                                           |
 | ---- | ------------------------------- | --------------------------------------------------------------------------------- |
 | 401  | `E_MASQUERADE_UNAUTHENTICATED`  | Actor credential or account access invalid                                        |
 | 403  | `E_MASQUERADE_NOT_ALLOWED`      | Policy or eligibility denial; no target disclosure                                |
-| 403  | `E_MASQUERADE_ACTION_BLOCKED`   | Sensitive route or mutation denied while active                                   |
+| 403  | `E_MASQUERADE_ACTION_BLOCKED`   | Sensitive route or mutation denied while active; §14 supplies `blockedBy`         |
 | 409  | `E_MASQUERADE_ALREADY_ACTIVE`   | Cannot nest, replace or renew                                                     |
 | 409  | `E_MASQUERADE_CONTEXT_CHANGED`  | Stale token, concurrent transition, expiry or invalidation; no handler ran        |
 | 422  | `E_MASQUERADE_INVALID_INPUT`    | Invalid control input or self-target                                              |
@@ -518,3 +518,48 @@ T-TOKEN requires evidence for both token-only and mixed session/token integratio
 This family defines required acceptance evidence; it does not claim that a test or packed-consumer
 matrix has passed. Current evidence and any remaining gaps belong in the
 [requirement ledger](docs/maintainers/requirement-ledger.md).
+
+
+## 14. View-only default and per-start edit access (accepted 22 October 2026)
+
+This additive contract changes D09/I12 and the related route, admission and start rules above. The owner accepted D1–D10 on 22 October 2026.
+
+### 14.1 Access contract and policy
+
+- Access values are exactly `'view' | 'edit'`. Every new mode defaults to `'view'`; there is no configuration-level default. Access is fixed for the lifetime of a mode.
+- `StartInput.access?: 'view' | 'edit'`. Only `undefined` defaults to `'view'`; any other supplied value is invalid input. `ModeView` exposes `access` exactly while active. Idle views omit the key.
+- `ResolvedContext.access?` is present exactly while masquerading, like `modeId`. The account-wide mode applies the selected access to every integrated session and token transport; there is no per-token edit ability.
+- Add optional `canEdit(input: { actor: Subject<User>; target: Subject<User>; reason: string; request: Request }): Promise<boolean>` to `MasqueradePolicy`. A missing callback or any result other than exact `true` denies edit. A throw is an infrastructure failure. `canMasquerade` keeps its existing input and meaning and MUST NOT receive access as an authorization shortcut.
+- At start with `access: 'edit'`, call `canEdit` only after `canMasquerade` returns `true` and before `canUseRequest`. A missing callback or non-`true` result returns 403 `E_MASQUERADE_NOT_ALLOWED` and leaves mode unchanged. A throw returns 503 and leaves mode unchanged; record the existing `policy` / `can_edit` diagnostic. View starts never call `canEdit`.
+- At admission of an active edit-mode row, call `canMasquerade` first and then `canEdit({ actor, target })`, without reason or request. If `canEdit` is absent or does not return exact `true`, invalidate the whole mode with code `edit_denied`; reject the triggering request with 409. Do not downgrade. A throw returns 503 with mode unchanged. View-mode admission never calls `canEdit`. Stop never calls either edit or masquerade policy.
+
+### 14.2 Persistence and audit projection
+
+- `masquerade_modes.access` is nullable `string(8)`: `view` or `edit` for active rows and `NULL` for idle rows. Validation rejects every other persisted value. The existing create migration is edited in place; no upgrade migration is added.
+- `masquerade_events.access` is nullable `string(8)`. Every event written from an active row, including the `started` event, carries that row's access; events without an active row omit the field and persist `NULL`. `AuditEvent` and `ObserverEvent` expose optional `access`. `validateTransition` requires `event.access === projected?.access`.
+- The mode transition and audit write remain atomic. No package event or diagnostic is added for blocked business requests; `blockedBy` is available to host diagnostics.
+
+### 14.3 Active request action rules
+
+After active admission and context-token validation, apply these rules in order:
+
+| Condition | Result |
+| --- | --- |
+| Route is `sensitive()` (any method) | 403 `E_MASQUERADE_ACTION_BLOCKED`, `blockedBy: 'sensitive'` |
+| Method is unsafe and `access !== 'edit'` | 403 `E_MASQUERADE_ACTION_BLOCKED`, `blockedBy: 'view_only'` |
+| Method is unsafe and route lacks `allowMutation()` | 403 `E_MASQUERADE_ACTION_BLOCKED`, `blockedBy: 'mutation_not_allowed'` |
+| Otherwise | Continue; ordinary Bouncer authorization runs as the target |
+
+The view-only check MUST use `access !== 'edit'`, so a missing or unknown access value fails closed. In view mode, an unsafe route without `allowMutation()` still returns `blockedBy: 'view_only'`; it MUST NOT reveal route configuration. `sensitive()` always takes precedence. Safe methods continue under ordinary target authorization; this is not a guarantee that handlers have no side effects.
+
+### 14.4 Error contract and JSON
+
+- Export `MasqueradeBlockedBy = 'sensitive' | 'view_only' | 'mutation_not_allowed'` from the package root.
+- `new MasqueradeError('E_MASQUERADE_ACTION_BLOCKED', { blockedBy })` requires `blockedBy`. `new MasqueradeError(code)` remains the constructor form for every other code and takes no second argument.
+- For `E_MASQUERADE_ACTION_BLOCKED`, `handle()` emits `{ errors: [{ code, message, blockedBy }] }`. Other errors remain `{ errors: [{ code, message }] }`. Messages remain stable English strings; the host localises.
+
+### 14.5 Transition and test obligations
+
+Add transition rows: a denied edit start leaves the current mode unchanged; failed edit admission invalidates the edit mode with `edit_denied` and rejects that request with 409. Existing view admission and stop behavior are unchanged.
+
+Add cases to these test families: T-AUTH (edit policy absent, false/non-true, throw, call order and arguments); T-INVALIDATION (`edit_denied`, no downgrade, triggering request rejected); T-ACTIONS (request-rule order, all `blockedBy` values, unknown/missing access fail-closed); T-AUDIT (active-row access projection for service and prune producers); T-STORE (nullable columns and access equality validation); T-TOKEN (shared account mode/access across supported transports).
