@@ -60,8 +60,9 @@ admission and stop do not call `canEdit`. The accepted details are in the
 After context-token validation, active requests follow this order: `sensitive()` blocks any method
 with `blockedBy: 'sensitive'`; an unsafe method without edit access blocks with
 `blockedBy: 'view_only'`; then an unsafe method without route or group `allowMutation()` blocks
-with `blockedBy: 'mutation_not_allowed'`. Only an edit-mode request on an opted-in route proceeds
-to the customer's ordinary authorization. The view-only response does not reveal whether a route
+with `blockedBy: 'mutation_not_allowed'`. Only an unsafe edit-mode request on an opted-in route proceeds
+to the customer's ordinary authorization. GET, HEAD and OPTIONS remain reads in either access
+level, subject to `sensitive()` and ordinary target authorization. The view-only response does not reveal whether a route
 has `allowMutation()`. The host controls the error page, redirect or JSON response and its wording.
 
 This rule does not prove that a GET handler has no side effects. Password, credential, identity,

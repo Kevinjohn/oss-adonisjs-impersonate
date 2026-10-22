@@ -93,6 +93,64 @@ test('edit policy receives start reason and request but no admission request', a
   assert.notProperty(f.state.editInputs[1] as object, 'reason')
 })
 
+test('edit policy follows global policy and precedes request policy on start and admission', async ({
+  assert,
+}) => {
+  const f = fixture()
+  const timeline: string[] = []
+  let globalAllowed = true
+  f.config.policy.canMasquerade = async (input) => {
+    timeline.push('global')
+    assert.equal(input.actor.id, 'a')
+    assert.equal(input.target.id, 'b')
+    return globalAllowed
+  }
+  f.config.policy.canEdit = async (input) => {
+    timeline.push('edit')
+    assert.equal(input.actor.id, 'a')
+    assert.equal(input.target.id, 'b')
+    return true
+  }
+  f.config.policy.canUseRequest = async () => {
+    timeline.push('request')
+    return true
+  }
+  const service = await f.create()
+  await f.start(service, {}, 'edit')
+  assert.deepEqual(timeline, ['global', 'edit', 'request'])
+  timeline.length = 0
+  await service.resolve({})
+  assert.deepEqual(timeline, ['global', 'edit', 'request'])
+
+  timeline.length = 0
+  globalAllowed = false
+  const deniedAdmission = await f.create()
+  assert.equal(await errorCode(() => deniedAdmission.resolve({})), 'E_MASQUERADE_CONTEXT_CHANGED')
+  assert.deepEqual(timeline, ['global'])
+  assert.equal(f.store.events.at(-1)!.outcomeCode, 'policy_denied')
+
+  const deniedStart = fixture()
+  const startCalls: string[] = []
+  deniedStart.config.policy.canMasquerade = async () => {
+    startCalls.push('global')
+    return false
+  }
+  deniedStart.config.policy.canEdit = async () => {
+    startCalls.push('edit')
+    return true
+  }
+  deniedStart.config.policy.canUseRequest = async () => {
+    startCalls.push('request')
+    return true
+  }
+  const deniedStartService = await deniedStart.create()
+  assert.equal(
+    await errorCode(() => deniedStart.start(deniedStartService, {}, 'edit')),
+    'E_MASQUERADE_NOT_ALLOWED'
+  )
+  assert.deepEqual(startCalls, ['global'])
+})
+
 test('start preserves input-shape, context and active-mode error precedence', async ({
   assert,
 }) => {

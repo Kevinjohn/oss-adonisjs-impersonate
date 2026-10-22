@@ -43,6 +43,7 @@ test.group('same-origin JSON support client', (group) => {
     customer.assertStatus(200)
     assert.equal(customer.body().actor.id, actor.id)
     assert.equal(customer.body().customer.id, target.id)
+    assert.equal(customer.body().mode.access, 'view')
     assert.equal(customer.body().mode.contextToken, started.body().contextToken)
     assert.equal(customer.body().emailUpdates, false)
     customer.assertHeader('cache-control', 'private, no-store')

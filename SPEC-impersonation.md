@@ -527,9 +527,9 @@ This additive contract changes D09/I12 and the related route, admission and star
 ### 14.1 Access contract and policy
 
 - Access values are exactly `'view' | 'edit'`. Every new mode defaults to `'view'`; there is no configuration-level default. Access is fixed for the lifetime of a mode.
-- `StartInput.access?: 'view' | 'edit'`. Only `undefined` defaults to `'view'`; any other supplied value is invalid input. `ModeView` exposes `access` exactly while active. Idle views omit the key.
+- `StartInput.access?: 'view' | 'edit'`. Only `undefined` defaults to `'view'`; supplied values other than exactly `'view'` or `'edit'` are invalid input. `ModeView` exposes `access` exactly while active. Idle views omit the key.
 - `ResolvedContext.access?` is present exactly while masquerading, like `modeId`. The account-wide mode applies the selected access to every integrated session and token transport; there is no per-token edit ability.
-- Add optional `canEdit(input: { actor: Subject<User>; target: Subject<User>; reason: string; request: Request }): Promise<boolean>` to `MasqueradePolicy`. A missing callback or any result other than exact `true` denies edit. A throw is an infrastructure failure. `canMasquerade` keeps its existing input and meaning and MUST NOT receive access as an authorization shortcut.
+- Add optional `canEdit(input: { actor: Subject<User>; target: Subject<User>; reason?: string; request?: Request }): boolean | Promise<boolean>` to `MasqueradePolicy`. A missing callback or any result other than exact `true` denies edit. A throw is an infrastructure failure. `canMasquerade` keeps its existing input and meaning and MUST NOT receive access as an authorization shortcut.
 - At start with `access: 'edit'`, call `canEdit` only after `canMasquerade` returns `true` and before `canUseRequest`. A missing callback or non-`true` result returns 403 `E_MASQUERADE_NOT_ALLOWED` and leaves mode unchanged. A throw returns 503 and leaves mode unchanged; record the existing `policy` / `can_edit` diagnostic. View starts never call `canEdit`.
 - At admission of an active edit-mode row, call `canMasquerade` first and then `canEdit({ actor, target })`, without reason or request. If `canEdit` is absent or does not return exact `true`, invalidate the whole mode with code `edit_denied`; reject the triggering request with 409. Do not downgrade. A throw returns 503 with mode unchanged. View-mode admission never calls `canEdit`. Stop never calls either edit or masquerade policy.
 
@@ -543,12 +543,12 @@ This additive contract changes D09/I12 and the related route, admission and star
 
 After active admission and context-token validation, apply these rules in order:
 
-| Condition | Result |
-| --- | --- |
-| Route is `sensitive()` (any method) | 403 `E_MASQUERADE_ACTION_BLOCKED`, `blockedBy: 'sensitive'` |
-| Method is unsafe and `access !== 'edit'` | 403 `E_MASQUERADE_ACTION_BLOCKED`, `blockedBy: 'view_only'` |
+| Condition                                          | Result                                                                 |
+| -------------------------------------------------- | ---------------------------------------------------------------------- |
+| Route is `sensitive()` (any method)                | 403 `E_MASQUERADE_ACTION_BLOCKED`, `blockedBy: 'sensitive'`            |
+| Method is unsafe and `access !== 'edit'`           | 403 `E_MASQUERADE_ACTION_BLOCKED`, `blockedBy: 'view_only'`            |
 | Method is unsafe and route lacks `allowMutation()` | 403 `E_MASQUERADE_ACTION_BLOCKED`, `blockedBy: 'mutation_not_allowed'` |
-| Otherwise | Continue; ordinary Bouncer authorization runs as the target |
+| Otherwise                                          | Continue; ordinary Bouncer authorization runs as the target            |
 
 The view-only check MUST use `access !== 'edit'`, so a missing or unknown access value fails closed. In view mode, an unsafe route without `allowMutation()` still returns `blockedBy: 'view_only'`; it MUST NOT reveal route configuration. `sensitive()` always takes precedence. Safe methods continue under ordinary target authorization; this is not a guarantee that handlers have no side effects.
 

@@ -4,7 +4,11 @@
 
 - Add view-only-by-default starts with optional per-start edit access gated by `canEdit`, include
   `access` in active mode and audit projections, and return typed `blockedBy` details for blocked
-  actions. Update the control-store conformance contract and examples for the new access level.
+  actions. Add nullable `access` columns to the mode and event tables by editing the unpublished
+  create migration in place; recreate existing demo and example databases before running the
+  updated package. Custom stores must persist access and reject event/row access mismatches to
+  pass the updated conformance suite. Examples now offer View only and Can edit at start and
+  explain blocked actions in host-owned pages.
 - Add a runnable bearer API lifecycle to the native-session example, including token issuance,
   effective customer reads, shared browser mode, stop, and native revocation.
 - Add v1.1 opaque access-token authentication that shares account mode with native sessions and

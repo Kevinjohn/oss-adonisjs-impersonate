@@ -92,7 +92,7 @@ const tick = () => new Promise((resolve) => setImmediate(resolve))
 
 test('captures context and Shield CSRF with the constructed preference intent', async () => {
   const requests = []
-  const { elements, selectedAccess } = fixture(async (path, options) => {
+  const { elements } = fixture(async (path, options) => {
     requests.push({ path, options })
     if (path === '/masquerade') return json(active('revision-1'))
     if (path === '/support/json/customer')
@@ -151,7 +151,7 @@ test('reads status after an uncertain transition without replaying the old start
     requests.map(({ path }) => path),
     ['/masquerade', '/masquerade/start', '/masquerade']
   )
-  assert.equal(requests[1].options.body.access, 'edit')
+  assert.equal(JSON.parse(requests[1].options.body).access, 'edit')
   assert.match(elements['json-notice'].textContent, /may have completed/)
   assert.equal(elements['json-target'].value, '')
   assert.equal(elements['json-reason'].value, '')
