@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add a prerelease Account Kit integration preview covering the optional adapter, actor and target admission gates, managed-route blocker, route report, and current SQLite/PostgreSQL verification boundary. No registry alpha version is available yet.
 - Add view-only-by-default starts with optional per-start edit access gated by `canEdit`, include
   `access` in active mode and audit projections, and return typed `blockedBy` details for blocked
   actions. Add nullable `access` columns to the mode and event tables by editing the unpublished

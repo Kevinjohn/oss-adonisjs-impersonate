@@ -2,7 +2,7 @@
 
 **Status:** M4 verification is complete for the current release candidate. M0–M3 evidence is recorded in [M3-RESULT.md](../../M3-RESULT.md). After the async migration correction, `pnpm test` passed 162 SQLite tests, `pnpm test:pg` passed 158 PostgreSQL 16 tests (server stopped cleanly), and build, typecheck and two built-export checks passed. Six configure/migration cases pass; floor/latest generated scaffolds compile; the native credential case passes 1/1. All four packed floor/latest × SQLite/PostgreSQL 16.15 cells passed, for 72 functional, report and credential executions. Exact versions and artifact identity are recorded below. This verification does not imply publication.
 
-**Authority and scope:** The accepted `DEVELOPMENT-PLAN.md` wins where it narrows SPEC/PRD. v1 is native session only; opaque access-token adapter is v1.1 and JWT is out. The Account Kit adapter and managed-route blocker are accepted v1.2 scope, but implementation and T-KIT/T-KIT-HTTP evidence remain pending. Core retains the native `securityStamp`/`inspectAccount` contract and no Account Kit dependency. Cut JSON:API, package i18n, and 4x2x2 consumer matrix. FR-09 uses route-report release gate; FR-14 owner-bound revision.nonce + report/enforce; FR-21/22 SHA-256 stamps; FR-30 emit-and-forget; indeterminate commit 503 + transition ID + status recovery. Consumer target is one native-session packed consumer at floor/latest on SQLite/PostgreSQL.
+**Authority and scope:** The accepted `DEVELOPMENT-PLAN.md` wins where it narrows SPEC/PRD. v1 is native session only; opaque access-token adapter is v1.1 and JWT is out. The Account Kit adapter and managed-route blocker are accepted v1.2 scope and are implemented in the current working tree; diagnostic SQLite evidence is recorded below, while the packed peer/database release matrix remains pending. Core retains the native `securityStamp`/`inspectAccount` contract and no Account Kit dependency. Cut JSON:API, package i18n, and 4x2x2 consumer matrix. FR-09 uses route-report release gate; FR-14 owner-bound revision.nonce + report/enforce; FR-21/22 SHA-256 stamps; FR-30 emit-and-forget; indeterminate commit 503 + transition ID + status recovery. Consumer target is one native-session packed consumer at floor/latest on SQLite/PostgreSQL.
 
 Legend: evidence names a concrete current test case; statements explicitly identified as optional are integration-depth opportunities, not uncovered acceptance requirements. M3 outcomes are recorded in M3-RESULT.md. Documentation obligations are linked to user guides; link checks do not establish semantic completeness.
 
@@ -129,16 +129,23 @@ latest 7.6.0/10.1.0/4.0.1/22.4.2/8.3.0/6.0.3.
 The owner accepted D1–D13 on 22 October 2026. The technical contract is
 [SPEC §15](../../SPEC-impersonation.md#15-v12-account-kit-integration), and the product boundary is
 the [PRD v1.2 addendum](../../PRD-impersonation.md#v12-account-kit-integration-accepted-22-october-2026).
-This section records acceptance obligations; no v1.2 implementation or verification is claimed.
+The implementation and diagnostic evidence below are from the current working tree and approved
+local Account Kit source revision `b2814006`; they do not establish evidence against a published
+alpha. Contract and lifecycle PRs #100 and #101 remain open; authority and blocker PRs #102 and
+#103 remain open drafts. Packed-consumer PR #104 is also an open draft.
+The final clean-host packed consumer and peer/database matrix have not been completed. The alpha
+package was unavailable from the registry (404), and the Core 7.0.0 consumer host could not start
+because Account Kit's OpenAPI command imports `configProvider` from `@adonisjs/core/config`, which Core 7.0.0 does not export; these limitations are not
+treated as passing runtime evidence.
 
-| Decision range | Recorded contract in the design                                                                                                                                                                                                                                                               | Evidence status                                                                                      |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| D1–D3          | Optional `account-kit` subpath and alpha peer; lazy kit resolver; raw guard name from `managedGuard.name`; no host `securityStamp`/`isActive` options; equality-only revision stamp; coherent active account inspection maps access denial to ineligible and propagates operational failures. | Pending adapter implementation and T-KIT evidence.                                                   |
-| D4–D5          | Authenticate with raw guard then Account Kit `current`; keep admission separate and host-owned, including actor route middleware and target admission policy.                                                                                                                                 | Pending actor and admission cases in T-KIT.                                                          |
-| D6–D8          | Globally block authenticated `accountKit.*` requests during active mode except logout/CSRF; classify by route name; report managed routes protected only when blocker installation is verified.                                                                                               | Pending T-KIT-HTTP and startup/report evidence.                                                      |
-| D9, D12        | Support SQLite and PostgreSQL; one transport matching Account Kit's configured strategy.                                                                                                                                                                                                      | Pending matrix; MySQL and a second composed transport are outside accepted scope.                    |
-| D10–D11        | Add SPEC §15 and supersession pointers; read/validate the owner row through the existing service using a symbol-keyed internal method, with no second store or mode mutation.                                                                                                                 | Contract recorded. Internal method and its read/expiry behavior remain unimplemented and unverified. |
-| D13            | Provider checks guard identity/strategy and managed-route registration, then records verified blocker installation; startup fails on failed checks, subject to the specified first-request fallback if router timing requires it.                                                             | Pending provider and route lifecycle evidence.                                                       |
+| Decision range | Recorded contract in the design                                                                                                                                                                                                                                                               | Evidence status                                                                                                                                                                                                                                                            |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1–D3          | Optional `account-kit` subpath and alpha peer; lazy kit resolver; raw guard name from `managedGuard.name`; no host `securityStamp`/`isActive` options; equality-only revision stamp; coherent active account inspection maps access denial to ineligible and propagates operational failures. | Adapter implemented; the exact optional peer and development-dependency alpha pin remain pending publication. Authority/service tests and diagnostic SQLite credential/eligibility coverage pass locally. Published-package and PostgreSQL matrix evidence remain pending. |
+| D4–D5          | Authenticate with raw guard then Account Kit `current`; keep admission separate and host-owned, including actor route middleware and target admission policy.                                                                                                                                 | Implemented; `account_kit_admission.spec.ts` covers actor and target revocation, plus authority and credentials suites. Diagnostic SQLite coverage passes; final matrix remains pending.                                                                                   |
+| D6–D8          | Globally block authenticated `accountKit.*` requests during active mode except logout/CSRF; classify by route name; report managed routes protected only when blocker installation is verified.                                                                                               | Implemented; blocker/provider tests cover registration, guard, route report, exemptions and active-mode enforcement. Diagnostic SQLite route coverage passes; final matrix remains pending.                                                                                |
+| D9, D12        | Support SQLite and PostgreSQL; one transport matching Account Kit's configured strategy.                                                                                                                                                                                                      | SQLite diagnostic coverage passes for both strategies and session-management settings. PostgreSQL release-matrix coverage remains pending; MySQL and a second composed transport are outside accepted scope.                                                               |
+| D10–D11        | Add SPEC §15 and supersession pointers; read/validate the owner row through the existing service using a symbol-keyed internal method, with no second store or mode mutation.                                                                                                                 | Contract and service path are implemented. `account_kit_blocker.spec.ts` covers active/inactive row inspection and malformed/store failures; diagnostic HTTP tests cover reads and no-read cases. Final matrix remains pending.                                            |
+| D13            | Provider checks guard identity/strategy and managed-route registration, then records verified blocker installation; startup fails on failed checks, subject to the specified first-request fallback if router timing requires it.                                                             | Implemented; `account_kit_provider.spec.ts` and `account_kit_lifecycle.spec.ts` cover route verification, startup rejection and ready timing. Final clean-host evidence remains pending.                                                                                   |
 
 **T-KIT obligations:** prove null and timestamp revisions encode differently and start stores the
 inspection snapshot's stamp. Missing, restricted and inactive targets are indistinguishable 403s
@@ -149,30 +156,44 @@ or restriction change produce `target_stamp`. Actor password change with `keepCu
 `actor_stamp` on the next admission without 401; actor `revokeAll` or password change without
 `keepCurrent` produces 401 until re-login, then `actor_stamp`; restriction denying `canAccess`
 produces 401 while restricted. Single revoke, revoke-others and logout do not invalidate mode.
-With host admission middleware and policy, target admission revocation produces `policy_denied`,
-while actor admission revocation returns 403 and leaves the row unchanged until re-approval. A
-stale session revision, revoked token or ended session handle cannot start, use or stop and is
+With a pre-context host gate using `AccountAdmission.require` on protected control/business routes
+and `AccountAdmission.isAdmitted` in target policy, target admission revocation produces
+`policy_denied`; actor admission revocation returns 403 before the mode row is read and leaves it
+unchanged until re-approval. A stale session revision, revoked token or ended session handle cannot start, use or stop and is
 rejected before a store read. Inspection creates no target credential, session, token or revision
 change. Cover both strategies, session management on/off, incarnation callback and guard
 name/strategy mismatch at startup.
 
-**T-KIT-HTTP obligations:** every mounted managed route other than logout and CSRF is blocked
-before its handler during active mode, for every method, custom prefixes and excluded endpoints;
-tokens without the Masquerade ability remain blocked. Logout and CSRF work during active mode and
-store outage without a store read. Idle actors, actors with no row, other users and
-unauthenticated public proof requests retain Account Kit behavior. Authenticated managed requests
-with store outage return 503, except logout and CSRF, which pass store-free. Missing managed registration fails at startup or first request per
-provider timing. The route report lists the managed group only when blocker installation is
-verified, and otherwise leaves routes unclassified with a missing/unverified note. `node ace`
-works without Account Kit.
+**T-KIT-HTTP obligations:** every mounted registered managed route other than logout and CSRF is
+blocked before its handler during active mode, for every method and custom prefix. With Account
+Kit's `except` option, omitted endpoints are not mounted by Account Kit and remaining registered
+routes stay covered by the blocker. A host-added `accountKit.*` route absent from registration fails
+provider validation. Tokens without the Masquerade ability remain
+blocked. Logout, CSRF and unauthenticated public managed requests pass without a Masquerade store
+read. Every
+other authenticated managed request reads the actor's mode row; an active unexpired mode is
+blocked, while no row, an idle or expired row, or no active mode for that actor passes after the
+read. Authenticated managed requests with Masquerade store outage return 503, except logout and CSRF, which
+pass store-free. Missing managed registration fails at startup or first request per provider
+timing. The route report lists the managed group only when blocker installation is verified, and
+otherwise leaves routes unclassified with a missing or unverified note. `node ace` works without
+Account Kit.
 
-| Acceptance family            | Release evidence required                                                                                                                                                                                                                | Current status                                                |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| T-KIT                        | Adapter tests on SQLite and PostgreSQL for both strategies and session management modes, including stamp, eligibility, actor authentication, admission, credential and startup cases above.                                              | Pending; no Account Kit adapter tests exist yet.              |
-| T-KIT-HTTP                   | Managed-route blocker and report cases on SQLite and PostgreSQL for both strategies, with store-free exemptions and outage behavior above.                                                                                               | Pending; no managed-route blocker tests exist yet.            |
-| Packed consumer release gate | A fresh AdonisJS 7 host uses the published exact Account Kit alpha; both families pass for peer floor and latest, across both strategies and both supported databases; exact dependency versions and results are recorded here when run. | Pending; no v1.2 consumer runner or matrix result is claimed. |
+| Acceptance family            | Release evidence required                                                                                                                                                                                                                | Current status                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T-KIT                        | Adapter tests on SQLite and PostgreSQL for both strategies and session management modes, including stamp, eligibility, actor authentication, admission, credential and startup cases above.                                              | Implemented and diagnostic SQLite tests pass for both strategies and session-management on/off. Trace: `tests/account_kit_authority.spec.ts`, `tests/account_kit_service.spec.ts`, `examples/account-kit/tests/functional/account_kit_credentials.spec.ts`, `account_kit_eligibility.spec.ts`, and `account_kit_admission.spec.ts`. PostgreSQL and published-alpha matrix remain pending. |
+| T-KIT-HTTP                   | Managed-route blocker and report cases on SQLite and PostgreSQL for both strategies, with store-free exemptions and outage behavior above.                                                                                               | Implemented and diagnostic SQLite route/admission/cost tests pass. Trace: `tests/account_kit_blocker.spec.ts`, `tests/account_kit_provider.spec.ts`, `tests/account_kit_lifecycle.spec.ts`, `examples/account-kit/tests/functional/account_kit_routes.spec.ts`, `account_kit_journey.spec.ts`, and `account_kit_cost.spec.ts`. PostgreSQL and published-alpha matrix remain pending.      |
+| Packed consumer release gate | A fresh AdonisJS 7 host uses the published exact Account Kit alpha; both families pass for peer floor and latest, across both strategies and both supported databases; exact dependency versions and results are recorded here when run. | Pending. Consumer PR #104 is an open draft; the registry alpha was unavailable and the Core 7.0.0 host startup is blocked because Account Kit's OpenAPI command imports `configProvider` from `@adonisjs/core/config`, which Core 7.0.0 does not export. No packed published-alpha matrix result is claimed.                                                                              |
 
-Every issue runs `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm quick:test`,
-`pnpm test:pg` and `pnpm test:built-exports` on Node 24. Issues 4 and 5 also run
-`pnpm test:account-kit`. Mutation-check every new guard by observing its named test fail when
-broken, then restore it. These checks have not yet been run for v1.2.
+The six repository scripts (`pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm quick:test`,
+`pnpm test:pg` and `pnpm test:built-exports`) have been reported passing on Node 24 for the
+current implementation. Issues 4 and 5 also require `pnpm test:account-kit`; diagnostic SQLite
+coverage is green, but the final clean-host packed run is pending. Mutation evidence for each new
+guard and the exact peer-floor/latest × SQLite/PostgreSQL release matrix must be recorded before
+the v1.2 acceptance gate is complete.
+
+The guide session snippets were installed in a separate disposable host using the same packed
+artifacts. Its provider setup, route report and `pnpm typecheck` passed. A view-mode journey
+passed (1 case) and admission passed (3 cases). The copied smoke requests were changed from edit
+to view to match the guide policy, and the business route was given a matching `business.*` name.
+This is runtime setup evidence, not a usability study or published-alpha evidence.
