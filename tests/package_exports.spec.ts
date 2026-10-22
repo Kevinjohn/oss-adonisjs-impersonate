@@ -12,6 +12,8 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     const auth = await import('adonisjs-masquerade/auth')
     const http = await import('adonisjs-masquerade/http')
     const native = await import('adonisjs-masquerade/native')
+    const accountKitPath = 'adonisjs-masquerade/account-kit'
+    const accountKit = await import(accountKitPath)
     const lucid = await import('adonisjs-masquerade/stores/lucid')
     const testing = await import('adonisjs-masquerade/testing')
     assert.equal(typeof root, 'object')
@@ -26,6 +28,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     assert.isFunction(native.sessionAuthority)
     assert.isFunction(native.accessTokensAuthority)
     assert.isFunction(native.nativeAuthorities)
+    assert.isFunction(accountKit.accountKitAuthority)
     for (const name of [
       'MasqueradeController',
       'masqueradeContext',
@@ -66,6 +69,35 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
           const core = await import('adonisjs-masquerade')
           if (typeof core.createMasqueradeService !== 'function') {
             throw new Error('Core service export is missing')
+          }
+        `,
+      ],
+      { encoding: 'utf8' }
+    )
+    assert.equal(consumer.status, 0, consumer.stderr)
+  })
+
+  test('imports Account Kit integration exports without resolving the optional peer', ({
+    assert,
+  }) => {
+    const consumer = spawnSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '--eval',
+        `
+          import { registerHooks } from 'node:module'
+          registerHooks({
+            resolve(specifier, context, nextResolve) {
+              if (specifier === 'adonisjs-account-kit' || specifier.startsWith('adonisjs-account-kit/')) {
+                throw new Error('Optional peer resolved eagerly: ' + specifier)
+              }
+              return nextResolve(specifier, context)
+            },
+          })
+          const integration = await import('adonisjs-masquerade/account-kit')
+          if (typeof integration.accountKitAuthority !== 'function') {
+            throw new Error('Account Kit integration export is missing')
           }
         `,
       ],

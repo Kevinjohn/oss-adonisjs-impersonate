@@ -31,7 +31,8 @@
     "./http": "./build/http/main.js",
     "./native": "./build/native/main.js",
     "./stores/lucid": "./build/stores/lucid.js",
-    "./testing": "./build/testing/main.js"
+    "./testing": "./build/testing/main.js",
+    "./account-kit": "./build/account_kit/main.js"
   },
   "scripts": {
     "copy:templates": "copyfiles \"stubs/**/*.stub\" build",
@@ -142,7 +143,8 @@
       "./http/main.ts",
       "./native/main.ts",
       "./stores/lucid.ts",
-      "./testing/main.ts"
+      "./testing/main.ts",
+      "./account_kit/main.ts"
     ],
     "outDir": "./build",
     "clean": true,
