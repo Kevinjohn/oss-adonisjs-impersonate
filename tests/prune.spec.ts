@@ -3,7 +3,7 @@ import { pruneMasquerade } from '../src/prune.js'
 import { createMasqueradeService } from '../src/service.js'
 import { fixture, errorCode } from './helpers/core.js'
 
-test('prune expiry event carries the row access', async ({ assert }) => {
+test("prune expiry event carries the row's access", async ({ assert }) => {
   const f = fixture()
   await f.start(await f.create(), {}, 'edit')
   const commit = f.store.compareAndSet.bind(f.store)

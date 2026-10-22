@@ -198,9 +198,12 @@ test.group('masquerade HTTP boundary', () => {
       body: jsonBody,
       contentType: 'application/json',
     })
-    await new MasqueradeController().start(jsonRequest)
+    await handleWithDefaultExceptionHandler(jsonRequest, () =>
+      new MasqueradeController().start(jsonRequest)
+    )
     assert.equal(jsonResponse.status, 200)
-    assert.equal((await jsonFixture.store.read(jsonFixture.owner))?.access, 'edit')
+    const jsonRow = await jsonFixture.store.read(jsonFixture.owner)
+    assert.equal(jsonRow?.access, 'edit')
 
     const formFixture = fixture()
     const formService = await formFixture.create()
@@ -216,9 +219,12 @@ test.group('masquerade HTTP boundary', () => {
       contentType: 'application/x-www-form-urlencoded',
       raw: new URLSearchParams(formBody).toString(),
     })
-    await new MasqueradeController().start(formRequest)
+    await handleWithDefaultExceptionHandler(formRequest, () =>
+      new MasqueradeController().start(formRequest)
+    )
     assert.equal(formResponse.status, 200)
-    assert.equal((await formFixture.store.read(formFixture.owner))?.access, 'edit')
+    const formRow = await formFixture.store.read(formFixture.owner)
+    assert.equal(formRow?.access, 'edit')
 
     const invalidFixture = fixture()
     const invalidService = await invalidFixture.create()

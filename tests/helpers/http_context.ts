@@ -14,7 +14,12 @@ export function requestContext(
     contentLength?: string | null
     header?: string
     routeMiddleware?: unknown[]
+    groupMiddleware?: unknown[]
     defaultGuard?: string
+    admit?: (
+      request: object,
+      fallback: () => Promise<RequestAdmission<unknown>>
+    ) => Promise<RequestAdmission<unknown>>
   }
 ) {
   const responseState: {
@@ -27,6 +32,10 @@ export function requestContext(
     varies: [],
   }
   const warnings: unknown[] = []
+  const routeMiddleware = options.routeMiddleware ?? [
+    { name: 'auth', args: [{ guards: ['web_effective'] }] },
+  ]
+  const groupMiddleware = options.groupMiddleware ?? []
   const ctx: Record<string, any> = {
     actorId: 'a',
     auth: { defaultGuard: options.defaultGuard ?? 'web_effective' },
@@ -34,10 +43,8 @@ export function requestContext(
       name: 'business.test',
       pattern: '/business',
       middleware: {
-        all: () =>
-          new Set(
-            options.routeMiddleware ?? [{ name: 'auth', args: [{ guards: ['web_effective'] }] }]
-          ),
+        all: () => new Set([...groupMiddleware, ...routeMiddleware]),
+        route: () => new Set(routeMiddleware),
       },
     },
     logger: { warn: (value: unknown) => warnings.push(value) },
@@ -89,11 +96,13 @@ export function requestContext(
         effectiveGuardNames: ['web_effective', 'web_alias'],
         admit: async (request: object) => {
           const service = await f.create()
-          return (
-            service as MasqueradeService<object> & {
-              [admission]: (request: object) => Promise<RequestAdmission<unknown>>
-            }
-          )[admission](request)
+          const fallback = () =>
+            (
+              service as MasqueradeService<object> & {
+                [admission]: (request: object) => Promise<RequestAdmission<unknown>>
+              }
+            )[admission](request)
+          return options.admit ? options.admit(request, fallback) : fallback()
         },
       }),
     },

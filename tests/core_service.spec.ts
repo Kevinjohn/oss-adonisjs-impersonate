@@ -84,7 +84,7 @@ test('start stores view by default and edit when requested', async ({ assert }) 
   }
 })
 
-test('started, stopped and invalidated events carry the row access; observer payloads include it', async ({
+test("started, stopped and invalidated events carry the row's access; observer payloads include it", async ({
   assert,
 }) => {
   const f = fixture()
