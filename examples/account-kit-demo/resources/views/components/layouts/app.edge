@@ -1,0 +1,40 @@
+@let(nav = [
+  { label: 'Dashboard', route: 'dashboard', icon: 'lucide:house' },
+  { label: 'Support', route: 'demo.workspace', icon: 'lucide:life-buoy' },
+  { label: 'Your account', route: 'support.account', icon: 'lucide:user' },
+])
+@let(pageTitle = $props.get('title'))
+@layouts.document({ title: pageTitle ? `${pageTitle} - Support demo` : 'Support demo' })
+  @vite(['resources/js/account_kit_forms.js'])
+  <header class="header header--bar">
+    <div class="header__inner">
+      @!logo({ size: 28 })
+      <div class="header__right">
+        @!themeToggle()
+        <form data-kit-logout>
+          <button type="submit" class="btn btn--secondary btn--sm" disabled>
+            @svg('lucide:log-out', { width: 15, height: 15 })
+            <span>Log out</span>
+          </button>
+          <p role="alert" data-kit-error hidden></p>
+        </form>
+        <noscript>
+          <p>Enable JavaScript to log out of this demo.</p>
+        </noscript>
+      </div>
+    </div>
+  </header>
+  <nav class="subnav">
+    <div class="subnav__inner">
+      @each(item in nav)
+        @navLink({ route: item.route, class: 'subnav__item' })
+          @if(item.icon)
+            @svg(item.icon, { width: 14, height: 14 })
+          @end
+          {{ item.label }}
+        @end
+      @end
+    </div>
+  </nav>
+  <div class="app-main">{{{ await $slots.main() }}}</div>
+@end
