@@ -48,6 +48,7 @@
     "test:coverage": "c8 pnpm quick:test",
     "test:built-exports": "cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=package_exports.spec.ts --files=configure.spec.ts --files=configure_ace.spec.ts",
     "test:consumer": "node --import=@poppinss/ts-exec --enable-source-maps bin/test_consumer.ts",
+    "test:account-kit": "node --import=@poppinss/ts-exec --enable-source-maps bin/test_account_kit.ts",
     "test:recipe": "node --import=@poppinss/ts-exec --enable-source-maps bin/test_recipe.ts",
     "test:inertia-vue": "node --import=@poppinss/ts-exec --enable-source-maps bin/test_inertia_vue.ts",
     "pack:fixture": "pnpm pack --out tmp/native-session-package.tgz",
