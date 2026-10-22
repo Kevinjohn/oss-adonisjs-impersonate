@@ -155,7 +155,7 @@ test.group('support workspace browser journey', (group) => {
     await page.waitForURL('**/support/customer')
     assert.include(await page.locator('[data-support-mode]').innerText(), 'View only')
 
-    await page.getByLabel('Email updates').selectOption('1')
+    await page.getByLabel('Setting', { exact: true }).selectOption('1')
     await page.getByRole('button', { name: 'Save preference' }).click()
     await page.locator('#support-error-title').waitFor()
     const errorTitle = await page.locator('#support-error-title').textContent()
