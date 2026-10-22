@@ -78,6 +78,10 @@ test.group('Account Kit managed route coverage', () => {
     const events = f.store.events
     assert.isTrue(await check(f.owner))
     assert.isFalse(await check({ ...f.owner, actorIncarnation: 'other' }))
+    await assert.rejects(
+      () => check({ ...f.owner, namespace: 'other' }),
+      'Masquerade is unavailable'
+    )
     f.state.now = Date.parse(before!.expiresAt!)
     assert.isFalse(await check(f.owner))
     assert.deepEqual(await f.store.read(f.owner), before)

@@ -349,14 +349,141 @@ test('Account Kit inspection distinguishes denied, missing, mismatched and opera
     await errorCode(() => adapter.authority.inspectAccount('7')),
     'E_MASQUERADE_UNAVAILABLE'
   )
-  providerId = 7
   inspectedId = 8
+  providerId = 8
   assert.equal(
     await errorCode(() => adapter.authority.inspectAccount('7')),
     'E_MASQUERADE_UNAVAILABLE'
   )
   failure = new Error('db down')
   await assert.rejects(() => adapter.authority.inspectAccount('7'), /db down/)
+})
+
+test('Account Kit actor must have the same canonical owner in raw, managed and current results', async ({
+  assert,
+}) => {
+  const user = { id: 7 }
+  let managedId = 7
+  let kitId = 7
+  const adapter = accountKitAuthority({
+    namespace: 'users',
+    incarnation: 'id',
+    kit: () => ({
+      authentication: {
+        inspectAccountAccess: async () => ({ account: { id: 7, active: true }, revision: null }),
+        current: async () => ({ id: kitId }),
+      },
+    }),
+    managedGuard: {
+      name: 'web',
+      strategy: 'session',
+      current: async () => ({ userId: managedId, revision: null }),
+    },
+    provider: {
+      createUserForGuard: async () => ({ getId: () => 7, getOriginal: () => user }),
+      findById: async () => null,
+    },
+  })
+  const ctx = {
+    auth: { use: () => ({ driverName: 'session', authenticate: async () => user }) },
+  } as unknown as HttpContext
+  const actor = await adapter.authenticateActor(ctx)
+  assert.equal(actor.id, '7')
+  kitId = 8
+  assert.equal(await errorCode(() => adapter.authenticateActor(ctx)), 'E_MASQUERADE_UNAVAILABLE')
+  kitId = 7
+  managedId = 8
+  assert.equal(await errorCode(() => adapter.authenticateActor(ctx)), 'E_MASQUERADE_UNAVAILABLE')
+})
+
+test('Account Kit rejects the wrong raw driver before credential authentication', async ({
+  assert,
+}) => {
+  const user = { id: 7, currentAccessToken: { allows: () => true } }
+  let rawAuthentications = 0
+  const base = {
+    namespace: 'users',
+    incarnation: 'id' as const,
+    kit: () => ({
+      authentication: {
+        inspectAccountAccess: async () => ({ account: { id: 7, active: true }, revision: null }),
+        current: async () => ({ id: 7 }),
+      },
+    }),
+    provider: {
+      createUserForGuard: async () => ({ getId: () => 7, getOriginal: () => user }),
+      findById: async () => null,
+    },
+  }
+  const session = accountKitAuthority({
+    ...base,
+    managedGuard: {
+      name: 'web',
+      strategy: 'session',
+      current: async () => ({ userId: 7, revision: null }),
+    },
+  })
+  const token = accountKitAuthority({
+    ...base,
+    managedGuard: {
+      name: 'api',
+      strategy: 'access_tokens',
+      current: async () => ({ userId: 7, tokenId: 1 }),
+    },
+    ability: 'masquerade',
+  })
+  for (const [adapter, driverName] of [
+    [session, 'access_tokens'],
+    [token, 'session'],
+  ] as const) {
+    const ctx = {
+      auth: {
+        use: () => ({
+          driverName,
+          authenticate: async () => {
+            rawAuthentications++
+            return user
+          },
+        }),
+      },
+    } as unknown as HttpContext
+    assert.equal(await errorCode(() => adapter.authenticateActor(ctx)), 'E_MASQUERADE_UNAVAILABLE')
+  }
+  assert.equal(rawAuthentications, 0)
+})
+
+test('Account Kit authority rejects invalid runtime option families', ({ assert }) => {
+  const user = { id: 7 }
+  const base = {
+    namespace: 'users',
+    incarnation: 'id',
+    kit: () => ({
+      authentication: {
+        inspectAccountAccess: async () => ({ account: { id: 7, active: true }, revision: null }),
+        current: async () => ({ id: 7 }),
+      },
+    }),
+    provider: {
+      createUserForGuard: async () => ({ getId: () => 7, getOriginal: () => user }),
+      findById: async () => null,
+    },
+    managedGuard: {
+      name: 'web',
+      strategy: 'session',
+      current: async () => ({ userId: 7, revision: null }),
+    },
+  }
+  const invalid = [
+    { ...base, namespace: '' },
+    { ...base, incarnation: 'mutable' },
+    { ...base, kit: undefined },
+    { ...base, provider: { ...base.provider, findById: undefined } },
+    { ...base, managedGuard: { ...base.managedGuard, strategy: 'cookies' } },
+    { ...base, ability: 'masquerade' },
+    { ...base, managedGuard: { ...base.managedGuard, strategy: 'access_tokens' } },
+  ]
+  for (const options of invalid)
+    assert.throws(() => accountKitAuthority(options as never), TypeError)
 })
 
 test('Account Kit token ability denial precedes managed and kit access', async ({ assert }) => {
