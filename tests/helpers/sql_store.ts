@@ -24,6 +24,7 @@ export function transition(revision = 1): CompareAndSetInput {
     lastTransitionId: id,
     updatedAt: '2026-01-01T00:00:00.000Z',
     state: 'idle',
+    access: null,
     targetId: null,
     targetIncarnation: null,
     actorStampHash: null,

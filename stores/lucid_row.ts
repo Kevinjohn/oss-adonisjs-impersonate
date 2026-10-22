@@ -17,6 +17,7 @@ export function rowRecord(row: ModeRow) {
     revision: row.revision,
     revision_nonce: row.revisionNonce,
     state: row.state,
+    access: row.access,
     mode_id: row.modeId,
     last_transition_id: row.lastTransitionId,
     target_id: row.targetId,
@@ -39,6 +40,7 @@ export function eventRecord(event: AuditEvent) {
     at: event.at,
     kind: event.kind,
     outcome_code: event.outcomeCode,
+    access: event.access ?? null,
     revision: event.revision,
     reason: event.reason ?? null,
   }
@@ -65,6 +67,7 @@ export function decodeRow(raw: Record<string, unknown>, owner?: OwnerKey): ModeR
     revision: parseRevision(raw.revision),
     revisionNonce: raw.revision_nonce,
     state: raw.state,
+    access: raw.access,
     modeId: raw.mode_id,
     lastTransitionId: raw.last_transition_id,
     targetId: raw.target_id,

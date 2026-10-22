@@ -2,6 +2,24 @@ import { test } from '@japa/runner'
 import { fixture, errorCode } from './helpers/core.js'
 import { validateRow } from '../src/row_validation.js'
 
+test('access fails closed', async ({ assert }) => {
+  const f = fixture()
+  const service = await f.create()
+  const active = await f.start(service)
+  const row = (await f.store.read(f.owner))!
+  for (const access of [undefined, null, 'unknown'])
+    assert.throws(
+      () => validateRow({ ...row, access } as never, f.owner),
+      'Masquerade is unavailable'
+    )
+  await service.stop({}, { expectedContext: active.contextToken })
+  const idle = (await f.store.read(f.owner))!
+  assert.throws(
+    () => validateRow({ ...idle, access: 'view' } as never, f.owner),
+    'Masquerade is unavailable'
+  )
+})
+
 test('malformed store rows fail closed across status, controls and admission', async ({
   assert,
 }) => {

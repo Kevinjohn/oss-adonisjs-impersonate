@@ -55,6 +55,7 @@ for (const invalidation of [
   'actor_ineligible',
   'target_ineligible',
   'policy_denied',
+  'edit_denied',
   'target_incarnation',
 ] as const) {
   test(`global invalidity ${invalidation} clears once and never admits the triggering request`, async ({
@@ -62,7 +63,7 @@ for (const invalidation of [
   }) => {
     const f = fixture()
     const service = await f.create()
-    await f.start(service)
+    await f.start(service, {}, invalidation === 'edit_denied' ? 'edit' : undefined)
     if (invalidation === 'actor_stamp') f.users.get('a')!.stamp = 'changed'
     if (invalidation === 'target_stamp') f.users.get('b')!.stamp = 'changed'
     if (invalidation === 'actor_ineligible' || invalidation === 'target_ineligible') {
@@ -76,6 +77,7 @@ for (const invalidation of [
       // The configuration snapshot is immutable; construct a fresh service sharing authoritative state.
     }
     if (invalidation === 'policy_denied') f.state.policy = false
+    if (invalidation === 'edit_denied') f.state.edit = false
     if (invalidation === 'target_incarnation') f.users.get('b')!.incarnation = 'new-b'
     const next = await f.create()
     assert.equal(await errorCode(() => next.resolve({})), 'E_MASQUERADE_CONTEXT_CHANGED')
@@ -89,6 +91,35 @@ for (const invalidation of [
     assert.equal(observedResult6.effectiveId, 'a')
   })
 }
+
+test('view mode admission never calls canEdit', async ({ assert }) => {
+  const f = fixture()
+  await f.start(await f.create())
+  f.state.editThrows = true
+  const service = await f.create()
+  assert.equal(await errorCode(() => service.resolve({})), 'NO_ERROR')
+  const resolved = await service.resolve({})
+  assert.equal(resolved.effectiveId, 'b')
+  assert.equal(f.state.editCount, 0)
+})
+
+test('edit admission without canEdit invalidates; throwing canEdit preserves mode', async ({
+  assert,
+}) => {
+  for (const failure of ['absent', 'throw'] as const) {
+    const f = fixture()
+    await f.start(await f.create(), {}, 'edit')
+    if (failure === 'absent') delete f.config.policy.canEdit
+    else f.state.editThrows = true
+    const service = await f.create()
+    assert.equal(
+      await errorCode(() => service.resolve({})),
+      failure === 'absent' ? 'E_MASQUERADE_CONTEXT_CHANGED' : 'E_MASQUERADE_UNAVAILABLE'
+    )
+    assert.equal((await f.store.read(f.owner))!.state, failure === 'absent' ? 'idle' : 'active')
+    if (failure === 'absent') assert.equal(f.store.events.at(-1)!.outcomeCode, 'edit_denied')
+  }
+})
 
 test('inspection stamp must match the callback stamp captured at start', async ({ assert }) => {
   const f = fixture()

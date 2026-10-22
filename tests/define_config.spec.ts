@@ -2,6 +2,21 @@ import { test } from '@japa/runner'
 import { createMasqueradeService, defineConfig, MasqueradeSetupError } from '../index.js'
 import { fixture } from './helpers/core.js'
 
+test('accepts optional canEdit and rejects a non-function as policy.canEdit', ({ assert }) => {
+  const f = fixture()
+  const config = defineConfig(f.config)
+  assert.isFunction(config.policy.canEdit)
+  assert.isTrue(Object.isFrozen(config.policy))
+  let error: unknown
+  try {
+    defineConfig({ ...f.config, policy: { ...f.config.policy, canEdit: true } } as never)
+  } catch (caught) {
+    error = caught
+  }
+  assert.instanceOf(error, MasqueradeSetupError)
+  assert.equal((error as MasqueradeSetupError).field, 'policy.canEdit')
+})
+
 test('validates config synchronously and freezes copied configuration', ({ assert }) => {
   const f = fixture()
   const config = defineConfig(f.config)

@@ -48,8 +48,14 @@ export function defineConfig<User, Request>(
 
   if (!config.policy) fail('policy')
   if (typeof config.policy.canMasquerade !== 'function') fail('policy.canMasquerade')
-  if (Object.keys(config.policy).some((key) => !['canMasquerade', 'canUseRequest'].includes(key)))
+  if (
+    Object.keys(config.policy).some(
+      (key) => !['canMasquerade', 'canEdit', 'canUseRequest'].includes(key)
+    )
+  )
     fail('policy')
+  if (config.policy.canEdit !== undefined && typeof config.policy.canEdit !== 'function')
+    fail('policy.canEdit')
   if (
     config.policy.canUseRequest !== undefined &&
     typeof config.policy.canUseRequest !== 'function'
@@ -85,6 +91,7 @@ export function defineConfig<User, Request>(
     }),
     policy: Object.freeze({
       canMasquerade: config.policy.canMasquerade.bind(config.policy),
+      ...(config.policy.canEdit ? { canEdit: config.policy.canEdit.bind(config.policy) } : {}),
       ...(config.policy.canUseRequest
         ? { canUseRequest: config.policy.canUseRequest.bind(config.policy) }
         : {}),

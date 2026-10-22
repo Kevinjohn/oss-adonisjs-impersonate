@@ -10,6 +10,7 @@ export function modeView(owner: OwnerKey, row: ModeRow | null): ModeView {
           isMasquerading: true,
           contextToken: token,
           targetId: row.targetId,
+          access: row.access,
           startedAt: row.startedAt,
           expiresAt: row.expiresAt,
         }
@@ -29,7 +30,7 @@ export function admittedProjection<User>(
     effectiveIncarnation: effective.incarnation,
     isMasquerading: row?.state === 'active',
     contextToken: contextToken(owner, row),
-    ...(row?.state === 'active' ? { modeId: row.modeId } : {}),
+    ...(row?.state === 'active' ? { modeId: row.modeId, access: row.access } : {}),
   })
   return Object.freeze({
     context,

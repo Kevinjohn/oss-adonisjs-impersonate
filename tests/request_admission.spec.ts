@@ -4,6 +4,21 @@ import type { RequestAdmission } from '../src/request_admission.js'
 import { fixture } from './helpers/core.js'
 import type { User } from './helpers/core.js'
 
+test('admitted context and view carry access only while active', async ({ assert }) => {
+  const f = fixture()
+  const service = await f.create()
+  const internal = service as unknown as {
+    [admission](request: object): Promise<RequestAdmission<User>>
+  }
+  const idle = await internal[admission]({})
+  assert.notProperty(idle.context, 'access')
+  assert.notProperty(idle.view, 'access')
+  await f.start(service, {}, 'edit')
+  const active = await internal[admission]({})
+  assert.equal(active.context.access, 'edit')
+  assert.equal(active.view.isMasquerading && active.view.access, 'edit')
+})
+
 test('internal admission preserves Subject properties exposed by prototype getters', async ({
   assert,
 }) => {

@@ -37,6 +37,10 @@ export default defineConfig<User, HttpContext>({
     async canMasquerade() {
       return false
     },
+    // Optional edit permission for starts and active edit admissions. Remove if edit is disabled.
+    async canEdit() {
+      return false
+    },
     // Optional check for starts and active admissions, not idle routes. Remove if not needed.
     async canUseRequest() {
       return false

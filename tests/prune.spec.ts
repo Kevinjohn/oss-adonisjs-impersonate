@@ -3,6 +3,25 @@ import { pruneMasquerade } from '../src/prune.js'
 import { createMasqueradeService } from '../src/service.js'
 import { fixture, errorCode } from './helpers/core.js'
 
+test('prune expiry event carries the row access', async ({ assert }) => {
+  const f = fixture()
+  await f.start(await f.create(), {}, 'edit')
+  const commit = f.store.compareAndSet.bind(f.store)
+  let producedAccess: string | undefined
+  f.store.compareAndSet = async (input) => {
+    producedAccess = input.event.access
+    input.event.access = 'edit'
+    return commit(input)
+  }
+  f.state.now += 901_000
+  assert.equal(
+    await errorCode(() => pruneMasquerade(f.config, f.dependencies, { batchSize: 1 })),
+    'NO_ERROR'
+  )
+  assert.equal(producedAccess, 'edit')
+  assert.equal(f.store.events.at(-1)!.access, 'edit')
+})
+
 test.group('pruneMasquerade', () => {
   test('expires a still-current expired row and preserves the active audit projection', async ({
     assert,

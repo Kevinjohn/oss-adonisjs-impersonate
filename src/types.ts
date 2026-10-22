@@ -5,6 +5,7 @@ export type SubjectId = string
 export type Instant = string
 export type Revision = number
 export type ContextToken = string
+export type ModeAccess = 'view' | 'edit'
 export interface Subject<User> {
   id: SubjectId
   incarnation: string
@@ -30,9 +31,16 @@ export interface NativeAuthority<User> {
   securityStamp(user: User): string | Promise<string>
   inspectAccount(id: SubjectId): Promise<AccountSnapshot<User> | null>
 }
-/** Global eligibility and optional request-local access; only literal true permits access. */
+/** Global eligibility, optional edit permission and request-local access; only literal true permits access. */
 export interface MasqueradePolicy<User, Request> {
   canMasquerade(input: {
+    actor: Subject<User>
+    target: Subject<User>
+    reason?: string
+    request?: Request
+  }): boolean | Promise<boolean>
+  /** Required to start or continue edit access; absent denies edit. */
+  canEdit?(input: {
     actor: Subject<User>
     target: Subject<User>
     reason?: string
@@ -58,6 +66,7 @@ interface RowBase extends OwnerKey {
 }
 export interface IdleModeRow extends RowBase {
   state: 'idle'
+  access: null
   targetId: null
   targetIncarnation: null
   actorStampHash: null
@@ -68,6 +77,7 @@ export interface IdleModeRow extends RowBase {
 }
 export interface ActiveModeRow extends RowBase {
   state: 'active'
+  access: ModeAccess
   targetId: SubjectId
   targetIncarnation: string
   actorStampHash: string
@@ -90,6 +100,8 @@ export interface AuditEvent extends OwnerKey {
   modeId?: string
   targetId?: SubjectId
   targetIncarnation?: string
+  /** Access level of the active row that produced this event. */
+  access?: ModeAccess
   at: Instant
   kind: EventKind
   outcomeCode: string
@@ -108,6 +120,7 @@ export type DiagnosticOperation =
   | 'inspect_account'
   | 'security_stamp'
   | 'can_masquerade'
+  | 'can_edit'
   | 'can_use_request'
   | 'start'
   | 'stop'
@@ -157,6 +170,8 @@ export interface StartInput {
   reason: string
   durationSeconds?: number
   expectedContext: ContextToken
+  /** Defaults to view; edit requires explicit host policy permission. */
+  access?: ModeAccess
 }
 export interface StopInput {
   expectedContext: ContextToken
@@ -167,6 +182,8 @@ export type ModeView = Readonly<
       isMasquerading: true
       contextToken: ContextToken
       targetId: SubjectId
+      /** Fixed access level of this active mode. */
+      access: ModeAccess
       startedAt: Instant
       expiresAt: Instant
     }
@@ -180,6 +197,8 @@ export interface ResolvedContext {
   readonly isMasquerading: boolean
   readonly contextToken: ContextToken
   readonly modeId?: string
+  /** Present exactly while masquerading. */
+  readonly access?: ModeAccess
 }
 export interface MasqueradeService<Request> {
   start(request: Request, input: StartInput): Promise<ModeView>

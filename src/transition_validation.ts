@@ -18,6 +18,7 @@ export function validateTransition(input: CompareAndSetInput, current: ModeRow |
     throw unavailable()
 
   const projected = next.state === 'active' ? next : current?.state === 'active' ? current : null
+  if (event.access !== projected?.access) throw unavailable()
   if (
     projected &&
     (event.targetId !== projected.targetId ||

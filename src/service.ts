@@ -125,7 +125,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       id: randomUUID(),
       ...(row ? { modeId: row.modeId } : {}),
       ...(row?.state === 'active'
-        ? { targetId: row.targetId, targetIncarnation: row.targetIncarnation }
+        ? { targetId: row.targetId, targetIncarnation: row.targetIncarnation, access: row.access }
         : {}),
       at: this.now(),
       kind,
@@ -255,6 +255,28 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       throw new MasqueradeError('E_MASQUERADE_NOT_ALLOWED')
     }
   }
+  private async editable(
+    actor: Subject<User>,
+    target: Subject<User>,
+    request?: Request,
+    reason?: string
+  ): Promise<boolean> {
+    try {
+      const allowed =
+        (await this.config.policy.canEdit?.({
+          actor,
+          target,
+          ...(request === undefined ? {} : { request }),
+          ...(reason === undefined ? {} : { reason }),
+        })) === true
+      if (!allowed)
+        reportDiagnostic(this.dependencies, 'policy', 'can_edit', 'E_MASQUERADE_NOT_ALLOWED')
+      return allowed
+    } catch {
+      reportDiagnostic(this.dependencies, 'policy', 'can_edit', 'E_MASQUERADE_UNAVAILABLE')
+      throw unavailable()
+    }
+  }
   async status(request: Request): Promise<ModeView> {
     const actor = await this.actor(request)
     const owner = this.owner(actor)
@@ -276,7 +298,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
         throw new MasqueradeError('E_MASQUERADE_CONTEXT_CHANGED')
       }
       if (row?.state === 'active') throw new MasqueradeError('E_MASQUERADE_ALREADY_ACTIVE')
-      const { targetId, reason, duration } = parseStartSelection(
+      const { targetId, reason, duration, access } = parseStartSelection(
         input,
         actor.id,
         this.config.durationSeconds!,
@@ -288,6 +310,11 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       if (!this.eligibleActor(currentActor, actor) || !target?.active)
         throw new MasqueradeError('E_MASQUERADE_NOT_ALLOWED')
       if (!(await this.allowed(currentActor.subject, target.subject, request, reason)))
+        throw new MasqueradeError('E_MASQUERADE_NOT_ALLOWED')
+      if (
+        access === 'edit' &&
+        !(await this.editable(currentActor.subject, target.subject, request, reason))
+      )
         throw new MasqueradeError('E_MASQUERADE_NOT_ALLOWED')
       await this.local(currentActor.subject, target.subject, request)
       let actorHash: string
@@ -308,6 +335,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
       const next: ActiveModeRow = {
         ...owner,
         state: 'active',
+        access,
         revision: nextRevision(row),
         revisionNonce: randomBytes(16).toString('hex'),
         modeId: randomUUID(),
@@ -325,6 +353,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
         modeId: next.modeId,
         targetId: next.targetId,
         targetIncarnation: next.targetIncarnation,
+        access: next.access,
         revision: next.revision,
       })
       await this.commit(owner, row, next, event)
@@ -429,6 +458,12 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
         }
         if (!invalid && !(await this.allowed(currentActor.subject, target.subject)))
           invalid = 'policy_denied'
+        if (
+          !invalid &&
+          row.access === 'edit' &&
+          !(await this.editable(currentActor.subject, target.subject))
+        )
+          invalid = 'edit_denied'
       }
       if (invalid) {
         await this.clear(owner, row, 'invalidated', invalid)
