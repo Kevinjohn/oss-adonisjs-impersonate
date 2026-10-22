@@ -55,8 +55,13 @@ export default class AccountKitProvider {
     kit.managedHttp.assertGuard(adapter.managedGuard)
     const router = await this.app.container.make('router')
     const registration = await managedRegistration(router)
-    // Ace command startup reaches ready before the router has committed.
-    router.commit()
+    // Only the console lifecycle reaches ready before the router has committed. HTTP and test
+    // lifecycles commit later themselves; committing early there would drop routes a test
+    // registers after boot.
+    if (this.app.getEnvironment() === 'console' && !router.commited) router.commit()
+    // An uncommitted router has nothing to check yet; the blocker validates registration on each
+    // managed request until the HTTP lifecycle reaches ready with a committed router.
+    if (!router.commited) return
     const domains = router.toJSON()
     assertManagedRouteRegistration(domains, registration)
     const mounted = Object.values(domains)

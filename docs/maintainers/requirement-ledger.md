@@ -138,7 +138,7 @@ This section records acceptance obligations; no v1.2 implementation or verificat
 | D6–D8          | Globally block authenticated `accountKit.*` requests during active mode except logout/CSRF; classify by route name; report managed routes protected only when blocker installation is verified.                                                                                               | Pending T-KIT-HTTP and startup/report evidence.                                                      |
 | D9, D12        | Support SQLite and PostgreSQL; one transport matching Account Kit's configured strategy.                                                                                                                                                                                                      | Pending matrix; MySQL and a second composed transport are outside accepted scope.                    |
 | D10–D11        | Add SPEC §15 and supersession pointers; read/validate the owner row through the existing service using a symbol-keyed internal method, with no second store or mode mutation.                                                                                                                 | Contract recorded. Internal method and its read/expiry behavior remain unimplemented and unverified. |
-| D13            | Provider checks guard identity/strategy and managed-route registration, then records verified blocker installation; startup fails on failed checks, subject to the specified first-request fallback if router timing requires it.                                                             | Pending provider and route lifecycle evidence.                                                       |
+| D13            | Provider checks guard identity/strategy and managed-route registration, then records verified blocker installation; startup fails on failed checks in both HTTP and console lifecycles (in the console environment the provider commits the router at `ready` first).                         | Pending provider and route lifecycle evidence.                                                       |
 
 **T-KIT obligations:** prove null and timestamp revisions encode differently and start stores the
 inspection snapshot's stamp. Missing, restricted and inactive targets are indistinguishable 403s
@@ -161,8 +161,8 @@ before its handler during active mode, for every method, custom prefixes and exc
 tokens without the Masquerade ability remain blocked. Logout and CSRF work during active mode and
 store outage without a store read. Idle actors, actors with no row, other users and
 unauthenticated public proof requests retain Account Kit behavior. Authenticated managed requests
-with store outage return 503, except logout and CSRF, which pass store-free. Missing managed registration fails at startup or first request per
-provider timing. The route report lists the managed group only when blocker installation is
+with store outage return 503, except logout and CSRF, which pass store-free. Missing managed registration fails at startup in both the HTTP and
+console lifecycles. The route report lists the managed group only when blocker installation is
 verified, and otherwise leaves routes unclassified with a missing/unverified note. `node ace`
 works without Account Kit.
 

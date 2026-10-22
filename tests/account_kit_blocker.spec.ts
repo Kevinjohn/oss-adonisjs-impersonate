@@ -40,6 +40,15 @@ test.group('Account Kit managed route coverage', () => {
         registration
       )
     )
+    assert.throws(() => assertManagedRouteRegistration({ root: [] }, registration), 'not mounted')
+    assert.throws(
+      () =>
+        assertManagedRouteRegistration(
+          { root: [{ ...managed.root[0], name: 'api.accountKit.account.password.change' }] },
+          registration
+        ),
+      'not mounted'
+    )
   })
 
   test('reports verified managed routes separately and unverified ones as uncovered', async ({
