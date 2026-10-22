@@ -618,7 +618,8 @@ Account Kit admission remains a separate host gate. The host mounts `admissionMi
 `admission.require`) on Masquerade control and business routes. Revoked actor admission returns
 Account Kit's 403 and leaves the mode row untouched; the mode can resume after re-approval if no
 other invalidation occurred. Hosts that need revocation to end a mode use `changeRestriction`.
-The host's `canMasquerade` checks `kit.admission.isAdmitted(target.id)` so target admission is
+The host's `canMasquerade` resolves the `AccountAdmission` service from
+`adonisjs-account-kit/admission` and checks `isAdmitted(target.id)` so target admission is
 re-evaluated on each active admission and denial follows the existing `policy_denied` behavior.
 `canAccess` remains Account Kit's restriction check and is not extended to include admission.
 
