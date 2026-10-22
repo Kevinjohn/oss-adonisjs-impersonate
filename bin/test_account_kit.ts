@@ -451,7 +451,10 @@ try {
                 env
               )
               await overlay(fixture, app)
-              await wireRoutes(app)
+              await wireRoutes(app, {
+                anchor: "import './demo_json_routes.js'",
+                imports: ['./account_kit_routes.js', './account_kit_fixture_routes.js'],
+              })
               await wireAuth(app)
               await wireSessionImports(app)
               await wireSessionConfig(app)

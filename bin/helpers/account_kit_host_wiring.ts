@@ -42,11 +42,15 @@ export async function rewriteManifest(
   )
 }
 
-export async function wireRoutes(app: string): Promise<void> {
+export async function wireRoutes(
+  app: string,
+  routesPatch?: { anchor: string; imports: string[] }
+): Promise<void> {
+  if (!routesPatch) return
   await replace(
     join(app, 'start/routes.ts'),
-    "import './demo_json_routes.js'",
-    "import './demo_json_routes.js'\nimport './account_kit_routes.js'\nimport './account_kit_fixture_routes.js'"
+    routesPatch.anchor,
+    [routesPatch.anchor, ...routesPatch.imports.map((path) => `import '${path}'`)].join('\n')
   )
 }
 
