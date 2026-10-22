@@ -59,6 +59,9 @@ export default class AccountKitProvider {
     // lifecycles commit later themselves; committing early there would drop routes a test
     // registers after boot.
     if (this.app.getEnvironment() === 'console' && !router.commited) router.commit()
+    // An uncommitted router has nothing to check yet; the blocker validates registration on each
+    // managed request until the HTTP lifecycle reaches ready with a committed router.
+    if (!router.commited) return
     const domains = router.toJSON()
     assertManagedRouteRegistration(domains, registration)
     const mounted = Object.values(domains)

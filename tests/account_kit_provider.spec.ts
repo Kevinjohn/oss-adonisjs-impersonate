@@ -30,15 +30,23 @@ if (process.env.ACCOUNT_KIT_SOURCE) {
   })
 }
 
-async function register(router: Router, name = 'web', strategy = 'session'): Promise<void> {
+async function register(
+  router: Router,
+  name = 'web',
+  strategy = 'session',
+  group?: string
+): Promise<void> {
   const packagePath = 'adonisjs-account-kit/http'
   const kit = await import(packagePath)
-  kit.registerManagedRoutes(router, {
-    prefix: '/kit',
-    kit: async () => ({}),
-    guard: { strategy, name, forRequest: () => ({}), current: async () => ({}) },
-    enabled: ['passwordReset'],
-  })
+  const mount = () =>
+    kit.registerManagedRoutes(router, {
+      prefix: '/kit',
+      kit: async () => ({}),
+      guard: { strategy, name, forRequest: () => ({}), current: async () => ({}) },
+      enabled: ['passwordReset'],
+    })
+  if (group) router.group(mount).prefix('/api').as(group)
+  else mount()
 }
 
 async function fixture(
@@ -48,6 +56,7 @@ async function fixture(
     name?: string
     strategy?: string
     environment?: string
+    group?: string
   } = {}
 ) {
   const app = new IgnitorFactory()
@@ -64,7 +73,7 @@ async function fixture(
         ? async () => ({ default: AccountKitBlocker })
         : () => import('../account_kit/middleware.js'),
     ])
-  await register(router)
+  await register(router, 'web', 'session', options.group)
   const adapter = {
     authority: {
       namespace: 'users',
@@ -207,6 +216,15 @@ test.group('Account Kit provider', () => {
         await host.app.terminate()
       }
     }).skip(!canLoadKit(), 'requires installed Account Kit or ACCOUNT_KIT_SOURCE')
+
+  test('rejects managed routes renamed by a route group', async ({ assert }) => {
+    const host = await fixture({ group: 'api' })
+    try {
+      await assert.rejects(() => host.provider.ready(), /is not mounted/)
+    } finally {
+      await host.app.terminate()
+    }
+  }).skip(!canLoadKit(), 'requires installed Account Kit or ACCOUNT_KIT_SOURCE')
 
   test('rejects a mounted managed route without the blocker', async ({ assert }) => {
     const host = await fixture({ blocker: false })
