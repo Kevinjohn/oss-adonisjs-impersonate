@@ -30,8 +30,8 @@ export interface AccountKitManagedGuard {
   current(ctx: HttpContext): Promise<AccountInput>
 }
 export interface AccountKitUserProvider<User> {
-  createUserForGuard(user: User): Promise<{ getId(): Identifier; getOriginal(): User }>
-  findById(id: string): Promise<{ getId(): Identifier; getOriginal(): User } | null>
+  createUserForGuard(user: User): Promise<{ getId(): unknown; getOriginal(): User }>
+  findById(id: string): Promise<{ getId(): unknown; getOriginal(): User } | null>
 }
 interface AccountKitAuthorityBase<User> {
   namespace: string

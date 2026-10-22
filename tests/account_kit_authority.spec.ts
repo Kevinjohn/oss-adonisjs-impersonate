@@ -308,7 +308,7 @@ test('Account Kit inspection distinguishes denied, missing, mismatched and opera
 }) => {
   const user = { key: 7 }
   let inspectedId = 7
-  let providerId = 7
+  let providerId: unknown = 7
   let missing = false
   let failure: Error | undefined
   const adapter = accountKitAuthority({
@@ -340,6 +340,11 @@ test('Account Kit inspection distinguishes denied, missing, mismatched and opera
   assert.isNull(await adapter.authority.inspectAccount('7'))
   missing = false
   providerId = 8
+  assert.equal(
+    await errorCode(() => adapter.authority.inspectAccount('7')),
+    'E_MASQUERADE_UNAVAILABLE'
+  )
+  providerId = Object(7n)
   assert.equal(
     await errorCode(() => adapter.authority.inspectAccount('7')),
     'E_MASQUERADE_UNAVAILABLE'

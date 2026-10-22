@@ -1,4 +1,6 @@
 import type { AccountKitAuthorityOptions } from '../account_kit/main.js'
+import type { SessionUserProviderContract } from '@adonisjs/auth/types/session'
+import type { AccessTokensUserProviderContract } from '@adonisjs/auth/types/access_tokens'
 
 type User = { id: number }
 
@@ -23,10 +25,23 @@ const tokenGuard = {
   current: async () => ({ userId: 1, tokenId: 1 }),
 }
 const base = { namespace: 'users', incarnation: 'id' as const, provider, kit }
+declare const nativeSessionProvider: SessionUserProviderContract<User>
+declare const nativeTokenProvider: AccessTokensUserProviderContract<User>
 
 const session = { ...base, managedGuard: sessionGuard } satisfies AccountKitAuthorityOptions<User>
 const token = {
   ...base,
+  managedGuard: tokenGuard,
+  ability: 'masquerade',
+} satisfies AccountKitAuthorityOptions<User>
+const nativeSession = {
+  ...base,
+  provider: nativeSessionProvider,
+  managedGuard: sessionGuard,
+} satisfies AccountKitAuthorityOptions<User>
+const nativeToken = {
+  ...base,
+  provider: nativeTokenProvider,
   managedGuard: tokenGuard,
   ability: 'masquerade',
 } satisfies AccountKitAuthorityOptions<User>
@@ -40,4 +55,4 @@ const sessionWithAbility: AccountKitAuthorityOptions<User> = {
 // @ts-expect-error Token strategies require an explicit ability.
 const tokenWithoutAbility: AccountKitAuthorityOptions<User> = { ...base, managedGuard: tokenGuard }
 
-void [session, token, sessionWithAbility, tokenWithoutAbility]
+void [session, token, nativeSession, nativeToken, sessionWithAbility, tokenWithoutAbility]
