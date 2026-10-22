@@ -42,7 +42,13 @@ async function register(router: Router, name = 'web', strategy = 'session'): Pro
 }
 
 async function fixture(
-  options: { blocker?: boolean; inlineBlocker?: boolean; name?: string; strategy?: string } = {}
+  options: {
+    blocker?: boolean
+    inlineBlocker?: boolean
+    name?: string
+    strategy?: string
+    environment?: string
+  } = {}
 ) {
   const app = new IgnitorFactory()
     .withCoreProviders()
@@ -80,6 +86,7 @@ async function fixture(
   }
   const providerApp = {
     container: { make: async (key: string) => (key === 'router' ? router : adapter) },
+    getEnvironment: () => options.environment ?? 'console',
   } as unknown as ApplicationService
   return { app, router, adapter, providerApp, provider: new AccountKitProvider(providerApp) }
 }
@@ -125,7 +132,7 @@ async function block(
 }
 
 test.group('Account Kit provider', () => {
-  test('commits and verifies registered routes and installed blocker at ready', async ({
+  test('commits and verifies registered routes and installed blocker at console ready', async ({
     assert,
   }) => {
     const host = await fixture()
@@ -133,6 +140,22 @@ test.group('Account Kit provider', () => {
       assert.isFalse(host.router.commited)
       await host.provider.ready()
       assert.isTrue(host.router.commited)
+      assert.isTrue(hasVerifiedAccountKitBlocker(host.providerApp))
+    } finally {
+      await host.app.terminate()
+    }
+  }).skip(!canLoadKit(), 'requires installed Account Kit or ACCOUNT_KIT_SOURCE')
+
+  test('leaves the router uncommitted and the blocker unverified outside the console', async ({
+    assert,
+  }) => {
+    const host = await fixture({ environment: 'web' })
+    try {
+      await host.provider.ready()
+      assert.isFalse(host.router.commited)
+      assert.isFalse(hasVerifiedAccountKitBlocker(host.providerApp))
+      host.router.commit()
+      await host.provider.ready()
       assert.isTrue(hasVerifiedAccountKitBlocker(host.providerApp))
     } finally {
       await host.app.terminate()
