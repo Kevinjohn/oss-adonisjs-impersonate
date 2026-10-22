@@ -1,6 +1,8 @@
 import { IncomingMessage, ServerResponse } from 'node:http'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { Socket } from 'node:net'
-import { resolve } from 'node:path'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { ApplicationService } from '@adonisjs/core/types'
 import { IgnitorFactory } from '@adonisjs/core/factories'
@@ -27,6 +29,11 @@ async function loadAccountKitHttp(): Promise<AccountKitHttpApi> {
     ? pathToFileURL(resolve(source, 'build/http/main.js')).href
     : 'adonisjs-account-kit/http'
   return (await import(entry)) as AccountKitHttpApi
+}
+
+/** The core app provider writes `.adonisjs/server` under the app root on ready. */
+async function temporaryRoot(): Promise<string> {
+  return mkdtemp(join(tmpdir(), 'masquerade-account-kit-'))
 }
 
 function canResolveAccountKitHttp(): boolean {
@@ -130,6 +137,7 @@ test.group('Account Kit integration lifecycle', () => {
     assert,
   }) => {
     const events: string[] = []
+    const root = await temporaryRoot()
     const accountKitHttp = await loadAccountKitHttp()
 
     class BlockManagedRoutesMiddleware {
@@ -160,7 +168,7 @@ test.group('Account Kit integration lifecycle', () => {
           ],
         },
       })
-      .create(new URL('../', import.meta.url))
+      .create(pathToFileURL(root + '/'))
       .createApp('web')
 
     try {
@@ -225,7 +233,7 @@ test.group('Account Kit integration lifecycle', () => {
       const noBlockerApp = new IgnitorFactory()
         .withCoreProviders()
         .withCoreConfig()
-        .create(new URL('../', import.meta.url))
+        .create(pathToFileURL(root + '/'))
         .createApp('web')
       try {
         await noBlockerApp.init()
@@ -248,12 +256,14 @@ test.group('Account Kit integration lifecycle', () => {
       }
     } finally {
       await app.terminate()
+      await rm(root, { recursive: true, force: true })
     }
   }).skip(!canResolveAccountKitHttp(), 'requires installed Account Kit or ACCOUNT_KIT_SOURCE')
 
   test('ready sees HTTP routes and can commit console routes before the Ace report command', async ({
     assert,
   }) => {
+    const root = await temporaryRoot()
     const httpObservations: ReadyObservation[] = []
     const httpProvider = readyProbe(httpObservations)
     const httpApp = new IgnitorFactory()
@@ -264,7 +274,7 @@ test.group('Account Kit integration lifecycle', () => {
           providers: [async () => ({ default: httpProvider })],
         },
       })
-      .create(new URL('../', import.meta.url))
+      .create(pathToFileURL(root + '/'))
       .createApp('web')
 
     try {
@@ -286,6 +296,7 @@ test.group('Account Kit integration lifecycle', () => {
       ])
     } finally {
       await httpApp.terminate()
+      await rm(root, { recursive: true, force: true })
     }
 
     const aceObservations: ReadyObservation[] = []
