@@ -108,7 +108,6 @@ jobs:
       - name: Exercise packed Account Kit consumer
         env:
           ACCOUNT_KIT_EVIDENCE_DIR: ${{ github.workspace }}/tmp/account-kit-evidence-${{ matrix.database }}
-          ACCOUNT_KIT_PG_EXTERNAL: '1'
         run: pnpm test:account-kit --profile=all --database=${{ matrix.database == 'pg' && 'pg' || 'sqlite' }} --strategy=all --session-management=all
       - name: Upload Account Kit consumer evidence
         if: always()
