@@ -329,9 +329,15 @@ and delivery sequencing is in the [development plan](DEVELOPMENT-PLAN.md#accepte
   revision stamps. Denied or missing accounts are ineligible; operational failures fail closed.
   Masquerade issues no target credential and adds no Account Kit storage.
 - Revalidate the actor through both the native raw guard and Account Kit's configured managed
-  guard. Account Kit credential rejection remains unauthenticated behavior. Admission stays a
-  separate host gate: hosts apply admission middleware to controls/business routes and check
-  target admission through their `canMasquerade` policy.
+  guard. Account Kit credential rejection remains unauthenticated behavior. Admission is a
+  separate `AccountAdmission` service exported from `adonisjs-account-kit/admission`, with DI
+  binding from `adonisjs-account-kit/admission/provider`. Hosts import `admissionMiddleware` from
+  the admission entry and apply
+  `admissionMiddleware({ admission: async () => app.container.make(AccountAdmission), guard: managedGuard })`
+  to selected Masquerade control/business routes before `masqueradeContext`, which otherwise may
+  read mode and admit the request. In the host's `canMasquerade` policy, resolve the service with
+  `const admission = await app.container.make(AccountAdmission)` and check
+  `await admission.isAdmitted(target.id)`.
 - While a mode is active, block all `accountKit.*` routes except the operator's logout and the
   session CSRF endpoint. The blocker reads the existing mode row only for authenticated managed
   requests; logout, CSRF and unauthenticated public proof flows remain store-free. A blocked
