@@ -8,7 +8,7 @@ export function controlInput(ctx: HttpContext, action: 'start' | 'stop'): StartI
   const body = ctx.request.body()
   const keys =
     action === 'start'
-      ? ['targetId', 'reason', '_masqueradeContext', '_csrf']
+      ? ['targetId', 'reason', 'access', '_masqueradeContext', '_csrf']
       : ['_masqueradeContext', '_csrf']
   if (
     !body ||
@@ -29,6 +29,7 @@ export function controlInput(ctx: HttpContext, action: 'start' | 'stop'): StartI
   return {
     targetId: body.targetId as StartInput['targetId'],
     reason: body.reason as StartInput['reason'],
+    access: body.access as StartInput['access'],
     expectedContext: typeof expectedContext === 'string' ? expectedContext : '',
   }
 }

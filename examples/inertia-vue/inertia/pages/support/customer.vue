@@ -8,7 +8,13 @@ import { useIdentityFreshness } from './use_identity_freshness'
 const props = defineProps<{
   actor: { id: number; fullName: string; email: string }
   customer: { id: number; fullName: string; email: string }
-  mode: { isMasquerading: true; contextToken: string; targetId: string; expiresAt: string }
+  mode: {
+    isMasquerading: true
+    access: 'view' | 'edit'
+    contextToken: string
+    targetId: string
+    expiresAt: string
+  }
   emailUpdates: boolean
   canEdit: boolean
 }>()
@@ -19,7 +25,7 @@ const { ready } = useIdentityFreshness(props.mode, props.mode.expiresAt)
   <Head title="Customer details" />
   <main v-if="ready" class="support-page" data-identity="current">
     <h1>Customer details</h1>
-    <SupportBanner :actor="actor" :customer="customer" :expires-at="mode.expiresAt" />
+    <SupportBanner :actor="actor" :customer="customer" :mode="mode" :expires-at="mode.expiresAt" />
     <section class="panel">
       <h2>{{ customer.fullName }}</h2>
       <p>Email: {{ customer.email }}</p>

@@ -80,8 +80,16 @@ export async function masqueradeContext(
 
   if (context.isMasquerading) {
     const markers = routeMarkers(ctx)
-    if (markers.sensitive || (isUnsafe(method) && !markers.allowMutation))
-      throw new MasqueradeError('E_MASQUERADE_ACTION_BLOCKED')
+    if (markers.sensitive)
+      throw new MasqueradeError('E_MASQUERADE_ACTION_BLOCKED', {
+        blockedBy: 'sensitive',
+      })
+    if (isUnsafe(method) && context.access !== 'edit')
+      throw new MasqueradeError('E_MASQUERADE_ACTION_BLOCKED', { blockedBy: 'view_only' })
+    if (isUnsafe(method) && !markers.allowMutation)
+      throw new MasqueradeError('E_MASQUERADE_ACTION_BLOCKED', {
+        blockedBy: 'mutation_not_allowed',
+      })
   }
   await next()
 }

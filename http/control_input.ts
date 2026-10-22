@@ -10,7 +10,14 @@ export function parseStartControl(ctx: HttpContext): StartInput {
   if (
     Object.keys(body).some(
       (key) =>
-        !['targetId', 'reason', 'durationSeconds', '_masqueradeContext', '_csrf'].includes(key)
+        ![
+          'targetId',
+          'reason',
+          'durationSeconds',
+          'access',
+          '_masqueradeContext',
+          '_csrf',
+        ].includes(key)
     )
   )
     return invalidStartInput()
@@ -19,6 +26,7 @@ export function parseStartControl(ctx: HttpContext): StartInput {
   return {
     targetId: body.targetId,
     reason: body.reason,
+    ...(body.access === undefined ? {} : { access: body.access }),
     ...(body.durationSeconds === undefined ? {} : { durationSeconds }),
     expectedContext: expectedContext ?? '',
   }

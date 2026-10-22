@@ -34,7 +34,9 @@ test.group('Inertia Vue browser journey', (group) => {
     await signIn(page)
     const idleToken = await page.locator('input[name="_masqueradeContext"]').inputValue()
     assert.isTrue(idleToken.length > 20)
+    assert.isTrue(await page.getByRole('radio', { name: 'View only' }).isChecked())
     await selectCustomer(page, 1)
+    await page.getByRole('radio', { name: 'Can edit' }).check()
     await page.getByLabel('Reason for support').fill('Customer requested help')
     await page.getByRole('button', { name: 'Start support mode' }).press('Enter')
     await page.waitForURL('**/support/customer')
@@ -54,7 +56,11 @@ test.group('Inertia Vue browser journey', (group) => {
 
     await page.getByRole('button', { name: 'Try sensitive account action' }).press('Enter')
     await page.waitForURL('**/support/recovery')
-    await page.getByRole('heading', { name: 'Support action needs review' }).waitFor()
+    await page.getByRole('heading', { level: 1 }).waitFor()
+    assert.equal(
+      await page.getByRole('heading', { level: 1 }).innerText(),
+      'Sensitive action blocked'
+    )
     assert.equal(await page.evaluate('document.activeElement?.tagName'), 'H1')
     await page.getByRole('link', { name: 'Check current status' }).click()
     await page.getByRole('button', { name: 'Stop support mode' }).waitFor()
@@ -62,6 +68,58 @@ test.group('Inertia Vue browser journey', (group) => {
     await page.getByRole('button', { name: 'Start support mode' }).waitFor()
     await page.getByRole('button', { name: 'Log out' }).click()
     await page.waitForURL('**/login')
+  })
+
+  test('view-only start blocks the edit and renders the host page', async ({
+    browserContext,
+    assert,
+  }) => {
+    const page = await browserContext.newPage()
+    await signIn(page)
+    assert.isTrue(await page.getByRole('radio', { name: 'View only' }).isChecked())
+    await selectCustomer(page, 1)
+    await page.getByLabel('Reason for support').fill('Read customer details')
+    await page.getByRole('button', { name: 'Start support mode' }).click()
+    await page.waitForURL('**/support/customer')
+    await page.getByRole('status').waitFor()
+    assert.include(await page.getByRole('status').innerText(), 'View only support mode is active')
+    await page.getByRole('button', { name: 'Save preference' }).click()
+    await page.waitForURL('**/support/recovery')
+    await page.getByRole('heading', { level: 1 }).waitFor()
+    assert.equal(
+      await page.getByRole('heading', { level: 1 }).innerText(),
+      'Edit blocked in view-only mode'
+    )
+    assert.include(
+      await page.locator('[role="alert"]').innerText(),
+      'This support session is view only'
+    )
+
+    await page.getByRole('link', { name: 'Check current status' }).click()
+    await page.getByRole('link', { name: 'Open customer details' }).click()
+    await page.getByText('Customer email updates: Off').waitFor()
+    await page.reload()
+    await page.getByText('Customer email updates: Off').waitFor()
+    assert.include(await page.getByRole('status').innerText(), 'View only support mode is active')
+  })
+
+  test('banner shows the level fixed at start after a reload', async ({
+    browserContext,
+    assert,
+  }) => {
+    const page = await browserContext.newPage()
+    await signIn(page)
+    await selectCustomer(page, 1)
+    await page.getByRole('radio', { name: 'Can edit' }).check()
+    await page.getByLabel('Reason for support').fill('Read customer details')
+    await page.getByRole('button', { name: 'Start support mode' }).click()
+    await page.waitForURL('**/support/customer')
+    await page.getByRole('status').waitFor()
+    assert.include(await page.getByRole('status').innerText(), 'Can edit support mode is active')
+
+    await page.reload()
+    await page.getByRole('status').waitFor()
+    assert.include(await page.getByRole('status').innerText(), 'Can edit support mode is active')
   })
 
   test('rejects retained forms across tabs and redirects old Back history to current customer B', async ({
@@ -75,9 +133,11 @@ test.group('Inertia Vue browser journey', (group) => {
     await staleTab.goto(`${base()}/support`)
     const oldIdleToken = await staleTab.locator('input[name="_masqueradeContext"]').inputValue()
     await selectCustomer(staleTab, 1)
+    await staleTab.getByRole('radio', { name: 'Can edit' }).check()
     await staleTab.getByLabel('Reason for support').fill('Old idle intent')
 
     await selectCustomer(current, 1)
+    await current.getByRole('radio', { name: 'Can edit' }).check()
     await current.getByLabel('Reason for support').fill('Customer A request')
     await current.getByRole('button', { name: 'Start support mode' }).click()
     await current.waitForURL('**/support/customer')
@@ -90,6 +150,7 @@ test.group('Inertia Vue browser journey', (group) => {
       await signIn(second)
       await second.getByRole('button', { name: 'Stop support mode' }).click()
       await selectCustomer(second, 2)
+      await second.getByRole('radio', { name: 'Can edit' }).check()
       await second.getByLabel('Reason for support').fill('Customer B request')
       await second.getByRole('button', { name: 'Start support mode' }).click()
       await second.waitForURL('**/support/customer')
@@ -118,6 +179,7 @@ test.group('Inertia Vue browser journey', (group) => {
     const retained = await browserContext.newPage()
     await signIn(retained)
     await selectCustomer(retained, 1)
+    await retained.getByRole('radio', { name: 'Can edit' }).check()
     await retained.getByLabel('Reason for support').fill('Customer A request')
     await retained.getByRole('button', { name: 'Start support mode' }).click()
     await retained.waitForURL('**/support/customer')
@@ -127,6 +189,7 @@ test.group('Inertia Vue browser journey', (group) => {
     await switcher.goto(`${base()}/support`)
     await switcher.getByRole('button', { name: 'Stop support mode' }).click()
     await selectCustomer(switcher, 2)
+    await switcher.getByRole('radio', { name: 'Can edit' }).check()
     await switcher.getByLabel('Reason for support').fill('Customer B request')
     await switcher.getByRole('button', { name: 'Start support mode' }).click()
     await switcher.waitForURL('**/support/customer')
@@ -149,6 +212,7 @@ test.group('Inertia Vue browser journey', (group) => {
     const workspace = await browserContext.newPage()
     await signIn(workspace)
     await selectCustomer(workspace, 1)
+    await workspace.getByRole('radio', { name: 'Can edit' }).check()
     await workspace.getByLabel('Reason for support').fill('Customer A request')
     await workspace.getByRole('button', { name: 'Start support mode' }).click()
     await workspace.waitForURL('**/support/customer')
@@ -161,6 +225,7 @@ test.group('Inertia Vue browser journey', (group) => {
       await signIn(second)
       await second.getByRole('button', { name: 'Stop support mode' }).click()
       await selectCustomer(second, 2)
+      await second.getByRole('radio', { name: 'Can edit' }).check()
       await second.getByLabel('Reason for support').fill('Customer B request')
       await second.getByRole('button', { name: 'Start support mode' }).click()
       await second.waitForURL('**/support/customer')
@@ -181,6 +246,7 @@ test.group('Inertia Vue browser journey', (group) => {
     const first = await browserContext.newPage()
     await signIn(first)
     await selectCustomer(first, 1)
+    await first.getByRole('radio', { name: 'Can edit' }).check()
     await first.getByLabel('Reason for support').fill('Customer A request')
     await first.getByRole('button', { name: 'Start support mode' }).click()
     await first.waitForURL('**/support/customer')
@@ -219,6 +285,7 @@ test.group('Inertia Vue browser journey', (group) => {
     await switcher.goto(`${base()}/support`)
     await switcher.getByRole('button', { name: 'Stop support mode' }).click()
     await selectCustomer(switcher, 2)
+    await switcher.getByRole('radio', { name: 'Can edit' }).check()
     await switcher.getByLabel('Reason for support').fill('Customer B request')
     await switcher.getByRole('button', { name: 'Start support mode' }).click()
     await switcher.waitForURL('**/support/customer')
@@ -240,6 +307,7 @@ test.group('Inertia Vue browser journey', (group) => {
     try {
       await signIn(deadlinePage)
       await selectCustomer(deadlinePage, 1)
+      await deadlinePage.getByRole('radio', { name: 'Can edit' }).check()
       await deadlinePage.getByLabel('Reason for support').fill('Deadline check')
       await deadlinePage.getByRole('button', { name: 'Start support mode' }).click()
       await deadlinePage.waitForURL('**/support/customer')
@@ -303,6 +371,7 @@ test.group('Inertia Vue browser journey', (group) => {
     try {
       await signIn(page)
       await selectCustomer(page, 1)
+      await page.getByRole('radio', { name: 'Can edit' }).check()
       await page.getByLabel('Reason for support').fill('Deadline race check')
       await page.getByRole('button', { name: 'Start support mode' }).click()
       await page.waitForURL('**/support/customer')
@@ -355,6 +424,7 @@ test.group('Inertia Vue browser journey', (group) => {
     const page = await browserContext.newPage()
     await signIn(page)
     await selectCustomer(page, 1)
+    await page.getByRole('radio', { name: 'Can edit' }).check()
     await page.getByLabel('Reason for support').fill('Recovery test')
     await page.getByRole('button', { name: 'Start support mode' }).click()
     await page.waitForURL('**/support/customer')
@@ -372,6 +442,7 @@ test.group('Inertia Vue browser journey', (group) => {
     await target.save()
     await page.goto(`${base()}/support`)
     await selectCustomer(page, 1)
+    await page.getByRole('radio', { name: 'Can edit' }).check()
     await page.getByLabel('Reason for support').fill('Transient request failure')
     await page.getByRole('button', { name: 'Start support mode' }).click()
     await page.waitForURL('**/support/customer')
@@ -387,6 +458,7 @@ test.group('Inertia Vue browser journey', (group) => {
     await page.getByRole('button', { name: 'Stop support mode' }).click()
     await page.getByRole('button', { name: 'Start support mode' }).waitFor()
     await selectCustomer(page, 1)
+    await page.getByRole('radio', { name: 'Can edit' }).check()
     await page.getByLabel('Reason for support').fill('Store recovery test')
     await page.getByRole('button', { name: 'Start support mode' }).click()
     await page.waitForURL('**/support/customer')

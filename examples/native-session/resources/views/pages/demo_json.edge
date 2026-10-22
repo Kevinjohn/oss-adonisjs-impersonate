@@ -42,6 +42,17 @@
             <label class="field__label" for="json-reason">Reason for access</label>
             <textarea class="field__input" id="json-reason" required maxlength="500"></textarea>
           </div>
+          <fieldset class="field">
+            <legend class="field__label">Access level</legend>
+            <label class="field__choice">
+              <input type="radio" name="json-access" value="view" checked />
+              View only
+            </label>
+            <label class="field__choice">
+              <input type="radio" name="json-access" value="edit" />
+              Can edit
+            </label>
+          </fieldset>
           <button class="btn btn--primary" type="submit">Start support mode</button>
         </form>
       </section>

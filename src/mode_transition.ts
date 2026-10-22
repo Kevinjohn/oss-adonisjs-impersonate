@@ -29,6 +29,7 @@ export function idleAfterTransition(row: ActiveModeRow, event: AuditEvent): Idle
     actorId: row.actorId,
     actorIncarnation: row.actorIncarnation,
     state: 'idle',
+    access: null,
     revision: nextRevision(row),
     revisionNonce: randomBytes(16).toString('hex'),
     modeId: row.modeId,

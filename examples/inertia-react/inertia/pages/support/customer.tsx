@@ -4,7 +4,12 @@ import ContextForm from './context_form'
 import { useIdentityFreshness } from './use_identity_freshness'
 
 type Label = { id: number; fullName: string | null; email: string }
-type Mode = { isMasquerading: true; contextToken: string; expiresAt: string }
+type Mode = {
+  isMasquerading: true
+  contextToken: string
+  expiresAt: string
+  access: 'view' | 'edit'
+}
 
 export default function Customer({
   actor,
@@ -29,7 +34,12 @@ export default function Customer({
   return (
     <section className="support-page">
       <h1>Customer view</h1>
-      <SupportBanner actor={actor} customer={customer} expiresAt={mode.expiresAt} />
+      <SupportBanner
+        actor={actor}
+        customer={customer}
+        expiresAt={mode.expiresAt}
+        access={mode.access}
+      />
       <dl>
         <dt>Customer email</dt>
         <dd>{customer.email}</dd>

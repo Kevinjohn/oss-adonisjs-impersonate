@@ -3,6 +3,7 @@ import { MemoryControlStore } from '../../testing/main.js'
 import type {
   AccountSnapshot,
   MasqueradeConfig,
+  ModeAccess,
   ServiceDependencies,
   Subject,
 } from '../../src/types.js'
@@ -27,6 +28,10 @@ export function fixture() {
     authenticateCount: 0,
     inspectCount: 0,
     policyCount: 0,
+    editCount: 0,
+    edit: true as unknown,
+    editThrows: false,
+    editInputs: [] as unknown[],
     stampCount: 0,
   }
   const subject = (user: User): Subject<User> => ({
@@ -56,6 +61,12 @@ export function fixture() {
         state.policyCount++
         if (state.policyThrows) throw new Error('policy failure')
         return state.policy
+      },
+      canEdit: async (input) => {
+        state.editCount++
+        state.editInputs.push(input)
+        if (state.editThrows) throw new Error('edit policy failure')
+        return state.edit as boolean
       },
       canUseRequest: async ({ request }) => {
         if (state.localThrows) throw new Error('local policy failure')
@@ -95,12 +106,17 @@ export function fixture() {
     },
   }
   const create = () => createMasqueradeService(defineConfig(config), dependencies)
-  const start = async (service: Awaited<ReturnType<typeof create>>, request: Request = {}) => {
+  const start = async (
+    service: Awaited<ReturnType<typeof create>>,
+    request: Request = {},
+    access?: ModeAccess
+  ) => {
     const idle = await service.status(request)
     return service.start(request, {
       targetId: 'b',
       reason: ' support\r\ncase\t42 ',
       expectedContext: idle.contextToken,
+      ...(access === undefined ? {} : { access }),
     })
   }
   return {
@@ -123,5 +139,5 @@ export async function errorCode(operation: () => Promise<unknown>): Promise<stri
   } catch (error) {
     return (error as { code?: string }).code ?? (error as Error).message
   }
-  throw new Error('Expected operation to reject')
+  return 'NO_ERROR'
 }

@@ -1,13 +1,13 @@
 import { boundedString } from './bounded_string.js'
 import { invalidInput } from './errors.js'
 import { normalizeReason } from './reason.js'
-import type { StartInput } from './types.js'
+import type { ModeAccess, StartInput } from './types.js'
 
 export function validateStartInputShape(input: StartInput): void {
   if (
     !input ||
     Object.keys(input).some(
-      (key) => !['targetId', 'reason', 'durationSeconds', 'expectedContext'].includes(key)
+      (key) => !['targetId', 'reason', 'durationSeconds', 'expectedContext', 'access'].includes(key)
     )
   )
     throw invalidInput()
@@ -19,7 +19,7 @@ export function parseStartSelection(
   actorId: string,
   defaultDuration: number,
   maxDuration: number
-): { targetId: string; reason: string; duration: number } {
+): { targetId: string; reason: string; duration: number; access: ModeAccess } {
   const reason = normalizeReason(input.reason)
   if (!(
     typeof input.targetId === 'string' ||
@@ -30,5 +30,7 @@ export function parseStartSelection(
   if (!boundedString(targetId, 255) || targetId === actorId) throw invalidInput()
   const duration = input.durationSeconds === undefined ? defaultDuration : input.durationSeconds
   if (!Number.isInteger(duration) || duration < 60 || duration > maxDuration) throw invalidInput()
-  return { targetId, reason, duration }
+  const access = input.access === undefined ? 'view' : input.access
+  if (access !== 'view' && access !== 'edit') throw invalidInput()
+  return { targetId, reason, duration, access }
 }

@@ -115,6 +115,7 @@ export async function pruneMasquerade<User, Request>(
       modeId: current.modeId,
       targetId: current.targetId,
       targetIncarnation: current.targetIncarnation,
+      access: current.access,
       at: now,
       kind: 'expired',
       outcomeCode: 'expired',

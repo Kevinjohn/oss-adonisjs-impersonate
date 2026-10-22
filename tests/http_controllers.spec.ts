@@ -182,6 +182,72 @@ test.group('masquerade HTTP boundary', () => {
     assert.equal(noncanonicalFixture.store.events.at(-1)?.outcomeCode, 'E_MASQUERADE_INVALID_INPUT')
   })
 
+  test('start accepts access in JSON and form bodies and rejects unknown values through the audit boundary', async ({
+    assert,
+  }) => {
+    const jsonFixture = fixture()
+    const jsonService = await jsonFixture.create()
+    const jsonMode = await jsonService.status({})
+    const jsonBody = {
+      targetId: 'b',
+      reason: 'support',
+      access: 'edit',
+      _masqueradeContext: jsonMode.contextToken,
+    }
+    const { ctx: jsonRequest, responseState: jsonResponse } = requestContext(jsonFixture, {
+      body: jsonBody,
+      contentType: 'application/json',
+    })
+    await handleWithDefaultExceptionHandler(jsonRequest, () =>
+      new MasqueradeController().start(jsonRequest)
+    )
+    assert.equal(jsonResponse.status, 200)
+    const jsonRow = await jsonFixture.store.read(jsonFixture.owner)
+    assert.equal(jsonRow?.access, 'edit')
+
+    const formFixture = fixture()
+    const formService = await formFixture.create()
+    const formMode = await formService.status({})
+    const formBody = {
+      targetId: 'b',
+      reason: 'support',
+      access: 'edit',
+      _masqueradeContext: formMode.contextToken,
+    }
+    const { ctx: formRequest, responseState: formResponse } = requestContext(formFixture, {
+      body: formBody,
+      contentType: 'application/x-www-form-urlencoded',
+      raw: new URLSearchParams(formBody).toString(),
+    })
+    await handleWithDefaultExceptionHandler(formRequest, () =>
+      new MasqueradeController().start(formRequest)
+    )
+    assert.equal(formResponse.status, 200)
+    const formRow = await formFixture.store.read(formFixture.owner)
+    assert.equal(formRow?.access, 'edit')
+
+    const invalidFixture = fixture()
+    const invalidService = await invalidFixture.create()
+    const invalidMode = await invalidService.status({})
+    const invalidBody = {
+      targetId: 'b',
+      reason: 'support',
+      access: 'full',
+      _masqueradeContext: invalidMode.contextToken,
+    }
+    const { ctx: invalidRequest, responseState: invalidResponse } = requestContext(invalidFixture, {
+      body: invalidBody,
+      contentType: 'application/x-www-form-urlencoded',
+      raw: new URLSearchParams(invalidBody).toString(),
+    })
+    await handleWithDefaultExceptionHandler(invalidRequest, () =>
+      new MasqueradeController().start(invalidRequest)
+    )
+    assert.equal(invalidResponse.status, 422)
+    assert.equal(invalidFixture.store.events.at(-1)?.kind, 'start_denied')
+    assert.equal(invalidFixture.store.events.at(-1)?.outcomeCode, 'E_MASQUERADE_INVALID_INPUT')
+  })
+
   test('does not treat chunked unsupported-content bodies as empty stop requests', async ({
     assert,
   }) => {

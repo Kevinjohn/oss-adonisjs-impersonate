@@ -7,7 +7,15 @@ import ContextForm from '~/components/context_form.vue'
 import { useWorkspaceFreshness } from './use_workspace_freshness'
 
 type UserLabel = { id: number; fullName: string; email: string }
-type Mode = { isMasquerading: boolean; contextToken: string; targetId?: string; expiresAt?: string }
+type Mode =
+  | { isMasquerading: false; contextToken: string }
+  | {
+      isMasquerading: true
+      access: 'view' | 'edit'
+      contextToken: string
+      targetId: string
+      expiresAt: string
+    }
 const props = defineProps<{
   actor: UserLabel
   operator: boolean
@@ -38,6 +46,7 @@ useWorkspaceFreshness(props.mode, props.beforeDeadline)
       v-if="mode.isMasquerading && target && beforeDeadline"
       :actor="actor"
       :customer="target"
+      :mode="mode"
       :expires-at="mode.expiresAt!"
     />
     <section v-if="mode.isMasquerading" class="panel">
@@ -88,6 +97,17 @@ useWorkspaceFreshness(props.mode, props.beforeDeadline)
             maxlength="500"
             :disabled="!operator || processing"
           />
+          <fieldset :disabled="!operator || processing">
+            <legend>Access level</legend>
+            <label>
+              <input type="radio" name="access" value="view" checked />
+              View only
+            </label>
+            <label>
+              <input type="radio" name="access" value="edit" />
+              Can edit
+            </label>
+          </fieldset>
           <button type="submit" :disabled="!operator || processing">Start support mode</button>
         </template>
       </ContextForm>

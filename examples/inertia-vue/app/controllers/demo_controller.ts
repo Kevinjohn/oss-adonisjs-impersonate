@@ -77,6 +77,7 @@ export default class DemoController {
       customer: label(customer),
       mode: {
         isMasquerading: true as const,
+        access: mode.access,
         targetId: mode.targetId,
         expiresAt: mode.expiresAt,
         contextToken: mode.contextToken,
@@ -122,9 +123,11 @@ export default class DemoController {
 
   async recovery(ctx: HttpContext) {
     noStore(ctx)
+    const title = ctx.session.flashMessages.get('supportRecoveryTitle') as string | undefined
     const message = ctx.session.flashMessages.get('supportRecovery') as string | undefined
     prepareHistory(ctx)
     return ctx.inertia.render('support/recovery', {
+      title: title ?? 'Support action needs review',
       message: message ?? 'Check current support status before creating a new action.',
     })
   }
@@ -142,6 +145,7 @@ function publicMode(mode: Awaited<ReturnType<MasqueradeRuntime<User>['service'][
   return mode.isMasquerading
     ? {
         isMasquerading: true as const,
+        access: mode.access,
         targetId: mode.targetId,
         expiresAt: mode.expiresAt,
         contextToken: mode.contextToken,

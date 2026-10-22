@@ -3,7 +3,10 @@
 V1.1 can authenticate an integrated request with an AdonisJS Auth 10 opaque access token. The
 native token guard still validates the bearer credential and exposes the actor's
 `currentAccessToken`. Masquerade checks that token's configured ability before reading or changing
-the account mode. The same account authority and mode row serve native sessions and tokens.
+the account mode. The same account authority and mode row serve native sessions and tokens. A
+bearer token sees the account mode's selected `access` level (`view` or `edit`); there is no
+per-token access level. The token's configured ability is a separate capability gate and cannot
+upgrade a view mode to edit.
 
 AdonisJS stores a hash of an opaque token, checks it through the native guard, and supports
 per-token abilities. A token with `'*'` passes every `allows()` check, including Masquerade's

@@ -39,6 +39,7 @@ test.group('JSON support browser client', (group) => {
     await page
       .getByLabel('Customer')
       .selectOption({ label: 'Customer One — customer-one@example.test' })
+    await page.getByRole('radio', { name: 'Can edit' }).check()
     await page.getByLabel('Reason for access').fill('Customer requested email setting help')
     await page.getByRole('button', { name: 'Start support mode' }).click()
     await page.getByText('Action completed.').waitFor()
@@ -99,6 +100,7 @@ test.group('JSON support browser client', (group) => {
     await page
       .getByLabel('Customer')
       .selectOption({ label: 'Customer One — customer-one@example.test' })
+    await page.getByRole('radio', { name: 'Can edit' }).check()
     await page.getByLabel('Reason for access').fill('First customer')
     await page.getByRole('button', { name: 'Start support mode' }).click()
     await page.getByText('Action completed.').waitFor()
@@ -134,6 +136,7 @@ test.group('JSON support browser client', (group) => {
     await other
       .getByLabel('Customer')
       .selectOption({ label: 'Customer Two — customer-two@example.test' })
+    await other.getByRole('radio', { name: 'Can edit' }).check()
     await other.getByLabel('Reason for access').fill('Second customer')
     await other.getByRole('button', { name: 'Start support mode' }).click()
     await other.getByText('Action completed.').waitFor()
@@ -160,6 +163,7 @@ test.group('JSON support browser client', (group) => {
     await page
       .getByLabel('Customer')
       .selectOption({ label: 'Customer One — customer-one@example.test' })
+    await page.getByRole('radio', { name: 'Can edit' }).check()
     await page.getByLabel('Reason for access').fill('Expiry and recovery')
     await page.getByRole('button', { name: 'Start support mode' }).click()
     await page.getByText('Action completed.').waitFor()
@@ -191,6 +195,7 @@ test.group('JSON support browser client', (group) => {
     await page
       .getByLabel('Customer')
       .selectOption({ label: 'Customer One — customer-one@example.test' })
+    await page.getByRole('radio', { name: 'Can edit' }).check()
     await page.getByLabel('Reason for access').fill('Unavailable control recovery')
     setMasqueradeStoreUnavailable(true)
     await page.getByRole('button', { name: 'Start support mode' }).click()

@@ -32,6 +32,7 @@ export function validateRow(row: ModeRow | null, owner: OwnerKey): ModeRow | nul
   )
     throw unavailable()
   if (row.state === 'idle') {
+    if (row.access !== null) throw unavailable()
     for (const value of [
       row.targetId,
       row.targetIncarnation,
@@ -44,6 +45,7 @@ export function validateRow(row: ModeRow | null, owner: OwnerKey): ModeRow | nul
       if (value !== null) throw unavailable()
   } else if (row.state === 'active') {
     if (
+      (row.access !== 'view' && row.access !== 'edit') ||
       !boundedString(row.targetId, 255) ||
       !boundedString(row.targetIncarnation, 128) ||
       typeof row.actorStampHash !== 'string' ||

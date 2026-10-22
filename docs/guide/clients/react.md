@@ -8,4 +8,21 @@ Use a hidden `_masqueradeContext` field on every unsafe form, including idle for
 
 Inertia retains page objects in browser history. Enable history encryption and carry a history-clear signal across successful start, stop and logout redirects; call `inertia.clearHistory()` on the rendered destination page. A call on a redirect response alone does not clear the browser key. Avoid `once`, merged, preserved props and local-storage drafts for identity-bound data. Revalidate a restored or newly visible page before showing customer data; freeze actions at the fixed deadline. The example sends Back, Forward and browser-cache restorations to the raw workspace after a tab has visited a support page, even from public pages after logout. Frontend cancellation may discard a late response, but it does not reverse a server request already admitted. The server's context check remains the authority when another tab or operator session changes mode.
 
+## Access level and blocked actions
+
+A start request may include `access: 'view' | 'edit'`; omitting it starts in view mode. The active
+`ModeView` exposes the selected `access`, and the level stays fixed until the operator stops the
+mode. Edit starts require the host's `canEdit` callback to return exactly `true`; active edit
+admission checks it again. A route's `allowMutation()` marker alone does not grant edit, and a bearer
+ability does not grant edit or target authorization.
+
+`E_MASQUERADE_ACTION_BLOCKED` includes `blockedBy` in its error item:
+
+```ts
+type MasqueradeBlockedBy = 'sensitive' | 'view_only' | 'mutation_not_allowed'
+```
+
+Use that stable field to choose host-owned copy and recovery. Keep the explanation in the host
+application's language; the package supplies no page or translation strings.
+
 The example's [functional tests](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/inertia-react/tests/functional/support_journey.spec.ts) cover raw and effective identities, persistence, sensitive denial, stale forms and recovery. Its [browser tests](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/inertia-react/tests/browser/support_journey.spec.ts) exercise rendered forms and accessibility checks. Automated browser coverage is Chromium only and cannot establish screen-reader support or every narrow-screen device combination.

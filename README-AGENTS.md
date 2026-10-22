@@ -33,8 +33,11 @@ provider configuration and user-facing controls.
   `_masqueradeContext` hidden field. Do not refresh a token and replay the old action.
 - Review `node ace masquerade:routes` before release. Fix or consciously account for every raw
   business route it flags; the report is a release gate, not an automatic registry.
-- Mark billing mutations and other security-sensitive actions with `sensitive()`. URL names do not
-  make a route sensitive automatically, and `allowMutation()` never overrides the marker.
+- Masquerade starts in view-only mode. If the host offers edit access, require `canEdit` to return
+  exactly `true` at start and active edit admission. `allowMutation()` only opts an ordinary route
+  into writes in edit mode; it does not grant edit access or target authorization. Mark billing
+  mutations and other security-sensitive actions with `sensitive()`, which always blocks. URL names
+  do not make a route sensitive automatically.
 
 ## Identity and operational boundaries
 

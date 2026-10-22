@@ -35,7 +35,7 @@ export default class DemoJsonController {
     return {
       actor: { id: actor.id, email: actor.email },
       customer: { id: customer.id, fullName: customer.fullName, email: customer.email },
-      mode: { contextToken: mode.contextToken, expiresAt: mode.expiresAt },
+      mode: { contextToken: mode.contextToken, expiresAt: mode.expiresAt, access: mode.access },
       emailUpdates: Boolean(preference?.email_updates),
       canEdit: Boolean(
         await customerBouncer(ctx).allows(

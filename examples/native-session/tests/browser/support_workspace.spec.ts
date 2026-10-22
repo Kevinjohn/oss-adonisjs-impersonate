@@ -2,6 +2,7 @@ import { mock } from 'node:test'
 import { test } from '@japa/runner'
 import type { TestContext } from '@japa/runner/core'
 import testUtils from '@adonisjs/core/services/test_utils'
+import db from '@adonisjs/lucid/services/db'
 import limiter from '@adonisjs/limiter/services/main'
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -55,6 +56,8 @@ test.group('support workspace browser journey', (group) => {
     await page.waitForURL('**/support')
     assert.equal(await page.getByLabel('Customer', { exact: true }).count(), 1)
     assert.equal(await page.getByLabel('Reason for access').count(), 1)
+    assert.equal(await page.getByRole('radio', { name: 'View only' }).isChecked(), true)
+    assert.equal(await page.getByRole('radio', { name: 'Can edit' }).isChecked(), false)
 
     const start = page.getByRole('button', { name: 'Start support mode' })
     await start.focus()
@@ -64,6 +67,7 @@ test.group('support workspace browser journey', (group) => {
     await customerSelect.focus()
     await page.keyboard.press('c')
     assert.equal(await customerSelect.inputValue(), String(customer.id))
+    await page.getByRole('radio', { name: 'Can edit' }).check()
     await start.focus()
     await page.keyboard.press('Enter')
     assert.equal(await page.evaluate('document.activeElement.id'), 'reason')
@@ -76,6 +80,7 @@ test.group('support workspace browser journey', (group) => {
     assert.include(bannerText, operator.fullName!)
     assert.include(bannerText, customer.fullName!)
     assert.include(bannerText, 'account-wide mode')
+    assert.include(bannerText, 'Can edit')
     assert.include(await page.locator('body').innerText(), customer.email)
     assert.equal(await page.locator('time[datetime]').count(), 1)
     assert.equal(
@@ -133,6 +138,41 @@ test.group('support workspace browser journey', (group) => {
     await page.getByRole('heading', { name: operator.fullName! }).waitFor()
   })
 
+  test('view-only start blocks the edit and renders the host page', async ({
+    browserContext,
+    assert,
+  }) => {
+    const operator = await User.findByOrFail('email', demoAccounts[0].email)
+    const customer = await User.findByOrFail('email', demoAccounts[1].email)
+    const page = await browserContext.newPage()
+    await page.goto(`${baseUrl()}/login`)
+    await signIn(page, operator.email)
+    await page.goto(`${baseUrl()}/support`)
+    assert.equal(await page.getByRole('radio', { name: 'View only' }).isChecked(), true)
+    await page.getByLabel('Customer', { exact: true }).selectOption(String(customer.id))
+    await page.getByLabel('Reason for access').fill('Read-only customer review')
+    await page.getByRole('button', { name: 'Start support mode' }).click()
+    await page.waitForURL('**/support/customer')
+    assert.include(await page.locator('[data-support-mode]').innerText(), 'View only')
+
+    await page.getByLabel('Setting', { exact: true }).selectOption('1')
+    await page.getByRole('button', { name: 'Save preference' }).click()
+    await page.locator('#support-error-title').waitFor()
+    const errorTitle = await page.locator('#support-error-title').textContent()
+    assert.equal(errorTitle?.trim(), 'View-only support mode')
+    assert.include(await page.locator('body').innerText(), 'cannot change it')
+    assert.notInclude(await page.locator('body').innerText(), 'route configuration')
+    assert.isNull(await db.from('demo_preferences').where('user_id', customer.id).first())
+
+    await page.getByRole('link', { name: 'Check current status' }).click()
+    await page.waitForURL('**/support')
+    await page.getByRole('link', { name: 'Review customer workspace' }).click()
+    await page.waitForURL('**/support/customer')
+    await page.reload()
+    assert.equal(await page.locator('.support-details dd').nth(1).textContent(), 'Off')
+    assert.include(await page.locator('[data-support-mode]').innerText(), 'View only')
+  })
+
   test('rejects an old form and shares account mode across separate sessions', async ({
     visit,
     browser,
@@ -149,6 +189,7 @@ test.group('support workspace browser journey', (group) => {
     await second
       .getByLabel('Customer', { exact: true })
       .selectOption({ label: 'Customer One — customer-one@example.test' })
+    await second.getByRole('radio', { name: 'Can edit' }).check()
     await second.getByLabel('Reason for access').fill('First tab requested support')
     await second.getByRole('button', { name: 'Start support mode' }).click()
     await second.waitForURL('**/support/customer')
@@ -156,6 +197,7 @@ test.group('support workspace browser journey', (group) => {
     await first
       .getByLabel('Customer', { exact: true })
       .selectOption({ label: 'Customer Two — customer-two@example.test' })
+    await first.getByRole('radio', { name: 'Can edit' }).check()
     await first.getByLabel('Reason for access').fill('Stale tab must not replace the customer')
     await first.getByRole('button', { name: 'Start support mode' }).click()
     await first.getByRole('heading', { name: 'Support context changed' }).waitFor()
@@ -206,6 +248,7 @@ test.group('support workspace browser journey', (group) => {
       await page
         .getByLabel('Customer', { exact: true })
         .selectOption({ label: 'Customer One — customer-one@example.test' })
+      await page.getByRole('radio', { name: 'Can edit' }).check()
       await page.getByLabel('Reason for access').fill('Expiry recovery demonstration')
       await page.getByRole('button', { name: 'Start support mode' }).click()
       await page.waitForURL('**/support/customer')
@@ -255,6 +298,7 @@ test.group('support workspace browser journey', (group) => {
       await page
         .getByLabel('Customer', { exact: true })
         .selectOption({ label: 'Customer One — customer-one@example.test' })
+      await page.getByRole('radio', { name: 'Can edit' }).check()
       await page.getByLabel('Reason for access').fill('Recover after the outage demonstration')
       await page.getByRole('button', { name: 'Start support mode' }).click()
       await page.waitForURL('**/support/customer')

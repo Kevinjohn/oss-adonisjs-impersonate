@@ -169,7 +169,7 @@ function tokenStart(client: ApiClient, token: string, targetId: number, contextT
     .post('/api/masquerade/start')
     .header('Authorization', bearer(token))
     .header('X-Masquerade-Context', contextToken)
-    .json({ targetId, reason: 'Documented native bearer demo' })
+    .json({ targetId, reason: 'Documented native bearer demo', access: 'edit' })
 }
 
 function tokenStop(client: ApiClient, token: string, contextToken: string) {

@@ -205,7 +205,11 @@ export function initJsonClient({
     const token = status.contextToken
     act(
       '/masquerade/start',
-      { targetId: el('json-target').value, reason: el('json-reason').value },
+      {
+        targetId: el('json-target').value,
+        reason: el('json-reason').value,
+        access: documentRef.querySelector('input[name="json-access"]:checked')?.value ?? 'view',
+      },
       token
     )
   })

@@ -15,8 +15,11 @@ AdonisJS Plus compatibility.
 - Routes stay host-mounted. The host wires `masqueradeContext` after auth initialization and before
   `silent_auth`, mounts controls behind Shield and separate start/stop limiter budgets, and reviews
   `masquerade:routes` as a release gate.
-- Billing and other sensitive routes must use `sensitive()`. URL or route-name heuristics are not
-  allowed. A sensitive marker overrides `allowMutation()`.
+- Every mode starts view-only. A host `canEdit` callback must return exactly `true` for an edit
+  start and active edit admission. `allowMutation()` opts an ordinary route into writes in edit
+  mode; it grants neither edit access nor target authorization. Billing and other sensitive routes
+  must use `sensitive()`, which overrides access and the mutation marker. URL or route-name
+  heuristics are not allowed.
 - Files have one responsibility and names describe it. Tests follow source modules; shared fixtures
   live in `tests/helpers/`.
 - Use the [source map](source-map.md) to locate the owner and focused tests for a change. Separate

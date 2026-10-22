@@ -29,6 +29,7 @@ export async function assertControlStoreConformance(
     lastTransitionId: event.id,
     updatedAt: event.at,
     state: 'idle',
+    access: null,
     targetId: null,
     targetIncarnation: null,
     actorStampHash: null,
@@ -111,6 +112,7 @@ export async function assertControlStoreConformance(
       lastTransitionId: id,
       updatedAt: at,
       state: 'active' as const,
+      access: index % 2 === 0 ? ('view' as const) : ('edit' as const),
       targetId: `target-${index}`,
       targetIncarnation: 'target-v1',
       actorStampHash: 'a'.repeat(64),
@@ -133,6 +135,7 @@ export async function assertControlStoreConformance(
         revision: active.revision,
         targetId: active.targetId,
         targetIncarnation: active.targetIncarnation,
+        access: active.access,
         reason: active.reason,
       },
     })
@@ -163,6 +166,26 @@ export async function assertControlStoreConformance(
         revision: invalidNext.revision,
         targetId: 'different-target',
         targetIncarnation: activeRow.targetIncarnation,
+      },
+    })
+  )
+  assert.deepEqual(await store.read(activeRow), activeRow)
+  await assert.rejects(() =>
+    store.compareAndSet({
+      owner: activeRow,
+      expected: activeRow.revision,
+      next: invalidNext,
+      event: {
+        ...event,
+        ...activeRow,
+        id: invalidId,
+        at: activeRow.updatedAt,
+        kind: 'started',
+        outcomeCode: 'started',
+        revision: invalidNext.revision,
+        targetId: activeRow.targetId,
+        targetIncarnation: activeRow.targetIncarnation,
+        access: activeRow.access === 'view' ? 'edit' : 'view',
       },
     })
   )
@@ -214,6 +237,7 @@ export async function assertControlStoreConformance(
     revisionNonce: 'f'.repeat(32),
     lastTransitionId: endingId,
     state: 'idle',
+    access: null,
     targetId: null,
     targetIncarnation: null,
     actorStampHash: null,

@@ -23,6 +23,8 @@ export default defineConfig({
   policy: {
     canMasquerade: ({ actor, target }) =>
       Boolean(actor.user.masqueradeOperator) && Boolean(target.user.active),
+    canEdit: ({ actor, target }) =>
+      Boolean(actor.user.masqueradeOperator) && Boolean(target.user.active),
     canUseRequest: async ({ actor, target, request }) => {
       if (process.env.NODE_ENV === 'test') {
         const { areCustomerRequestsUnavailable } =

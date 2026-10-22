@@ -14,6 +14,42 @@ test.group('Lucid control store', () => {
       await f.cleanup()
     }
   })
+  test('access round-trips on rows and is persisted on events', async ({ assert }) => {
+    const f = await sqlFixture()
+    try {
+      const command = transition()
+      command.next = {
+        ...command.next,
+        state: 'active',
+        access: 'edit',
+        targetId: 'target',
+        targetIncarnation: 'target-v1',
+        actorStampHash: 'a'.repeat(64),
+        targetStampHash: 'b'.repeat(64),
+        reason: 'Ticket 42',
+        startedAt: command.event.at,
+        expiresAt: '2026-01-01T00:15:00.000Z',
+      }
+      command.event = {
+        ...command.event,
+        kind: 'started',
+        outcomeCode: 'started',
+        access: 'edit',
+        targetId: 'target',
+        targetIncarnation: 'target-v1',
+        reason: 'Ticket 42',
+      }
+      await f.store.compareAndSet(command)
+      const [row] = await f.client.from('masquerade_modes')
+      assert.equal(row.access, 'edit')
+      const persistedRow = await f.store.read(command.owner)
+      assert.equal(persistedRow?.access, 'edit')
+      const [event] = await f.client.from('masquerade_events')
+      assert.equal(event.access, 'edit')
+    } finally {
+      await f.cleanup()
+    }
+  })
   test('independent connections race absent and existing owner with exactly one audit event per winner', async ({
     assert,
   }) => {
@@ -66,6 +102,7 @@ test.group('Lucid control store', () => {
       a.next = {
         ...a.next,
         state: 'active',
+        access: 'view',
         targetId: 'target',
         targetIncarnation: 'target-v1',
         actorStampHash: 'a'.repeat(64),
@@ -78,6 +115,7 @@ test.group('Lucid control store', () => {
         ...a.event,
         kind: 'started',
         outcomeCode: 'started',
+        access: 'view',
         targetId: 'target',
         targetIncarnation: 'target-v1',
         reason: 'Ticket 42',
@@ -95,6 +133,7 @@ test.group('Lucid control store', () => {
         at: a.event.at,
         kind: 'started',
         outcome_code: 'started',
+        access: 'view',
         revision: f.pg ? '1' : 1,
         reason: 'Ticket 42',
       })
@@ -139,6 +178,7 @@ test.group('Lucid control store', () => {
       const [saved] = await f.client.from('masquerade_events')
       assert.equal(saved.id, outcome.id)
       assert.equal(saved.outcome_code, 'context_changed')
+      assert.isNull(saved.access)
       assert.equal(saved.reason, null)
       assert.deepEqual(await f.store.read(a.owner), a.next)
     } finally {

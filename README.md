@@ -12,8 +12,10 @@ checks.
 
 **V1.1 adds AdonisJS opaque access-token transport alongside native sessions.** Both transports
 share one server-side mode for the same operator account, with a fixed duration and explicit stop.
-An access token needs the configured `masquerade` ability to use integrated routes. The package
-does not create customer credentials or combine actor and customer permissions.
+An access token needs the configured `masquerade` ability to use integrated routes. Every mode
+starts view-only; an operator may request edit at start only when the host's `canEdit` policy
+approves it. The selected account-wide level is shared by sessions and tokens. The package does
+not create customer credentials or combine actor and customer permissions.
 
 **Status: early alpha for local self-testing.** Version `0.0.0` is not published, and there is no
 registry package for this baseline. Select and rebuild a tagged baseline as described in the

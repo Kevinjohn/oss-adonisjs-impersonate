@@ -25,13 +25,15 @@ marked **STOP**.
 
 Do not reopen these. Each has a reason recorded in the plan.
 
-- v1 is the native session guard only. No access tokens, no JWT, no Account Kit.
+- v1.1 supports native sessions and opaque access tokens; JWT is out and Account Kit integration
+  is v1.2.
 - One mode per operator account, shared by every session of that account. Fixed expiry, no
   renewal, explicit stop.
 - The operator stays authenticated as themselves. Nothing ever logs in as the target.
-- Deny by default: the host's `canMasquerade` callback approves every operator and target pair;
-  unsafe HTTP methods are blocked while active unless a route carries `allowMutation()`;
-  `sensitive()` routes are always blocked while active.
+- Every mode starts view-only. Edit is selected per start and requires optional host `canEdit` to
+  return exactly `true`; active edit admission rechecks it and invalidates with `edit_denied` when
+  permission is revoked. Unsafe requests require edit access and `allowMutation()`; `sensitive()`
+  always blocks. The typed `blockedBy` field explains the denial category to host handlers.
 - Context token on every covered unsafe request, idle or active, with `report` and `enforce`
   modes so hosts can migrate forms.
 - Security stamps are stored as sha256 hashes, not encrypted. Revision is a plain integer. No

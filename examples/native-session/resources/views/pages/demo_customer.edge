@@ -23,7 +23,8 @@
           <span class="support-badge support-badge--active" data-mode-badge>Active</span>
         </div>
         <p class="support-deadline">
-          Fixed deadline:
+          Access:
+          {{ mode.access === 'edit' ? 'Can edit' : 'View only' }}. Fixed deadline:
           <time datetime="{{ mode.expiresAt }}">{{ expiresText }}</time>
         </p>
         <p

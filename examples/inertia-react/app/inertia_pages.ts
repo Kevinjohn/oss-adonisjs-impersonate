@@ -8,6 +8,7 @@ type Mode =
       contextToken: string
       targetId: string
       expiresAt: string
+      access: 'view' | 'edit'
     }
 
 declare module '@adonisjs/inertia/types' {
@@ -33,6 +34,6 @@ declare module '@adonisjs/inertia/types' {
       emailUpdates: boolean
       canEdit: boolean
     }
-    'support/recovery': { message: string }
+    'support/recovery': { title: string; message: string }
   }
 }

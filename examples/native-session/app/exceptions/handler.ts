@@ -90,6 +90,21 @@ function supportErrorDetails(status: number, error: unknown) {
     }
   }
   if (code === 'E_MASQUERADE_ACTION_BLOCKED') {
+    const blockedBy = (error as MasqueradeError).blockedBy
+    if (blockedBy === 'view_only') {
+      return {
+        title: 'View-only support mode',
+        explanation:
+          'This mode can read customer information but cannot change it. Stop support mode and start a new one with edit access when the host allows it.',
+      }
+    }
+    if (blockedBy === 'mutation_not_allowed') {
+      return {
+        title: 'This action is unavailable in support mode',
+        explanation:
+          'Edit access is active, but this action is not available during support mode. The customer preference can still be changed when the customer permits it.',
+      }
+    }
     return {
       title: 'Sensitive action blocked',
       explanation:

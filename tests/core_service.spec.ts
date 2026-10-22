@@ -74,6 +74,47 @@ test('start persists bounded reason and hashes; projections and observers expose
     assert.notInclude(safe, secret)
 })
 
+test('start stores view by default and edit when requested', async ({ assert }) => {
+  for (const access of [undefined, 'edit'] as const) {
+    const f = fixture()
+    const service = await f.create()
+    const view = await f.start(service, {}, access)
+    assert.equal((await f.store.read(f.owner))!.access, access ?? 'view')
+    assert.equal(view.isMasquerading && view.access, access ?? 'view')
+  }
+})
+
+test("started, stopped and invalidated events carry the row's access; observer payloads include it", async ({
+  assert,
+}) => {
+  const f = fixture()
+  const service = await f.create()
+  const active = await f.start(service, {}, 'edit')
+  assert.equal(f.store.events[0].access, 'edit')
+  assert.equal((f.observed[0] as { access?: string }).access, 'edit')
+  const produced: Array<string | undefined> = []
+  const commit = f.store.compareAndSet.bind(f.store)
+  f.store.compareAndSet = async (input) => {
+    produced.push(input.event.access)
+    // Let persistence validate the rest of the transition after inspecting the producer's value.
+    input.event.access = 'edit'
+    return commit(input)
+  }
+  assert.equal(
+    await errorCode(() => service.stop({}, { expectedContext: active.contextToken })),
+    'NO_ERROR'
+  )
+  assert.equal(produced.at(-1), 'edit')
+  assert.equal(f.store.events.at(-1)!.access, 'edit')
+  const next = await f.start(service, {}, 'edit')
+  f.state.edit = false
+  assert.equal(await errorCode(() => service.resolve({})), 'E_MASQUERADE_CONTEXT_CHANGED')
+  assert.equal(produced.at(-1), 'edit')
+  assert.equal(f.store.events.at(-1)!.access, 'edit')
+  assert.equal(f.store.events.at(-1)!.outcomeCode, 'edit_denied')
+  assert.equal(next.isMasquerading && next.access, 'edit')
+})
+
 test('matching idle stop records a noop and never rotates the context', async ({ assert }) => {
   const f = fixture()
   const service = await f.create()
@@ -134,16 +175,24 @@ test('stop ignores target deletion, denied policies and failing stamp access', a
 }) => {
   const f = fixture()
   const service = await f.create()
-  const active = await f.start(service)
+  const active = await f.start(service, {}, 'edit')
   f.users.delete('b')
   f.state.policyThrows = true
   f.state.local = false
   f.state.stampThrows = true
   f.state.inspectThrows = true
-  const counts = [f.state.inspectCount, f.state.policyCount, f.state.stampCount]
-  const idle = await service.stop({}, { expectedContext: active.contextToken })
+  f.state.editThrows = true
+  const counts = [f.state.inspectCount, f.state.policyCount, f.state.stampCount, f.state.editCount]
+  assert.equal(
+    await errorCode(() => service.stop({}, { expectedContext: active.contextToken })),
+    'NO_ERROR'
+  )
+  const idle = await service.status({})
   assert.isFalse(idle.isMasquerading)
-  assert.deepEqual([f.state.inspectCount, f.state.policyCount, f.state.stampCount], counts)
+  assert.deepEqual(
+    [f.state.inspectCount, f.state.policyCount, f.state.stampCount, f.state.editCount],
+    counts
+  )
   const row = await f.store.read(f.owner)
   for (const key of [
     'targetId',

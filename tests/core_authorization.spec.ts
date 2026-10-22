@@ -1,6 +1,156 @@
 import { test } from '@japa/runner'
 import { fixture, errorCode } from './helpers/core.js'
 
+test('invalid access values are 422 with start_denied and no revision change', async ({
+  assert,
+}) => {
+  for (const access of [null, '', 'VIEW', 1, [], {}]) {
+    const f = fixture()
+    const service = await f.create()
+    const idle = await service.status({})
+    assert.equal(
+      await errorCode(() =>
+        service.start({}, {
+          targetId: 'b',
+          reason: 'case',
+          expectedContext: idle.contextToken,
+          access,
+        } as never)
+      ),
+      'E_MASQUERADE_INVALID_INPUT'
+    )
+    assert.isNull(await f.store.read(f.owner))
+    assert.equal(f.store.events[0].kind, 'start_denied')
+    assert.notProperty(f.store.events[0], 'access')
+  }
+})
+
+test('invalid access keeps context and already-active precedence', async ({ assert }) => {
+  const f = fixture()
+  const service = await f.create()
+  const idle = await service.status({})
+  const input = { targetId: 'b', reason: 'case', access: null }
+  const active = await f.start(service)
+  assert.equal(
+    await errorCode(() =>
+      service.start({}, { ...input, expectedContext: idle.contextToken } as never)
+    ),
+    'E_MASQUERADE_CONTEXT_CHANGED'
+  )
+  assert.equal(
+    await errorCode(() =>
+      service.start({}, { ...input, expectedContext: active.contextToken } as never)
+    ),
+    'E_MASQUERADE_ALREADY_ACTIVE'
+  )
+  assert.equal((await f.store.read(f.owner))!.revision, 1)
+  assert.notEqual(active.contextToken, idle.contextToken)
+})
+
+test('edit start requires canEdit literal true; absent, false, non-boolean and throw do not start', async ({
+  assert,
+}) => {
+  for (const value of ['absent', false, 1, 'true', 'throw'] as const) {
+    const f = fixture()
+    if (value === 'absent') delete f.config.policy.canEdit
+    else if (value === 'throw') f.state.editThrows = true
+    else f.state.edit = value
+    const service = await f.create()
+    assert.equal(
+      await errorCode(() => f.start(service, {}, 'edit')),
+      value === 'throw' ? 'E_MASQUERADE_UNAVAILABLE' : 'E_MASQUERADE_NOT_ALLOWED'
+    )
+    assert.isNull(await f.store.read(f.owner))
+    assert.equal(f.store.events[0].kind, 'start_denied')
+    if (value === 'throw')
+      assert.isTrue(
+        f.diagnostics.some((item) => (item as { operation?: string }).operation === 'can_edit')
+      )
+  }
+})
+
+test('view start never calls canEdit', async ({ assert }) => {
+  const f = fixture()
+  f.state.editThrows = true
+  const service = await f.create()
+  assert.equal(await errorCode(() => f.start(service)), 'NO_ERROR')
+  assert.equal(f.state.editCount, 0)
+})
+
+test('edit policy receives start reason and request but no admission request', async ({
+  assert,
+}) => {
+  const f = fixture()
+  const service = await f.create()
+  const startRequest = { actorId: 'a' }
+  await f.start(service, startRequest, 'edit')
+  assert.equal(f.state.editCount, 1)
+  assert.strictEqual((f.state.editInputs[0] as { request?: object }).request, startRequest)
+  assert.equal((f.state.editInputs[0] as { reason?: string }).reason, 'support\ncase\t42')
+  await service.resolve({})
+  assert.equal(f.state.editCount, 2)
+  assert.notProperty(f.state.editInputs[1] as object, 'request')
+  assert.notProperty(f.state.editInputs[1] as object, 'reason')
+})
+
+test('edit policy follows global policy and precedes request policy on start and admission', async ({
+  assert,
+}) => {
+  const f = fixture()
+  const timeline: string[] = []
+  let globalAllowed = true
+  f.config.policy.canMasquerade = async (input) => {
+    timeline.push('global')
+    assert.equal(input.actor.id, 'a')
+    assert.equal(input.target.id, 'b')
+    return globalAllowed
+  }
+  f.config.policy.canEdit = async (input) => {
+    timeline.push('edit')
+    assert.equal(input.actor.id, 'a')
+    assert.equal(input.target.id, 'b')
+    return true
+  }
+  f.config.policy.canUseRequest = async () => {
+    timeline.push('request')
+    return true
+  }
+  const service = await f.create()
+  await f.start(service, {}, 'edit')
+  assert.deepEqual(timeline, ['global', 'edit', 'request'])
+  timeline.length = 0
+  await service.resolve({})
+  assert.deepEqual(timeline, ['global', 'edit', 'request'])
+
+  timeline.length = 0
+  globalAllowed = false
+  const deniedAdmission = await f.create()
+  assert.equal(await errorCode(() => deniedAdmission.resolve({})), 'E_MASQUERADE_CONTEXT_CHANGED')
+  assert.deepEqual(timeline, ['global'])
+  assert.equal(f.store.events.at(-1)!.outcomeCode, 'policy_denied')
+
+  const deniedStart = fixture()
+  const startCalls: string[] = []
+  deniedStart.config.policy.canMasquerade = async () => {
+    startCalls.push('global')
+    return false
+  }
+  deniedStart.config.policy.canEdit = async () => {
+    startCalls.push('edit')
+    return true
+  }
+  deniedStart.config.policy.canUseRequest = async () => {
+    startCalls.push('request')
+    return true
+  }
+  const deniedStartService = await deniedStart.create()
+  assert.equal(
+    await errorCode(() => deniedStart.start(deniedStartService, {}, 'edit')),
+    'E_MASQUERADE_NOT_ALLOWED'
+  )
+  assert.deepEqual(startCalls, ['global'])
+})
+
 test('start preserves input-shape, context and active-mode error precedence', async ({
   assert,
 }) => {

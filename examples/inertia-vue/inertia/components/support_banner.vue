@@ -2,13 +2,14 @@
 defineProps<{
   actor: { fullName: string; email: string }
   customer: { fullName: string; email: string }
+  mode: { access: 'view' | 'edit' }
   expiresAt: string
 }>()
 </script>
 
 <template>
   <aside class="support-banner" role="status" aria-live="polite">
-    <strong>Support mode is active</strong>
+    <strong>{{ mode.access === 'edit' ? 'Can edit' : 'View only' }} support mode is active</strong>
     <span
       >Operator {{ actor.fullName }} ({{ actor.email }}) is viewing {{ customer.fullName }} ({{
         customer.email

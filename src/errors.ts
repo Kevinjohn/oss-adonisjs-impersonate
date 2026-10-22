@@ -12,6 +12,8 @@ export const errorDetails = {
 } as const
 export type MasqueradeErrorCode = keyof typeof errorDetails
 
+export type MasqueradeBlockedBy = 'sensitive' | 'view_only' | 'mutation_not_allowed'
+
 export type MasqueradeSetupErrorCode =
   'E_MASQUERADE_INVALID_CONFIGURATION' | 'E_MASQUERADE_INVALID_STORE'
 
@@ -25,6 +27,7 @@ export type MasqueradeSetupErrorField =
   | 'authority.inspectAccount'
   | 'policy'
   | 'policy.canMasquerade'
+  | 'policy.canEdit'
   | 'policy.canUseRequest'
   | 'store'
   | 'store.testOnly'
@@ -54,19 +57,36 @@ export class MasqueradeSetupError extends TypeError {
   }
 }
 
+/** Safe request error. Action blocks identify the route rule that caused the denial. */
 export class MasqueradeError extends Error {
   readonly status: number
-  constructor(readonly code: MasqueradeErrorCode) {
+  readonly blockedBy?: MasqueradeBlockedBy
+
+  constructor(code: 'E_MASQUERADE_ACTION_BLOCKED', options: { blockedBy: MasqueradeBlockedBy })
+  constructor(code: Exclude<MasqueradeErrorCode, 'E_MASQUERADE_ACTION_BLOCKED'>)
+  constructor(
+    readonly code: MasqueradeErrorCode,
+    options?: { blockedBy: MasqueradeBlockedBy }
+  ) {
     super(errorDetails[code][1])
     this.name = 'MasqueradeError'
     this.status = errorDetails[code][0]
+    this.blockedBy = options?.blockedBy
   }
 
   handle(_error: unknown, ctx: HttpContext): void {
     ctx.response.header('Cache-Control', 'no-store')
     ctx.response.vary(['Accept', 'X-Masquerade-Context'])
     ctx.response.status(this.status).json({
-      errors: [{ code: this.code, message: this.message }],
+      errors: [
+        {
+          code: this.code,
+          message: this.message,
+          ...(this.code === 'E_MASQUERADE_ACTION_BLOCKED' && this.blockedBy !== undefined
+            ? { blockedBy: this.blockedBy }
+            : {}),
+        },
+      ],
     })
   }
 }

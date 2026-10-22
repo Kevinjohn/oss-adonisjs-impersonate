@@ -11,6 +11,8 @@ Masquerade stores one mode per owner and appends an audit event for each committ
 
 The owner key is the complete tuple `(namespace, actorId, actorIncarnation)`. Treat all three values as part of every read, uniqueness constraint, comparison, and event projection. An account ID reused for a new account lifetime has a different owner key when its incarnation changes.
 
+Each mode row stores `access` as nullable `string(8)`: active rows use `'view'` or `'edit'`, while idle rows use `null`. Audit events also store a nullable `access` column. An event written from an active row must carry that row's access level; events without an active row omit the field and persist `NULL`. Validate this projection alongside the event's target and transition identity.
+
 | Operation                        | Required behavior                                                                                                                                                                     |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `read(owner)`                    | Return an independent snapshot for the complete owner key, or `null` as authoritative absence. Mutating a returned object must not mutate stored state.                               |
@@ -19,7 +21,7 @@ The owner key is the complete tuple `(namespace, actorId, actorIncarnation)`. Tr
 | `expiredBatch({ now, limit })`   | Return at most `limit` expired active row snapshots. Expiry cleanup re-reads each candidate and uses CAS, so a stale batch cannot clear a newer mode.                                 |
 | `pruneEvents({ before, limit })` | Delete at most `limit` events strictly older than `before`; do not delete mode rows, including idle rows.                                                                             |
 
-For a successful CAS, `next.revision` and the event revision agree and advance exactly once from the expected revision (an absent owner starts at revision 1). The event must describe the same owner and the transition represented by the row: transition ID, mode ID, state, target and incarnation, outcome, and reason where applicable. Validate persisted rows and incoming transition/event pairs canonically, including revision progression and event projection. Malformed persisted state must fail closed; do not return a row that the service could interpret as valid.
+For a successful CAS, `next.revision` and the event revision agree and advance exactly once from the expected revision (an absent owner starts at revision 1). The event must describe the same owner and the transition represented by the row: transition ID, mode ID, state, target and incarnation, access, outcome, and reason where applicable. Validate persisted rows and incoming transition/event pairs canonically, including revision progression and event projection. Malformed persisted state must fail closed; do not return a row that the service could interpret as valid.
 
 `applied` means the row and event committed together. `conflict` means the expected revision did not match and this attempt did not commit. `indeterminate` means the commit acknowledgement was lost and the transaction may have committed; preserve and return its transition ID. The caller reports the operation as unavailable and recovers through status. Never turn an uncertain result into a definite failure or retry it as if nothing committed.
 
