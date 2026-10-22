@@ -4,6 +4,21 @@ import { cp, mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  kitReleaseSha256,
+  kitReleaseUrl,
+  kitReleaseVersion,
+  kitSourceRevision,
+  overlay,
+  rewriteManifest,
+  wireAuth,
+  wireKernel,
+  wireProviders,
+  wireRoutes,
+  wireSessionConfig,
+  wireSessionImports,
+  wireShield,
+} from './helpers/account_kit_host_wiring.js'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const fixture = join(root, 'examples/account-kit')
@@ -33,12 +48,6 @@ if (Number(process.versions.node.split('.')[0]) !== 24)
 const source = process.env.ACCOUNT_KIT_SOURCE
 if (source && !source.startsWith('/'))
   throw new Error('ACCOUNT_KIT_SOURCE must be an absolute path')
-
-const kitReleaseUrl =
-  'https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.1.1/adonisjs-account-kit-0.1.1.tgz'
-const kitReleaseSha256 = '38fd950b08990a95b780d3077ad65f3a98bb898cb858b7b2f9eaabaae236a3d2'
-const kitReleaseVersion = '0.1.1'
-const kitSourceRevision = 'b1ae0d48fda29ff75a2edc9f021c61eff3b1267b'
 
 const output = resolve(
   process.env.ACCOUNT_KIT_EVIDENCE_DIR ?? (await mkdtemp(join(tmpdir(), 'masquerade-account-kit-')))
@@ -163,23 +172,6 @@ async function run(
   if (failure) throw failure
   console.log(`[account-kit] PASS ${label}`)
   return contents
-}
-
-async function overlay(sourceDir: string, destinationDir: string): Promise<void> {
-  for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-    const from = join(sourceDir, entry.name)
-    const to = join(destinationDir, entry.name)
-    if (entry.isDirectory()) {
-      await mkdir(to, { recursive: true })
-      await overlay(from, to)
-    } else if (entry.isFile()) await cp(from, to)
-  }
-}
-
-async function replace(path: string, oldText: string, newText: string) {
-  const before = await readFile(path, 'utf8')
-  if (!before.includes(oldText)) throw new Error(`Fixture seam changed: ${path}: ${oldText}`)
-  await writeFile(path, before.replace(oldText, newText))
 }
 
 async function setupPostgres(
@@ -364,19 +356,7 @@ try {
           await mkdir(join(app, 'tmp'), { recursive: true })
           await cp(masqueradeArtifact, join(app, 'masquerade.tgz'))
           await cp(kitArtifact, join(app, 'account-kit.tgz'))
-          const manifest = JSON.parse(await readFile(join(app, 'package.json'), 'utf8'))
-          for (const [name, version] of Object.entries(versions))
-            (name === 'typescript' ? manifest.devDependencies : manifest.dependencies)[name] =
-              version
-          if (selectedProfile === 'floor') manifest.dependencies['@adonisjs/vite'] = '6.0.1'
-          manifest.dependencies['adonisjs-masquerade'] = 'file:./masquerade.tgz'
-          manifest.dependencies['adonisjs-account-kit'] = 'file:./account-kit.tgz'
-          await writeFile(join(app, 'package.json'), JSON.stringify(manifest, null, 2) + '\n')
-          await writeFile(
-            join(app, 'pnpm-workspace.yaml'),
-            JSON.stringify({ overrides: versions, allowBuilds: manifest.allowScripts }, null, 2) +
-              '\n'
-          )
+          await rewriteManifest(app, versions, selectedProfile)
           const schema = `kit_${randomUUID().replaceAll('-', '')}`
           const env = {
             ...baseEnv,
@@ -471,41 +451,16 @@ try {
                 env
               )
               await overlay(fixture, app)
-              await replace(
-                join(app, 'start/routes.ts'),
-                "import './demo_json_routes.js'",
-                "import './demo_json_routes.js'\nimport './account_kit_routes.js'\nimport './account_kit_fixture_routes.js'"
-              )
-              await replace(
-                join(app, 'config/auth.ts'),
-                ': guards) as typeof guards,',
-                ': { web: guards.web, web_effective: guards.web_effective, members: guards.members }) as unknown as typeof guards,'
-              )
-              await replace(
-                join(app, 'config/session.ts'),
-                "import { defineConfig, stores } from '@adonisjs/session'",
-                "import { defineConfig, stores } from '@adonisjs/session'\nimport { protectManagedSessionConfig } from 'adonisjs-account-kit/http'"
-              )
-              await replace(
-                join(app, 'config/session.ts'),
-                'export default sessionConfig',
-                "export default protectManagedSessionConfig(sessionConfig, {\n  verifyStore: (actual) => typeof actual === 'object' && actual !== null && actual.constructor.name === 'DatabaseStore',\n})"
-              )
-              await replace(
-                join(app, 'start/kernel.ts'),
-                "  () => import('@adonisjs/auth/initialize_auth_middleware'),",
-                "  () => import('@adonisjs/auth/initialize_auth_middleware'),\n  () => import('adonisjs-masquerade/account-kit/middleware'),\n  () => import('#middleware/account_kit_admission_middleware'),"
-              )
-              await replace(
-                join(app, 'config/shield.ts'),
-                '(routeName && bearerRouteNames.has(routeName)) ||',
-                "(routeName && bearerRouteNames.has(routeName)) ||\n        (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'access_tokens' &&\n          ((routeName && routeName.startsWith('accountKit.')) || routePath === '/account/password' || routePath?.startsWith('/account/sessions/'))) ||"
-              )
-              await replace(
-                join(app, 'adonisrc.ts'),
-                "    () => import('adonisjs-masquerade/providers/masquerade_provider'),",
-                "    () => import('adonisjs-masquerade/providers/masquerade_provider'),\n    () => import('adonisjs-masquerade/account-kit/provider'),\n    () => import('adonisjs-account-kit/admission/provider'),"
-              )
+              await wireRoutes(app, {
+                anchor: "import './demo_json_routes.js'",
+                imports: ['./account_kit_routes.js', './account_kit_fixture_routes.js'],
+              })
+              await wireAuth(app)
+              await wireSessionImports(app)
+              await wireSessionConfig(app)
+              await wireKernel(app)
+              await wireShield(app)
+              await wireProviders(app)
               await run(
                 app,
                 ['exec', 'node', 'ace.js', 'migration:run', '--force'],

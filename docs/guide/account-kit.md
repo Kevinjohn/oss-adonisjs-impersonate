@@ -22,6 +22,13 @@ block managed account actions while a mode is active. Configure exactly one tran
 or access-token strategy selected by the Account Kit instance. A second Masquerade transport is not
 covered by this integration.
 
+## Run the local demo
+
+The [Account Kit support demo README](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/account-kit-demo/README.md)
+walks through the fictional operator and customer workflow, including setup, support mode, and
+local data reset. It requires Node.js 24, pnpm, JavaScript in the browser, and network access on
+first run to fetch the pinned Account Kit release artifact. The demo is for local development.
+
 ## Configure the adapter
 
 Create the Account Kit managed guard with the same strategy and guard name configured in Account

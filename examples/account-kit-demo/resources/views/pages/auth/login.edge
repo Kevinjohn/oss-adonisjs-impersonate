@@ -1,0 +1,28 @@
+@layouts.auth()
+  @vite(['resources/js/account_kit_forms.js'])
+  <div data-demo="account-kit">
+    <h1 class="auth__title">Sign in to support</h1>
+    <p class="auth__sub">Use the fictional operator credentials shown in the demo terminal.</p>
+    <form class="auth__form" data-kit-login>
+      <div class="field">
+        <label for="kit-email">Email</label>
+        <input id="kit-email" name="email" type="email" autocomplete="username" required />
+      </div>
+      <div class="field">
+        <label for="kit-password">Password</label>
+        <input
+          id="kit-password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+        />
+      </div>
+      <p role="alert" data-kit-error hidden></p>
+      <button class="btn btn--primary" type="submit" disabled>Sign in</button>
+    </form>
+    <noscript>
+      <p>Enable JavaScript to sign in to this demo.</p>
+    </noscript>
+  </div>
+@end

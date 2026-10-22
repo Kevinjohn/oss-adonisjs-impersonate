@@ -1,0 +1,41 @@
+@layouts.app({ title: 'Your account' })
+  <main class="page">
+    <h1>Your account</h1>
+    <p>Signed in as {{ operator.fullName }} ({{ operator.email }}).</p>
+    <p>
+      Enter your current password to change your display name. Account changes are unavailable during support mode.
+    </p>
+    <form data-kit-profile>
+      <div class="field">
+        <label for="profile-full-name">Display name</label>
+        <input
+          id="profile-full-name"
+          name="fullName"
+          type="text"
+          minlength="1"
+          maxlength="80"
+          value="{{ operator.fullName }}"
+          required
+        />
+      </div>
+      <div class="field">
+        <label for="profile-current-password">Current password</label>
+        <input
+          id="profile-current-password"
+          name="currentPassword"
+          type="password"
+          autocomplete="current-password"
+          required
+        />
+      </div>
+      <p role="alert" data-kit-error hidden></p>
+      <p data-kit-stop hidden>
+        <a href="/support">Stop support mode in the support workspace</a>, then retry.
+      </p>
+      <button class="btn btn--primary" type="submit" disabled>Save display name</button>
+    </form>
+    <noscript>
+      <p>Enable JavaScript to change your display name.</p>
+    </noscript>
+  </main>
+@end
