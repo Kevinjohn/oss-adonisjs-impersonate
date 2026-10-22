@@ -308,7 +308,7 @@ The owner accepted all D1–D10 decisions from issue #85 on 22 October 2026. Thi
 | D3       | If `canEdit` no longer returns exact `true` during active edit-mode admission, invalidate with `edit_denied`; do not downgrade.            | Accepted 2026-10-22 |
 | D4       | Blocked business requests produce no package event or diagnostic; hosts use `blockedBy` for diagnostics.                                   | Accepted 2026-10-22 |
 | D5       | `blockedBy` is a flat error-item field, present exactly for `E_MASQUERADE_ACTION_BLOCKED`.                                                 | Accepted 2026-10-22 |
-| D6       | Access values are exactly `'view'                                                                                                          | 'edit'`.            | Accepted 2026-10-22 |
+| D6       | Access values are exactly `'view' \| 'edit'`.                                                                                              | Accepted 2026-10-22 |
 | D7       | Add SPEC §14 with explicit supersession pointers at the old D09, I12, route rule, admission step, and start body.                          | Accepted 2026-10-22 |
 | D8       | Edit the create migration in place; add no upgrade migration because there are no external deployments.                                    | Accepted 2026-10-22 |
 | D9       | Use nullable `string(8)` access columns in both mode and event tables.                                                                     | Accepted 2026-10-22 |
