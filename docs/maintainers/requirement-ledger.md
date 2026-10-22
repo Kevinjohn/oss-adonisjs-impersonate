@@ -182,8 +182,8 @@ read. Every
 other authenticated managed request reads the actor's mode row; an active unexpired mode is
 blocked, while no row, an idle or expired row, or no active mode for that actor passes after the
 read. Authenticated managed requests with Masquerade store outage return 503, except logout and CSRF, which
-pass store-free. Missing managed registration fails at startup or first request per provider
-timing. The route report lists the managed group only when blocker installation is verified, and
+pass store-free. Missing managed registration fails at startup in both the HTTP and console
+lifecycles. The route report lists the managed group only when blocker installation is verified, and
 otherwise leaves routes unclassified with a missing or unverified note. `node ace` works without
 Account Kit.
 

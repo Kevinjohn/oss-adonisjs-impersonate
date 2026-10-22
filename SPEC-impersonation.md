@@ -650,9 +650,11 @@ The provider's `ready` hook checks `kit.managedHttp.assertGuard(managedGuard)`, 
 mounted `accountKit.*` route corresponds to a `managedRouteRegistration` entry, and records that the
 blocker is installed for the route report. A failed check fails startup. The HTTP lifecycle runs
 `ready` after the router commits. The console lifecycle used by `masquerade:routes` runs `ready`
-before command execution and before router commit, so the provider explicitly calls `router.commit()`
-when it is not already committed, then performs the same registration and middleware checks. The
-commit is safe when the HTTP lifecycle has already committed. The lifecycle behavior has focused
+before command execution and before router commit, so when `app.getEnvironment()` is `console` and
+the router is not yet committed the provider calls `router.commit()` itself, then performs the same
+registration and middleware checks. The provider never commits in any other environment: the test
+lifecycle also runs `ready` before the host's tests start the HTTP server, and a commit there would
+drop routes a test registers later. The lifecycle behavior has focused
 regression coverage in `tests/account_kit_lifecycle.spec.ts`. Keep the first-request fallback only
 for a future lifecycle change that makes this commit-and-check sequence unavailable.
 
