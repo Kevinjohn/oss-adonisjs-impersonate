@@ -5,24 +5,27 @@
 [![Node.js 24+](https://img.shields.io/badge/node-%3E%3D24-339933)](package.json)
 [![AdonisJS 7](https://img.shields.io/badge/AdonisJS-7-5a45ff)](https://adonisjs.com)
 
-**See exactly what your customer sees, without their password.**
+**See your app exactly as another user sees it, without their password.**
 
-A customer reports that a page looks wrong. Your support team can't reproduce it from their own
-account, and asking for the customer's password is not an option. Masquerade lets an authorized
-operator open the application as that customer, for a fixed time, while staying signed in as
+A teammate says a page looks wrong, or a customer reports a problem you can't reproduce from your
+own account. Asking for their password is not an option. Masquerade lets an authorized user, such
+as an admin, open the application as that other user for a fixed time, while staying signed in as
 themselves.
 
 ![The customer view with a support banner naming the operator, the customer, the access level and the deadline.](docs/assets/walkthrough/support_customer_active.png)
 
 ## What you get
 
-- **The operator stays the operator.** Login, logout and support controls keep using your
-  existing session guard. The customer never signs in and no customer credential is created.
-- **Your existing authorization still decides.** On business routes, `auth.user` is the customer,
-  so your normal Auth and Bouncer checks apply. Operator and customer permissions are never
+- **You decide who can view whom.** Your `canMasquerade` policy approves each pair, for example
+  an admin and a member of their own team, and is rechecked on every request.
+- **The admin stays the admin.** Login, logout and the start and stop controls keep using your
+  existing session guard. The other user never signs in and no credential is created for them.
+- **Your existing authorization still decides.** On business routes, `auth.user` is the other
+  user, so your normal Auth and Bouncer checks apply. The two users' permissions are never
   combined.
-- **View-only by default.** Edit is chosen at start and only when your `canEdit` policy allows it.
-  Routes you mark `sensitive()` are always blocked during support mode.
+- **Read-only by default, with a Can edit option.** Every mode starts view-only. An admin can
+  choose **Can edit** when starting, and only if your `canEdit` policy approves that pair. Routes
+  you mark `sensitive()` stay blocked either way.
 - **Time-boxed and stoppable.** Every mode has a fixed deadline (15 minutes by default, one hour
   maximum) and an explicit stop.
 - **Sessions and access tokens.** Works with native AdonisJS sessions and opaque access tokens.
@@ -58,8 +61,8 @@ router
   .use(middleware.auth({ guards: ['web_effective'] }))
 ```
 
-- The first route is readable as the customer.
-- The second can be changed as the customer, when the mode was started with edit access.
+- The first route is readable as the other user.
+- The second can be changed as the other user, when the mode was started with **Can edit**.
 - The third is rejected before its handler runs whenever support mode is active.
 
 ## Try it
