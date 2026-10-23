@@ -66,6 +66,9 @@ jobs:
       - name: Lint
         if: ${{ matrix.database == 'better-sqlite3' }}
         run: pnpm lint
+      - name: Build
+        if: ${{ matrix.database == 'better-sqlite3' }}
+        run: pnpm build
       - name: Test built package exports
         if: ${{ matrix.database == 'better-sqlite3' }}
         run: pnpm test:built-exports
