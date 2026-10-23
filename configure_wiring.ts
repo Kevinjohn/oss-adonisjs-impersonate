@@ -135,8 +135,18 @@ function soleObjectArgument(node: CallNode | undefined): ObjectNode | undefined 
     : undefined
 }
 
-async function save(file: SourceFile): Promise<void> {
+/**
+ * Format like the AdonisJS codemods, then restore the starter's Prettier shape: a trailing comma
+ * after the inserted entry and `{}` interface bodies.
+ */
+async function save(file: SourceFile, inserted: string): Promise<void> {
   file.formatText(editorSettings)
+  file.replaceWithText(
+    file
+      .getFullText()
+      .replace(`${inserted}\n`, `${inserted},\n`)
+      .replace(/(\bextends [^\n{]+)\{ \}/g, '$1{}')
+  )
   await file.save()
 }
 
@@ -163,7 +173,7 @@ export async function wireContextMiddleware(
   const silent = entries.findIndex((entry) => entry.includes('silent_auth_middleware'))
   if (initialize === -1 || (silent !== -1 && silent < initialize)) return 'skipped'
   list.insertElement(initialize + 1, contextMiddleware)
-  await save(file)
+  await save(file, contextMiddleware)
   return 'wired'
 }
 
@@ -244,15 +254,7 @@ export async function wireAuthGuards(
     moduleSpecifier: '#services/masquerade_user_provider',
     namedImports: ['userProvider'],
   })
-  file.formatText(editorSettings)
-  // Keep the starter's Prettier shape: a trailing comma on the new guard and `{}` bodies.
-  file.replaceWithText(
-    file
-      .getFullText()
-      .replace(`effectiveSessionGuard(${rawName})\n`, `effectiveSessionGuard(${rawName}),\n`)
-      .replace(/(\bextends [^\n{]+)\{ \}/g, '$1{}')
-  )
-  await file.save()
+  await save(file, `effectiveSessionGuard(${rawName})`)
   return 'wired'
 }
 
