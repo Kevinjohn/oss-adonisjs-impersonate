@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add `node ace masquerade:status` to list active modes and `node ace masquerade:stop --actor <id>`
+  (or `--all`) to end them from the server, audited as `invalidated` with the `operator_stopped`
+  outcome code. Adds `activeBatch({ limit })` to the `ControlStore` contract: custom stores must
+  implement it to pass the updated conformance suite.
 - Add `masqueradeAuditFields(ctx)` to `adonisjs-masquerade/http`, returning the safe actor and
   effective identity fields to spread into a host business audit record, and document a host-owned
   page for reviewing the `masquerade_events` ledger.

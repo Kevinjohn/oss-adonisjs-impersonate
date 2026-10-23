@@ -225,7 +225,8 @@ Malformed rows fail closed. A reused ID with a different incarnation is a differ
 ### 6.2 Audit table `masquerade_events`
 
 - Columns: event ID, mode ID when known, namespace, actor ID and incarnation, target ID and incarnation when known, UTC time, kind, outcome code, owner revision, bounded reason for start.
-- Kinds: `started`, `stopped`, `expired`, `invalidated`, `start_denied`, `stop_denied`, `control_noop`. Invalidation codes distinguish actor stamp, target stamp, actor ineligible, target ineligible and policy denied; public responses stay generic.
+- Kinds: `started`, `stopped`, `expired`, `invalidated`, `start_denied`, `stop_denied`, `control_noop`. Invalidation codes distinguish actor stamp, target stamp, actor ineligible, target ineligible, policy denied and `operator_stopped`; public responses stay generic.
+- Operator commands (accepted 23 October 2026): `masquerade:status` lists active modes through `activeBatch` without reasons; `masquerade:stop --actor <id> [--incarnation <value>]` or `--all` (confirmed, or `--force`) re-reads each row and CASes it to idle with one `invalidated` event, outcome `operator_stopped`. Like stop and expiry, it never reads security stamps. A conflict re-reads; `--all` stops when a batch makes no progress.
 - Never persist credentials, cookies, stamps, user objects, request bodies, IP addresses or user agents.
 - Committed transitions write the row update and the event in one transaction. After native authentication, CSRF and the host limiter, each start or stop is inside the control-audit boundary: its denial, input failure, context conflict or idle-stop no-op is written through `recordControlOutcome` without changing revision. A failed outcome write is 503 with no state change.
 - Native authentication failures, limiter rejections, status denials and business or local denials use host diagnostics, not package events.
@@ -257,6 +258,8 @@ interface ControlStore {
   }): Promise<CasOutcome>
   recordControlOutcome(event: AuditEvent): Promise<void>
   expiredBatch(input: { now: Instant; limit: number }): Promise<ModeRow[]>
+  // At most limit active snapshots, oldest update first; operator commands re-read and use CAS.
+  activeBatch(input: { limit: number }): Promise<ModeRow[]>
   pruneEvents(input: { before: Instant; limit: number }): Promise<number>
 }
 ```
