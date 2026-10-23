@@ -1,7 +1,7 @@
 # Historical implementation handoff
 
 This is the original M0–M4 implementation brief. Those milestones are now recorded as complete
-in [M4-RESULT.md](../../M4-RESULT.md) and the [requirement ledger](requirement-ledger.md). The
+in [M4-RESULT.md](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/7e0940e/M4-RESULT.md) and the [requirement ledger](requirement-ledger.md). The
 instructions below preserve the original sequence and stop conditions; they are not a current
 backlog. For maintenance, use the [source map](source-map.md) and [conventions](conventions.md).
 
