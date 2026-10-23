@@ -57,7 +57,27 @@ checks the namespace and guard syntax, that `config/auth.ts` exists, and that th
 transformer and Lucid can be imported. It does not inspect the contents of `config/auth.ts`, check
 the selected guard's driver or provider, or prove that the guard is a native session guard. It adds
 the package provider, native binding provider, and command loader to `adonisrc.ts`, and creates
-starter files and a migration. It does not edit `config/auth.ts`, routes, or the HTTP kernel.
+starter files and a migration.
+
+Configure then wires the host when its files have the AdonisJS starter-kit shape, and prints the
+manual step for anything it leaves alone:
+
+- **`config/auth.ts`**: when `authConfig` is a `defineConfig` call whose default is the `--guard`
+  value, and that guard is the starter's `sessionGuard` with a `sessionUserProvider` for
+  `#models/user`, configure moves the factory to a constant that uses the generated `userProvider`
+  (`webGuard` for `--guard=web`), adds `web_effective: effectiveSessionGuard(webGuard)` and makes
+  `web_effective` the default. Any other shape, including a guard you already customised, is not
+  changed.
+- **`start/kernel.ts`**: configure inserts the context middleware directly after
+  `initialize_auth_middleware` in `router.use`. It skips the edit when `initialize_auth` is missing
+  or `silent_auth` runs before it.
+- **Control routes**: when both edits above are in place, `config/limiter.ts` exists and the kernel
+  has the named `auth` middleware, configure writes `start/masquerade_limiter.ts` (separate start
+  and stop budgets) and `start/masquerade_routes.ts` (`masqueradeRoutes` on the raw guard) and
+  preloads the routes file. Without `@adonisjs/limiter`, the routes step is printed instead.
+
+The identity and policy callbacks stay manual and fail closed. Pass `--no-wire` to skip every edit
+above and get only the printed steps.
 
 Generated files fail closed. Review the output and replace every placeholder described below before
 mounting routes. If a generated destination already exists, configure leaves files unchanged and

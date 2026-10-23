@@ -1,9 +1,11 @@
 import { test } from '@japa/runner'
 import { IgnitorFactory } from '@adonisjs/core/factories'
+import { existsSync } from 'node:fs'
 import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { starterAuthConfig, starterKernel } from './helpers/starter_kit.js'
 
 test.group('Masquerade configure scaffold', () => {
   test('loads and executes the package hook through native Ace', async ({ assert }) => {
@@ -116,7 +118,96 @@ export default defineConfig({
     .timeout(10_000)
     // The generated app imports the compiled package; `pnpm test:built-exports` runs this after build.
     .skip(process.env.TEST_BUILT_EXPORTS !== '1', 'requires the built package')
+
+  test('wires a starter-kit host, and --no-wire leaves it to the printed steps', async ({
+    assert,
+  }) => {
+    const previousProcessExitCode = process.exitCode
+    const wired = await starterHost()
+    const manual = await starterHost()
+    try {
+      assert.equal(await runConfigure(wired), 0)
+      const auth = await readFile(join(wired, 'config/auth.ts'), 'utf8')
+      assert.include(auth, "default: 'web_effective',")
+      assert.include(auth, 'web_effective: effectiveSessionGuard(webGuard),')
+      assert.include(
+        await readFile(join(wired, 'start/kernel.ts'), 'utf8'),
+        "initialize_auth_middleware'),\n  () => import('#middleware/masquerade_context_middleware'),"
+      )
+      const routes = await readFile(join(wired, 'start/masquerade_routes.ts'), 'utf8')
+      assert.include(routes, "guard: 'web',")
+      assert.include(routes, 'startLimiter: startMasqueradeLimiter,')
+      assert.include(
+        await readFile(join(wired, 'start/masquerade_limiter.ts'), 'utf8'),
+        "ctx.auth.use('web').getUserOrFail()"
+      )
+      assert.include(
+        await readFile(join(wired, 'adonisrc.ts'), 'utf8'),
+        "() => import('#start/masquerade_routes')"
+      )
+
+      assert.equal(await runConfigure(manual, ['--no-wire']), 0)
+      assert.equal(await readFile(join(manual, 'config/auth.ts'), 'utf8'), starterAuthConfig)
+      assert.equal(await readFile(join(manual, 'start/kernel.ts'), 'utf8'), starterKernel)
+      assert.isFalse(existsSync(join(manual, 'start/masquerade_routes.ts')))
+      assert.isFalse(existsSync(join(manual, 'start/masquerade_limiter.ts')))
+      assert.notInclude(await readFile(join(manual, 'adonisrc.ts'), 'utf8'), 'masquerade_routes')
+    } finally {
+      process.exitCode = previousProcessExitCode
+      await rm(wired, { recursive: true, force: true })
+      await rm(manual, { recursive: true, force: true })
+    }
+  })
+    .timeout(20_000)
+    .skip(process.env.TEST_BUILT_EXPORTS !== '1', 'requires the built package')
 })
+
+async function starterHost(): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), 'masquerade-starter-configure-'))
+  for (const directory of ['config', 'start', 'node_modules'])
+    await mkdir(join(root, directory), { recursive: true })
+  await writeFile(join(root, 'config/auth.ts'), starterAuthConfig)
+  await writeFile(join(root, 'config/limiter.ts'), 'export default {}\n')
+  await writeFile(join(root, 'start/kernel.ts'), starterKernel)
+  await writeFile(join(root, 'tsconfig.json'), '{"compilerOptions":{"strict":true}}\n')
+  await writeFile(
+    join(root, 'adonisrc.ts'),
+    `import { defineConfig } from '@adonisjs/core'
+export default defineConfig({
+  providers: [() => import('#providers/host_provider')],
+  preloads: [() => import('#start/routes'), () => import('#start/kernel')],
+})\n`
+  )
+  await symlink(
+    join(process.cwd(), 'node_modules/@adonisjs'),
+    join(root, 'node_modules/@adonisjs'),
+    'dir'
+  )
+  await symlink(process.cwd(), join(root, 'node_modules/adonisjs-masquerade'), 'dir')
+  return root
+}
+
+async function runConfigure(root: string, flags: string[] = []): Promise<number | undefined> {
+  process.exitCode = 0
+  const ignitor = new IgnitorFactory()
+    .withCoreProviders()
+    .withCoreConfig()
+    .merge({ rcFileContents: { commands: [configureCommandLoader] } })
+    .create(pathToFileURL(root + '/'))
+  await ignitor
+    .ace()
+    .configure(async (app) => {
+      app.import = async (specifier: string) => {
+        if (specifier === 'adonisjs-masquerade') return import('adonisjs-masquerade')
+        if (specifier === '@adonisjs/lucid') return import('@adonisjs/lucid')
+        if (specifier === '@adonisjs/assembler/code_transformer')
+          return import('@adonisjs/assembler/code_transformer')
+        throw new Error('Unexpected package import: ' + specifier)
+      }
+    })
+    .handle(['configure', 'adonisjs-masquerade', '--namespace=starter', '--guard=web', ...flags])
+  return process.exitCode
+}
 
 async function configureCommandLoader() {
   const configureModule = await import('@adonisjs/core/commands/configure')

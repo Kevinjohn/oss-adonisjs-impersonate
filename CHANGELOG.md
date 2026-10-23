@@ -17,6 +17,11 @@
   (or `--all`) to end them from the server, audited as `invalidated` with the `operator_stopped`
   outcome code. Adds `activeBatch({ limit })` to the `ControlStore` contract: custom stores must
   implement it to pass the updated conformance suite.
+- `node ace configure adonisjs-masquerade` now wires starter-kit hosts: it rewrites a
+  starter-shaped `config/auth.ts` to reuse the generated user provider and default to the effective
+  guard, inserts the context middleware after `initialize_auth`, and, when `@adonisjs/limiter` is
+  configured, generates and preloads the control routes and limiters. Other shapes are left
+  unchanged with the manual step printed. `--no-wire` keeps the previous print-only behaviour.
 - Add `masqueradeRoutes(router, options)` to `adonisjs-masquerade/http`. It mounts status, start
   and stop on `MasqueradeController` behind the raw guard's named `auth` middleware, with separate
   start and stop limiters, and throws at registration when the guard, auth middleware or either
