@@ -76,11 +76,12 @@ async function fixture(options = {}) {
         } else { response.writeHead(404).end() }
       })
       setTimeout(() => server.listen(port, '127.0.0.1', async () => {
-        await writeFile('server.pid', String(process.pid))
+        // Tests wait for server.pid, so it is written last.
         await writeFile(
           'effective-config.json',
           JSON.stringify({ APP_URL: process.env.APP_URL, HOST: process.env.HOST, PORT: process.env.PORT })
         )
+        await writeFile('server.pid', String(process.pid))
       }), startupDelay)
     `
     )

@@ -51,8 +51,12 @@ Run the repository scripts, not the bare tools. They carry the flags the release
 
 Run `pnpm check` before every pull request, and add `--full` for changes to the store, the
 packaging or the docs. `--browser` needs the native-session example's dependencies and Chromium
-(`pnpm install` and `pnpm dlx playwright install chromium` in `examples/native-session`). The flags combine. The `checks` and `consumer` workflows
-run the same scripts; CI also runs the consumer suites against PostgreSQL. `bin/check_profiles.ts`
+(`pnpm install` and `pnpm dlx playwright install chromium` in `examples/native-session`). The flags combine. Every pull request runs the `checks`
+workflow: lint, typecheck, build, the built-export test and coverage on SQLite and PostgreSQL. The `e2e`
+workflow runs the demo launcher, recipe and browser checks on pull requests that change `examples/`,
+`http/`, `stubs/` or `docs/guide/`; `docs` builds the site when `docs/` changes. `e2e` and
+`account-kit` also run nightly, and both run with `consumer` before every release; `account-kit` and
+`consumer` cover PostgreSQL as well. `bin/check_profiles.ts`
 lists the steps, and a test fails if CI runs a script that no profile covers.
 
 `pnpm test:pg` needs PostgreSQL 16 binaries (`brew install postgresql@16` on macOS). To use your
