@@ -308,4 +308,32 @@ export async function assertControlStoreConformance(
   assert.equal(await store.pruneEvents({ before: '2026-01-01T00:00:02.000Z', limit: 10 }), 1)
   assert.equal(await store.pruneEvents({ before: '2027-01-01T00:00:00.000Z', limit: 10 }), 2)
   for (const active of activeRows) assert.deepEqual(await store.read(active), active)
+  // An optional reason policy stores an active row without a reason and omits it from the event.
+  const unreasonedOwner = { ...owner, actorId: randomUUID() }
+  const unreasonedId = randomUUID()
+  const unreasoned = {
+    ...activeRows[1]!,
+    ...unreasonedOwner,
+    lastTransitionId: unreasonedId,
+    reason: null,
+  }
+  const unreasonedResult = await store.compareAndSet({
+    owner: unreasonedOwner,
+    expected: null,
+    next: unreasoned,
+    event: {
+      ...event,
+      ...unreasonedOwner,
+      id: unreasonedId,
+      at: unreasoned.updatedAt,
+      kind: 'started',
+      outcomeCode: 'started',
+      revision: unreasoned.revision,
+      targetId: unreasoned.targetId,
+      targetIncarnation: unreasoned.targetIncarnation,
+      access: unreasoned.access,
+    },
+  })
+  assert.equal(unreasonedResult.status, 'applied')
+  assert.deepEqual(await store.read(unreasonedOwner), unreasoned)
 }

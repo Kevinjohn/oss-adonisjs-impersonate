@@ -51,5 +51,7 @@ export default defineConfig<User, HttpContext>({
     return new LucidControlStore(database.connection())
   },
   contextEnforcement: 'report',
+  // A start reason is optional. Use 'required' when every start must be justified in the audit.
+  reason: 'optional',
   retention: 'host-managed',
 })

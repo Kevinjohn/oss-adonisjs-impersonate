@@ -38,6 +38,7 @@ export type MasqueradeSetupErrorField =
   | 'store.pruneEvents'
   | 'durationSeconds'
   | 'maxDurationSeconds'
+  | 'reason'
   | 'contextEnforcement'
   | 'retention'
   | 'retention.days'

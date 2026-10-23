@@ -228,3 +228,34 @@ test('revision exhaustion fails closed without wrapping or transitions', async (
     assert.equal(await errorCode(operation), 'E_MASQUERADE_UNAVAILABLE')
   assert.equal((await original(f.owner))!.revision, row.revision)
 })
+
+test('optional reason starts without a reason and records none', async ({ assert }) => {
+  const f = fixture()
+  const service = await f.create()
+  const idle = await service.status({})
+  const view = await service.start(
+    {},
+    { targetId: 'b', access: 'edit', expectedContext: idle.contextToken }
+  )
+  assert.isTrue(view.isMasquerading)
+  assert.isNull((await f.store.read(f.owner))!.reason)
+  assert.notProperty(f.store.events[0], 'reason')
+  assert.notProperty(f.state.editInputs[0] as object, 'reason')
+  const resolved = await service.resolve({})
+  assert.equal(resolved.effectiveId, 'b')
+})
+
+test('required reason rejects a start without one and records the denial', async ({ assert }) => {
+  const f = fixture()
+  f.config.reason = 'required'
+  const service = await f.create()
+  const idle = await service.status({})
+  assert.equal(
+    await errorCode(() =>
+      service.start({}, { targetId: 'b', reason: ' ', expectedContext: idle.contextToken })
+    ),
+    'E_MASQUERADE_INVALID_INPUT'
+  )
+  assert.isNull(await f.store.read(f.owner))
+  assert.equal(f.store.events[0].kind, 'start_denied')
+})
