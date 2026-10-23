@@ -41,15 +41,19 @@ pnpm and the dependencies; run `pnpm quick:test` once it is ready.
 ## Checks
 
 Run the repository scripts, not the bare tools. They carry the flags the release gate uses.
+`pnpm check` runs them in order and stops at the first failure:
 
-| Script                    | What it does                                                   |
-| ------------------------- | -------------------------------------------------------------- |
-| `pnpm lint`               | ESLint with the AdonisJS config                                |
-| `pnpm typecheck`          | TypeScript without emitting                                    |
-| `pnpm quick:test`         | Japa test suite against SQLite                                 |
-| `pnpm test:pg`            | The same suite against a throwaway local PostgreSQL 16 cluster |
-| `pnpm build`              | Compiles to `build/`                                           |
-| `pnpm test:built-exports` | Loads public exports and runs Ace configure from the build     |
+| Command                | What it adds                                                                                                     |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `pnpm check`           | Lint, typecheck, the SQLite test suite, build and the built-export test                                          |
+| `pnpm check --full`    | PostgreSQL suite, coverage, recipe, demo launcher, docs build, packed consumer and Account Kit consumer (SQLite) |
+| `pnpm check --browser` | Account Kit demo, native-session browser suite, Inertia React and Vue examples                                   |
+
+Run `pnpm check` before every pull request, and add `--full` for changes to the store, the
+packaging or the docs. `--browser` needs the native-session example's dependencies and Chromium
+(`pnpm install` and `pnpm dlx playwright install chromium` in `examples/native-session`). The flags combine. The `checks` and `consumer` workflows
+run the same scripts; CI also runs the consumer suites against PostgreSQL. `bin/check_profiles.ts`
+lists the steps, and a test fails if CI runs a script that no profile covers.
 
 `pnpm test:pg` needs PostgreSQL 16 binaries (`brew install postgresql@16` on macOS). To use your
 own server instead, set `DB_CLIENT=pg` plus `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and
