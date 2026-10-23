@@ -4,17 +4,15 @@ import { MasqueradeController } from './controllers.js'
 import { routeGuards } from '../integration/route_guards.js'
 import { boundedString } from '../src/bounded_string.js'
 
-type RouteMiddleware = MiddlewareFn | ParsedNamedMiddleware
-
 export interface MasqueradeRoutesOptions<Guard extends string> {
   /** The host's named auth middleware, usually `middleware.auth` from `#start/kernel`. */
-  auth: (options: { guards: Guard[] }) => RouteMiddleware
+  auth: (options: { guards: Guard[] }) => MiddlewareFn | ParsedNamedMiddleware
   /** The raw guard that authenticates the operator, such as `web` or `api`. */
   guard: Guard
   /** Limiter for `POST /start`. */
-  startLimiter: RouteMiddleware
+  startLimiter: MiddlewareFn | ParsedNamedMiddleware
   /** Limiter for `POST /stop`, with its own budget. */
-  stopLimiter: RouteMiddleware
+  stopLimiter: MiddlewareFn | ParsedNamedMiddleware
   /** Defaults to `/masquerade`. */
   prefix?: string
   /** Route name prefix; defaults to `masquerade`, giving `masquerade.status|start|stop`. */
@@ -65,6 +63,6 @@ export function masqueradeRoutes<Guard extends string>(
     .use(authMiddleware)
 }
 
-function isMiddleware(value: unknown): value is RouteMiddleware {
+function isMiddleware(value: unknown): value is MiddlewareFn | ParsedNamedMiddleware {
   return typeof value === 'function' || (typeof value === 'object' && value !== null)
 }
