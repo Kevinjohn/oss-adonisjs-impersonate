@@ -30,7 +30,7 @@ Unanimous unless noted.
 14. **Retention:** `retention: { days: n } | 'host-managed'`; `masquerade:prune --batch-size`. Owner erasure is a documented SQL recipe, not an API.
 15. **Durations and reason:** default 900 s, hard max 3600 s, host may only narrow. Reason: trim, normalise `\r\n` to `\n`, reject C0/C1 controls except `\n` and `\t`, then 1–500 code points and 2,000 UTF-8 bytes.
 16. **Cut from v1 text:** JSON:API negotiation, i18n lookup (stable codes with English messages; the host exception handler localises), the 4×2×2 consumer matrix (v1 is one native-session consumer on SQLite and PostgreSQL at floor and latest, plus store conformance on both).
-17. **Documents first:** before M1 the SPEC is rewritten to this reduced contract (target under 350 lines) and the PRD gets a short "v1 scope" addendum listing deferrals.
+17. **Documents first:** before M1 the SPEC is rewritten to this reduced contract (target under 350 lines) and the PRD gets a short "v1 scope" addendum listing deferrals. _Met:_ the rewrite in 7c53ef7 reduced the SPEC from 801 to 348 lines. The accepted v1.1, access and v1.2 addenda (SPEC sections 13–15) have grown it since; the target applied to the v1 rewrite only.
 
 ## Milestones
 

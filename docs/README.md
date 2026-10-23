@@ -44,12 +44,14 @@ with real application screenshots.
 - [Pruning and retention](guide/operations.md): schedule bounded cleanup and apply retention safely.
 - [Route coverage review](guide/route-report.md): inspect the effective and raw routes in the host
   application.
+- [Notes for code agents](guide/agents.md): wiring rules for agents integrating Masquerade into a
+  host application.
 
 The package is an early alpha for local self-testing and has not been published to a package
 registry. Build the selected tagged baseline and install its local tarball as described in the
 [setup guide](guide/setup.md#generate-the-starter-files). The accepted v1 boundaries are
-in the [development plan](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/DEVELOPMENT-PLAN.md),
-the [technical specification](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/SPEC-masquerade.md),
-and the [product requirements](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/PRD-masquerade.md).
+in the [development plan](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/docs/design/DEVELOPMENT-PLAN.md),
+the [technical specification](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/docs/design/SPEC-masquerade.md),
+and the [product requirements](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/docs/design/PRD-masquerade.md).
 See [maintainer records](https://github.com/Kevinjohn/oss-adonisjs-masquerade/tree/main/docs/maintainers)
 for repository and verification guidance.

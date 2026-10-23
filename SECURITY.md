@@ -29,5 +29,5 @@ npm audit signatures
 
 ## Security model
 
-[SPEC-masquerade.md](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/SPEC-masquerade.md) section 10 describes what Masquerade defends against and what remains
+[SPEC-masquerade.md](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/docs/design/SPEC-masquerade.md) section 10 describes what Masquerade defends against and what remains
 the application's responsibility.

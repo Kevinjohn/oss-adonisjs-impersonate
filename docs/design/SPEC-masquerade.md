@@ -394,7 +394,7 @@ Commands are future repository scripts on Node 24 with pnpm: `pnpm lint`, `pnpm 
 
 This document defines acceptance targets, not execution results. The original milestone gates
 are recorded as complete in [M4-RESULT.md](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/7e0940e/M4-RESULT.md) and the
-[requirement ledger](docs/maintainers/requirement-ledger.md). Those records distinguish verified
+[requirement ledger](../maintainers/requirement-ledger.md). Those records distinguish verified
 behavior from publication; the technical contract remains authoritative for implementation.
 
 ## 13. V1.1 additive contract: opaque access tokens
@@ -520,7 +520,7 @@ T-TOKEN requires evidence for both token-only and mixed session/token integratio
 
 This family defines required acceptance evidence; it does not claim that a test or packed-consumer
 matrix has passed. Current evidence and any remaining gaps belong in the
-[requirement ledger](docs/maintainers/requirement-ledger.md).
+[requirement ledger](../maintainers/requirement-ledger.md).
 
 **Superseded for Account Kit managed routes only by [§15](#15-v12-account-kit-integration).**
 

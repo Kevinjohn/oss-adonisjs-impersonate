@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Move the design documents to `docs/design/` and the integration notes for code agents to
+  `docs/guide/agents.md`, which is now part of the documentation site.
 - Rename the repository to `Kevinjohn/oss-adonisjs-masquerade` and move the documentation site to
   <https://kevinjohn.github.io/oss-adonisjs-masquerade/>. Old repository links redirect; the old
   documentation address does not. The design documents are now `PRD-masquerade.md` and
@@ -105,5 +107,5 @@ Add a native-session starter fixture that proves the effective guard, raw actor 
 lazy Bouncer resolution, silent authentication, native error rendering, Japa login and operator
 isolation before package implementation.
 
-Repository scaffold. No package behaviour yet; see [DEVELOPMENT-PLAN.md](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/DEVELOPMENT-PLAN.md) for
+Repository scaffold. No package behaviour yet; see [DEVELOPMENT-PLAN.md](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/docs/design/DEVELOPMENT-PLAN.md) for
 the milestones.

@@ -2,7 +2,7 @@
 
 Masquerade follows open-source AdonisJS conventions. The host application owns language, UI,
 roles, permissions, tenant rules, route sensitivity, limiter policy and audit retention. The accepted
-[development plan](../../DEVELOPMENT-PLAN.md) controls v1 scope; this repository does not target
+[development plan](../design/DEVELOPMENT-PLAN.md) controls v1 scope; this repository does not target
 AdonisJS Plus compatibility.
 
 ## Architecture and boundaries

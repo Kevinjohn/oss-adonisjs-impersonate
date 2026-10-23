@@ -93,5 +93,6 @@ local build as described in the [setup guide](docs/guide/setup.md#generate-the-s
 - [Documentation index](docs/README.md) and [API reference](docs/api-reference.md).
 
 Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Scope and design
-contract: [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md), [SPEC-masquerade.md](SPEC-masquerade.md),
-[PRD-masquerade.md](PRD-masquerade.md).
+contract: the [design documents](docs/design/) ([development plan](docs/design/DEVELOPMENT-PLAN.md),
+[SPEC](docs/design/SPEC-masquerade.md), [PRD](docs/design/PRD-masquerade.md)). Agents integrating
+Masquerade into an application: [integration notes for agents](docs/guide/agents.md).
