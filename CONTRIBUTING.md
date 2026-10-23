@@ -55,6 +55,10 @@ Run the repository scripts, not the bare tools. They carry the flags the release
 own server instead, set `DB_CLIENT=pg` plus `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and
 `DB_DATABASE`, then run `pnpm quick:test`.
 
+`pnpm test:mutation` runs Stryker against `src/` with `pnpm quick:test`. It edits the source files
+in place while it runs and restores them afterwards, so run it on a clean checkout. The `mutation`
+workflow runs it weekly and on demand and uploads the report; the score never fails a build.
+
 Changes to the control store or its migrations should pass on both SQLite and PostgreSQL. The
 `checks` workflow runs both on every pull request.
 
