@@ -23,6 +23,7 @@ The same rules as `CONTRIBUTING.md`; every change follows them.
 
 ## Checks
 
+- `pnpm check` runs the quick profile (`--full`, `--browser` add the rest; see `CONTRIBUTING.md`).
 - Run the repository scripts, not the bare tools: `pnpm lint`, `pnpm typecheck`, `pnpm build`,
   `pnpm quick:test` (SQLite), `pnpm test:built-exports` and `pnpm test:pg` (local PostgreSQL 16
   required; see docs/maintainers/conventions.md for the external-server alternative).
