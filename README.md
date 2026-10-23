@@ -5,31 +5,69 @@
 [![Node.js 24+](https://img.shields.io/badge/node-%3E%3D24-339933)](package.json)
 [![AdonisJS 7](https://img.shields.io/badge/AdonisJS-7-5a45ff)](https://adonisjs.com)
 
-Masquerade lets an authorized support operator use an application through a customer's account
-without signing in as that customer. The operator stays authenticated as the actor; covered
-business routes resolve the customer as the effective identity for ordinary Auth and Bouncer
-checks.
+**See your app exactly as another user sees it, without their password.**
 
-**V1.1 adds AdonisJS opaque access-token transport alongside native sessions.** Both transports
-share one server-side mode for the same operator account, with a fixed duration and explicit stop.
-An access token needs the configured `masquerade` ability to use integrated routes. Every mode
-starts view-only; an operator may request edit at start only when the host's `canEdit` policy
-approves it. The selected account-wide level is shared by sessions and tokens. The package does
-not create customer credentials or combine actor and customer permissions.
+A teammate says a page looks wrong, or a customer reports a problem you can't reproduce from your
+own account. Asking for their password is not an option. Masquerade lets an authorized user, such
+as an admin, open the application as that other user for a fixed time, while staying signed in as
+themselves.
 
-**Status: early alpha for local self-testing.** Version `0.0.0` is not published, and there is no
-registry package for this baseline. Select and rebuild a tagged baseline as described in the
-[setup guide](docs/guide/setup.md#generate-the-starter-files).
+![The customer view with a support banner naming the operator, the customer, the access level and the deadline.](docs/assets/walkthrough/support_customer_active.png)
 
-## Choose a path
+## What you get
 
-### Try it
+- **You decide who can view whom.** Your `canMasquerade` policy approves each pair, for example
+  an admin and a member of their own team, and is rechecked on every request.
+- **The admin stays the admin.** Login, logout and the start and stop controls keep using your
+  existing session guard. The other user never signs in and no credential is created for them.
+- **Your existing authorization still decides.** On business routes, `auth.user` is the other
+  user, so your normal Auth and Bouncer checks apply. The two users' permissions are never
+  combined.
+- **Read-only by default, with a Can edit option.** Every mode starts view-only. An admin can
+  choose **Can edit** when starting, and only if your `canEdit` policy approves that pair. Routes
+  you mark `sensitive()` stay blocked either way.
+- **Time-boxed and stoppable.** Every mode has a fixed deadline (15 minutes by default, one hour
+  maximum) and an explicit stop.
+- **Sessions and access tokens.** Works with native AdonisJS sessions and opaque access tokens.
 
-See [Add user impersonation to AdonisJS](docs/guide/walkthrough.md) for an illustrated support
-journey with the working application.
+## Quick win
 
-With Node 24 and pnpm installed, run these commands from this checkout to build, seed and start the
-[fictional session and bearer demo](examples/native-session/README.md#one-command-demo):
+After [setup](docs/guide/setup.md), choosing what support mode can do is a route change. Put
+business routes on the effective guard, and mark the ones that need care:
+
+```ts
+import { allowMutation, sensitive } from 'adonisjs-masquerade/http'
+import { middleware } from '#start/kernel'
+import router from '@adonisjs/core/services/router'
+
+router
+  .get('/support/customer', [() => import('#controllers/demo_controller'), 'customer'])
+  .as('demo.customer')
+  .use(middleware.auth({ guards: ['web_effective'] }))
+
+router
+  .post('/support/customer/preference', [
+    () => import('#controllers/demo_controller'),
+    'preference',
+  ])
+  .as('demo.preference')
+  .use(allowMutation())
+  .use(middleware.auth({ guards: ['web_effective'] }))
+
+router
+  .post('/support/customer/sensitive', [() => import('#controllers/demo_controller'), 'sensitive'])
+  .as('demo.sensitive')
+  .use(sensitive())
+  .use(middleware.auth({ guards: ['web_effective'] }))
+```
+
+- The first route is readable as the other user.
+- The second can be changed as the other user, when the mode was started with **Can edit**.
+- The third is rejected before its handler runs whenever support mode is active.
+
+## Try it
+
+With Node 24 and pnpm, run the fictional demo from this checkout:
 
 ```sh
 nvm use
@@ -37,50 +75,23 @@ pnpm demo
 ```
 
 Open <http://127.0.0.1:3333> and sign in with the fictional operator account listed in the
-[demo instructions](examples/native-session/README.md#one-command-demo). For setup failures or a
-manual launch, use the [explicit setup instructions](examples/native-session/README.md#local-setup).
-The support workspace shows the signed-in operator separately from the effective
-customer, the fixed deadline, and the stop control. Follow the
-[runnable bearer API lifecycle](examples/native-session/README.md#bearer-api-lifecycle) to issue a
-restricted local token and exercise status, start, customer read, stop, and revocation.
+[demo instructions](examples/native-session/README.md#one-command-demo). The
+[walkthrough](docs/guide/walkthrough.md) follows the same support journey with screenshots.
 
-### Integrate it
+## Status
 
-- [Get started](docs/guide/getting-started.md): choose the demo or an existing-session application
-  and follow the delivered frontend path.
-- [Inertia Vue example](examples/inertia-vue/README.md) and [integration guide](docs/guide/clients/vue.md):
-  run the support workflow with context-bound forms and identity-safe page recovery.
-- [Install and configure](docs/guide/setup.md): add the provider and migration, reuse the host's
-  session provider, and wire the raw and effective guards and protected routes.
-- [Use a support mode](docs/guide/usage.md): follow the complete status, start, customer-work,
-  stop, and recovery recipes for JSON controls and Edge forms.
-- [Session JSON client](docs/guide/clients/json.md): try the runnable browser client alongside
-  the Edge demo, with native session cookies and context-bound actions.
-- [Inertia React](docs/guide/clients/react.md): launch the runnable React example with native
-  session authentication and context-bound support forms.
-- [Opaque access-token guide](docs/guide/access-tokens.md): configure mixed or token-only transport
-  and follow the runnable bearer API lifecycle in the existing example.
-- [Supported package imports](docs/api-reference.md#supported-package-imports): find each public
-  entry point and its API reference.
+Early alpha for local self-testing. Version `0.0.0` is not published to a registry; install from a
+local build as described in the [setup guide](docs/guide/setup.md#generate-the-starter-files).
 
-### Security and operations
+## Documentation
 
-- [Troubleshooting](docs/guide/troubleshooting.md): diagnose setup, context, admission and storage
-  failures, with safe recovery steps.
-- [Security boundaries](docs/guide/security.md): actor and customer identity, account-wide
-  sessions, authorization, context tokens, expiry, audit, and external work.
-- [Custom authorities](docs/guide/custom-authorities.md) and [custom stores](docs/guide/custom-stores.md):
-  preserve account security epochs and implement the control-store contract.
-- [Pruning and retention](docs/guide/operations.md) and [route coverage review](docs/guide/route-report.md):
-  operate bounded cleanup and review the host's effective-route coverage.
+- [Getting started](docs/guide/getting-started.md): choose the demo or integrate an existing app.
+- [Install and configure](docs/guide/setup.md) and [use a support mode](docs/guide/usage.md).
+- Clients: [JSON](docs/guide/clients/json.md), [Inertia React](docs/guide/clients/react.md),
+  [Inertia Vue](docs/guide/clients/vue.md), [access tokens](docs/guide/access-tokens.md).
+- [Security boundaries](docs/guide/security.md) and [troubleshooting](docs/guide/troubleshooting.md).
+- [Documentation index](docs/README.md) and [API reference](docs/api-reference.md).
 
-Account Kit integration remains v1.2; JWT support is out of scope.
-
-The setup guide creates files for you to review; you keep control of authorization, language,
-route policy, retention, and user-facing UI.
-
-The accepted boundaries are recorded in [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md), the technical
-contract in [SPEC-impersonation.md](SPEC-impersonation.md), and product requirements in
-[PRD-impersonation.md](PRD-impersonation.md). For contribution checks, see
-[CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
-See the [documentation index](docs/README.md) for all guides and the API reference.
+Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Scope and design
+contract: [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md), [SPEC-impersonation.md](SPEC-impersonation.md),
+[PRD-impersonation.md](PRD-impersonation.md).
