@@ -209,9 +209,6 @@ if customer admission fails, so a valid operator can still inspect and stop mode
 client continues to use session-authenticated `/masquerade` controls. Bearer clients use
 `/api/masquerade` and `/api/logout` as shown in the bearer walkthrough.
 
-Production-mode browser captures show the
-[previous render failure](../../docs/assets/review/dashboard_render_before.png) and the
-[working dashboard](../../docs/assets/review/dashboard_render_after.png), using fictional data.
 Both production error templates also render through the registered marketing layout; a functional
 regression test rejects unprocessed layout tags in their HTML. Error layouts also support requests
 that have not run the router auth/session middleware: unknown URLs retain HTTP 404 and render the
