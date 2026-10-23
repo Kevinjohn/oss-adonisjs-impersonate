@@ -7,7 +7,7 @@ export default defineConfig({
   base: '/oss-adonisjs-masquerade/',
   cleanUrls: true,
   lastUpdated: true,
-  srcExclude: ['maintainers/**'],
+  srcExclude: ['maintainers/**', 'design/**'],
   rewrites: { 'README.md': 'index.md' },
   markdown: { config: githubLinks },
   transformPageData(pageData) {
@@ -56,6 +56,7 @@ export default defineConfig({
           { text: 'Custom authorities', link: '/guide/custom-authorities' },
           { text: 'Custom stores', link: '/guide/custom-stores' },
           { text: 'Pruning and retention', link: '/guide/operations' },
+          { text: 'Notes for code agents', link: '/guide/agents' },
         ],
       },
       {

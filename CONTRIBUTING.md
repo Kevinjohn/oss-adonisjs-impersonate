@@ -6,8 +6,8 @@ Thanks for helping. Bug reports, documentation fixes and store adapters are all 
 
 - For a bug, open an issue with a reproduction first, unless the fix is a one-line change.
 - For a new feature or a behaviour change, open an issue to agree the shape before writing code.
-  Masquerade keeps a small public surface on purpose, and [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md)
-  records what v1 deliberately leaves out.
+  Masquerade keeps a small public surface on purpose, and the
+  [development plan](docs/design/DEVELOPMENT-PLAN.md) records what v1 deliberately leaves out.
 - Report security problems privately, as described in [SECURITY.md](SECURITY.md). Do not open a
   public issue.
 
@@ -21,8 +21,8 @@ Every change follows these.
 - **The application owns its language.** Errors carry stable codes and English messages. The host
   exception handler localises; the package ships no translations, loader or locale setting.
 - **The actor stays authenticated.** Masquerade never logs in as the target, mints a target
-  credential or unions actor and target permissions. [SPEC-masquerade.md](SPEC-masquerade.md)
-  section 3 lists the invariants; a pull request that weakens one is a product change, not a fix.
+  credential or unions actor and target permissions. Section 3 of
+  [SPEC-masquerade.md](docs/design/SPEC-masquerade.md) lists the invariants; a pull request that weakens one is a product change, not a fix.
 
 ## Local setup
 
@@ -68,7 +68,7 @@ Changes to the control store or its migrations should pass on both SQLite and Po
 
 ## Code layout
 
-The layout follows [SPEC-masquerade.md](SPEC-masquerade.md) section 2.
+The layout follows [SPEC-masquerade.md](docs/design/SPEC-masquerade.md) section 2.
 
 - `src/` holds the core: state machine, policy, context token, expiry, errors. One responsibility
   per file.

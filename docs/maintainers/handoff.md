@@ -11,12 +11,12 @@ marked **STOP**.
 
 ## Read in this order
 
-1. [DEVELOPMENT-PLAN.md](../../DEVELOPMENT-PLAN.md): the accepted scope. Twenty agreed items and
+1. [DEVELOPMENT-PLAN.md](../design/DEVELOPMENT-PLAN.md): the accepted scope. Twenty agreed items and
    four owner decisions. This wins over the SPEC where they differ.
-2. [SPEC-masquerade.md](../../SPEC-masquerade.md): the technical contract. Sections 3
+2. [SPEC-masquerade.md](../design/SPEC-masquerade.md): the technical contract. Sections 3
    (invariants), 4 (contracts), 6.4 (transition table) and 11 (tests and milestones) are the ones
    you will keep open.
-3. [PRD-masquerade.md](../../PRD-masquerade.md): the product boundaries. Read "Settled
+3. [PRD-masquerade.md](../design/PRD-masquerade.md): the product boundaries. Read "Settled
    product boundaries" and the "v1 scope addendum"; the rest is background.
 4. [AGENTS.md](../../AGENTS.md) and [conventions.md](conventions.md): how code is laid out and
    checked.

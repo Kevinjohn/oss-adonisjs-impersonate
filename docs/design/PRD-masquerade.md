@@ -352,4 +352,4 @@ and delivery sequencing is in the [development plan](DEVELOPMENT-PLAN.md#accepte
 
 T-KIT and T-KIT-HTTP are the release acceptance families. Both must pass for session and
 access-token strategies, SQLite and PostgreSQL, and peer floor/latest. Their cases are enumerated
-in SPEC §15 and [the requirement ledger](docs/maintainers/requirement-ledger.md#v12-account-kit-acceptance-t-kit-and-t-kit-http).
+in SPEC §15 and [the requirement ledger](../maintainers/requirement-ledger.md#v12-account-kit-acceptance-t-kit-and-t-kit-http).
