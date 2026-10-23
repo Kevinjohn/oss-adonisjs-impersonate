@@ -17,12 +17,13 @@ The same rules as `CONTRIBUTING.md`; every change follows them.
   compatibility is not a goal and never outweighs consistency for open-source users.
 - **The application owns its language.** Errors carry stable codes and English messages. The host
   exception handler localises; the package ships no translations, loader or locale setting.
-- **The design documents are the contract.** `DEVELOPMENT-PLAN.md` is the accepted v1 scope,
-  `SPEC-impersonation.md` the technical contract and `PRD-impersonation.md` the product
-  boundaries. A change that moves a settled boundary goes back to the owner, not into code.
+- **The design documents are the contract.** `docs/design/DEVELOPMENT-PLAN.md` is the accepted
+  v1 scope, `docs/design/SPEC-masquerade.md` the technical contract and
+  `docs/design/PRD-masquerade.md` the product boundaries. A change that moves a settled boundary goes back to the owner, not into code.
 
 ## Checks
 
+- `pnpm check` runs the quick profile (`--full`, `--browser` add the rest; see `CONTRIBUTING.md`).
 - Run the repository scripts, not the bare tools: `pnpm lint`, `pnpm typecheck`, `pnpm build`,
   `pnpm quick:test` (SQLite), `pnpm test:built-exports` and `pnpm test:pg` (local PostgreSQL 16
   required; see docs/maintainers/conventions.md for the external-server alternative).

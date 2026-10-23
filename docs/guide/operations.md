@@ -1,4 +1,4 @@
-# Pruning and retention operations
+# Pruning, retention and active modes
 
 The [API entry-point map](../api-reference.md#supported-package-imports) links the command loader
 under `adonisjs-masquerade/commands` and Lucid store lifecycle and schema exports under the optional
@@ -81,3 +81,34 @@ through the database driver's parameter API; placeholder syntax differs by drive
 verify the table, column and parameter syntax against the installed schema and database. Apply the
 host's event-retention or erasure policy to matching audit events separately. Do not delete idle
 owner rows as routine pruning.
+
+## See and end active modes
+
+`masquerade:status` lists the active modes visible through the configured store: namespace,
+operator ID and incarnation, target, access level and deadline. The start reason stays in the
+audit ledger and is not printed.
+
+```sh
+node ace masquerade:status --limit=50
+```
+
+`masquerade:stop` ends a mode from the server, for example after a mistaken start or when an
+operator account may be compromised:
+
+```sh
+node ace masquerade:stop --actor=42
+node ace masquerade:stop --all
+```
+
+- `--actor` ends that operator's mode in the configured namespace. The incarnation comes from the
+  authority (`incarnation: 'id'` uses the ID). For a deleted or reused account, pass
+  `--incarnation` with the value `masquerade:status` prints.
+- `--all` asks for confirmation; pass `--force` in scripts. It processes active modes in batches
+  until none are left or a batch makes no progress.
+- Each stop re-reads the row and uses a conditional transition, and writes one `invalidated`
+  event with the outcome code `operator_stopped`. If the operator stops the mode at the same time,
+  one transition wins and one event is written. A mode already past its deadline is recorded as
+  `expired`, as prune records it, and is not counted as stopped. Security stamps are not read.
+- The operator's next request sees no active mode and must use the new context token. The command
+  does not sign anyone out; to revoke the operator's sessions, advance their security stamp and
+  use the host's own session controls.

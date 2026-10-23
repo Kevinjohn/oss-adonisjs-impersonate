@@ -1,5 +1,6 @@
 import type Configure from '@adonisjs/core/commands/configure'
 import { access, readdir } from 'node:fs/promises'
+import { wireHost } from './configure_wiring.js'
 
 const fileDestinations = [
   'app/services/masquerade_user_provider.ts',
@@ -126,32 +127,53 @@ export async function configure(command: Configure): Promise<void> {
     return
   }
 
+  const wiring = noWire(command)
+    ? { auth: 'skipped', kernel: 'skipped', routes: 'skipped' }
+    : await wireHost(command, codemods, guard)
+  if (wiring.auth !== 'skipped')
+    command.logger.info(
+      `Wired config/auth.ts: the raw ${guard} guard reuses userProvider and ${guard}_effective is the default guard.`
+    )
+  if (wiring.kernel !== 'skipped')
+    command.logger.info(
+      'Registered the context middleware after initialize_auth in start/kernel.ts.'
+    )
+  if (wiring.routes !== 'skipped')
+    command.logger.info(
+      'Mounted the control routes in start/masquerade_routes.ts with the limiters in start/masquerade_limiter.ts.'
+    )
+
+  const rawGuardKey = JSON.stringify(guard)
+  const effectiveGuardKey = JSON.stringify(`${guard}_effective`)
+  const steps = [
+    ...(wiring.auth === 'skipped'
+      ? [
+          'In your raw sessionGuard configuration, import userProvider from #services/masquerade_user_provider and pass that exact instance to sessionGuard. Keep the raw guard named web (or your --guard value).',
+          `Wrap the raw factory with effectiveSessionGuard from adonisjs-masquerade/auth and make the wrapper the default auth guard, e.g. import { effectiveSessionGuard } from 'adonisjs-masquerade/auth'; default: ${effectiveGuardKey}; guards: { ${rawGuardKey}: rawGuard, ${effectiveGuardKey}: effectiveSessionGuard(rawGuard) }.`,
+        ]
+      : []),
+    ...(wiring.kernel === 'skipped'
+      ? [
+          'Wire app/middleware/masquerade_context_middleware.ts as router middleware after initialize_auth and before any silent_auth middleware; preserve this order in start/kernel.ts.',
+        ]
+      : []),
+    'Implement the generated account incarnation, security stamp, active-account checks, and deny-by-default policy using your account model. Make stamps change on privilege, password, suspension, and logout-all changes.',
+    `Review the migration ${migrationDestination}, back up the database, then run: node ace migration:run`,
+    ...(wiring.routes === 'skipped'
+      ? [
+          `Define separate start and stop limiters, then mount the controls with masqueradeRoutes(router, { auth: middleware.auth, guard: "${guard}", startLimiter, stopLimiter }) from adonisjs-masquerade/http; keep Shield CSRF enabled. Do not mount routes before those controls are in place.`,
+        ]
+      : []),
+    'Keep context enforcement in report mode during form rollout; switch to enforce after clients submit the current context token. Host-managed retention never prunes idle rows.',
+  ]
   command.logger.info(
     'Masquerade scaffold generated. Complete the host-specific wiring before enabling masquerade routes:'
   )
-  command.logger.info(
-    '1. In your raw sessionGuard configuration, import userProvider from #services/masquerade_user_provider and pass that exact instance to sessionGuard. Keep the raw guard named web (or your --guard value).'
-  )
-  const rawGuardKey = JSON.stringify(guard)
-  const effectiveGuardKey = JSON.stringify(`${guard}_effective`)
-  command.logger.info(
-    `2. Wrap the raw factory with effectiveSessionGuard from adonisjs-masquerade/auth and make the wrapper the default auth guard, e.g. import { effectiveSessionGuard } from 'adonisjs-masquerade/auth'; default: ${effectiveGuardKey}; guards: { ${rawGuardKey}: rawGuard, ${effectiveGuardKey}: effectiveSessionGuard(rawGuard) }.`
-  )
-  command.logger.info(
-    '3. Wire app/middleware/masquerade_context_middleware.ts as router middleware after initialize_auth and before any silent_auth middleware; preserve this order in start/kernel.ts.'
-  )
-  command.logger.info(
-    '4. Implement the generated account incarnation, security stamp, active-account checks, and deny-by-default policy using your account model. Make stamps change on privilege, password, suspension, and logout-all changes.'
-  )
-  command.logger.info(
-    `5. Review the migration ${migrationDestination}, back up the database, then run: node ace migration:run`
-  )
-  command.logger.info(
-    `6. Mount only explicit control routes, for example router.post("/masquerade/start", [MasqueradeController, "start"]).use(middleware.auth({ guards: ["${guard}"] })); keep Shield CSRF enabled and apply independent start/stop limiter budgets. Do not mount routes before those controls are in place.`
-  )
-  command.logger.info(
-    '7. Keep context enforcement in report mode during form rollout; switch to enforce after clients submit the current context token. Host-managed retention never prunes idle rows.'
-  )
+  steps.forEach((step, index) => command.logger.info(`${index + 1}. ${step}`))
+}
+
+function noWire(command: Configure): boolean {
+  return command.parsedFlags.wire === false || command.parsedFlags['no-wire'] === true
 }
 
 async function readOption(command: Configure, key: 'namespace' | 'guard', label: string) {

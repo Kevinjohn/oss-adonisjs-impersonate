@@ -4,10 +4,10 @@ import { githubLinks, repository } from './github_links.mjs'
 export default defineConfig({
   title: 'Masquerade',
   description: 'Server-side account masquerade for AdonisJS',
-  base: '/oss-adonisjs-impersonate/',
+  base: '/oss-adonisjs-masquerade/',
   cleanUrls: true,
   lastUpdated: true,
-  srcExclude: ['maintainers/**'],
+  srcExclude: ['maintainers/**', 'design/**'],
   rewrites: { 'README.md': 'index.md' },
   markdown: { config: githubLinks },
   transformPageData(pageData) {
@@ -28,17 +28,21 @@ export default defineConfig({
         text: 'Get started',
         items: [
           { text: 'Getting started', link: '/guide/getting-started' },
-          { text: 'Add user impersonation', link: '/guide/walkthrough' },
+          { text: 'Add masquerade', link: '/guide/walkthrough' },
           { text: 'Install and configure', link: '/guide/setup' },
           { text: 'Account Kit integration preview', link: '/guide/account-kit' },
           { text: 'Opaque access tokens', link: '/guide/access-tokens' },
           { text: 'Use a support mode', link: '/guide/usage' },
+          { text: 'Recover from errors', link: '/guide/errors' },
+          { text: 'Audit and history', link: '/guide/audit' },
+          { text: 'Alert on activity', link: '/guide/alerts' },
+          { text: 'Testing your routes', link: '/guide/testing' },
         ],
       },
       {
         text: 'Delivered clients',
         items: [
-          { text: 'Edge forms', link: '/guide/usage#edge-forms-and-host-redirects' },
+          { text: 'Edge forms', link: '/guide/clients/edge' },
           { text: 'Session JSON client', link: '/guide/clients/json' },
           { text: 'Inertia React', link: '/guide/clients/react' },
           { text: 'Inertia Vue', link: '/guide/clients/vue' },
@@ -55,7 +59,8 @@ export default defineConfig({
           { text: 'Route coverage review', link: '/guide/route-report' },
           { text: 'Custom authorities', link: '/guide/custom-authorities' },
           { text: 'Custom stores', link: '/guide/custom-stores' },
-          { text: 'Pruning and retention', link: '/guide/operations' },
+          { text: 'Pruning and active modes', link: '/guide/operations' },
+          { text: 'Notes for code agents', link: '/guide/agents' },
         ],
       },
       {
@@ -88,6 +93,7 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: 'Control controller', link: '/api/http/main/classes/MasqueradeController' },
+              { text: 'Control routes helper', link: '/api/http/main/functions/masqueradeRoutes' },
               { text: 'Context middleware', link: '/api/http/main/functions/masqueradeContext' },
               { text: 'Sensitive route marker', link: '/api/http/main/functions/sensitive' },
               { text: 'Mutation route marker', link: '/api/http/main/functions/allowMutation' },

@@ -42,7 +42,7 @@ This creates `tmp/native-session-package.tgz`. In the AdonisJS application, inst
 before running its configure command (adjust the path to the package checkout):
 
 ```sh
-pnpm add file:/path/to/oss-adonisjs-impersonate/tmp/native-session-package.tgz
+pnpm add file:/path/to/oss-adonisjs-masquerade/tmp/native-session-package.tgz
 pnpm add -D @adonisjs/assembler
 pnpm add @adonisjs/lucid
 node ace configure adonisjs-masquerade --namespace=my_app --guard=web
@@ -57,7 +57,27 @@ checks the namespace and guard syntax, that `config/auth.ts` exists, and that th
 transformer and Lucid can be imported. It does not inspect the contents of `config/auth.ts`, check
 the selected guard's driver or provider, or prove that the guard is a native session guard. It adds
 the package provider, native binding provider, and command loader to `adonisrc.ts`, and creates
-starter files and a migration. It does not edit `config/auth.ts`, routes, or the HTTP kernel.
+starter files and a migration.
+
+Configure then wires the host when its files have the AdonisJS starter-kit shape, and prints the
+manual step for anything it leaves alone:
+
+- **`config/auth.ts`**: when `authConfig` is a `defineConfig` call whose default is the `--guard`
+  value, and that guard is the starter's `sessionGuard` with a `sessionUserProvider` for
+  `#models/user`, configure moves the factory to a constant that uses the generated `userProvider`
+  (`webGuard` for `--guard=web`), adds `web_effective: effectiveSessionGuard(webGuard)` and makes
+  `web_effective` the default. Any other shape, including a guard you already customised, is not
+  changed.
+- **`start/kernel.ts`**: configure inserts the context middleware directly after
+  `initialize_auth_middleware` in `router.use`. It skips the edit when `initialize_auth` is missing
+  or `silent_auth` runs before it.
+- **Control routes**: when both edits above are in place, `config/limiter.ts` exists and the kernel
+  has the named `auth` middleware, configure writes `start/masquerade_limiter.ts` (separate start
+  and stop budgets) and `start/masquerade_routes.ts` (`masqueradeRoutes` on the raw guard) and
+  preloads the routes file. Without `@adonisjs/limiter`, the routes step is printed instead.
+
+The identity and policy callbacks stay manual and fail closed. Pass `--no-wire` to skip every edit
+above and get only the printed steps.
 
 Generated files fail closed. Review the output and replace every placeholder described below before
 mounting routes. If a generated destination already exists, configure leaves files unchanged and
@@ -190,7 +210,7 @@ This is a configuration fragment; retain the generated imports, store, and reten
 `contextEnforcement` to `enforce` when business forms carry a captured context token: the generated
 `report` setting logs stale tokens but allows the request to continue. Enforcement rejects every
 covered unsafe business request without the token with 428, including when no one is
-impersonating. An application with existing unsafe forms or clients on effective-guard routes keeps
+masquerading. An application with existing unsafe forms or clients on effective-guard routes keeps
 the generated `report` until each one sends the token, as described in
 [context tokens and browser clients](security.md#context-tokens-and-browser-clients). Replace the sample model fields and policy with your own. If you choose a store other than the generated Lucid store, see [custom stores](custom-stores.md).
 `incarnation` must be stable for one account's lifetime and different if a deleted ID can be
@@ -254,21 +274,21 @@ Keep the supported named `auth` middleware on route groups. Package control rout
 with the raw guard so an active effective identity cannot replace the actor used to stop a mode:
 
 ```ts
-// Route-group fragment; keep your existing router, controller, and kernel imports.
-router
-  .group(() => {
-    router.get('/', [MasqueradeController, 'status'])
-    router.post('/start', [MasqueradeController, 'start'])
-    router.post('/stop', [MasqueradeController, 'stop'])
-  })
-  .prefix('/masquerade')
-  .use(middleware.auth({ guards: ['web'] }))
+// Fragment; keep your existing router and kernel imports and define the two limiters.
+import { masqueradeRoutes } from 'adonisjs-masquerade/http'
+
+masqueradeRoutes(router, {
+  auth: middleware.auth,
+  guard: 'web',
+  startLimiter: startMasqueradeLimiter,
+  stopLimiter: stopMasqueradeLimiter,
+})
 ```
 
 Apply your host's CSRF protection and separate start and stop rate limits. Put business route
 groups behind `middleware.auth({ guards: ['web_effective'] })`. See [route coverage review](route-report.md)
-for report labels and release checks. The package's controls, routes, CSRF, and rate limits remain
-host-wired.
+for report labels and release checks. The host still owns CSRF, the limiter budgets and where the
+routes are mounted.
 
 Review the generated migration and your database backup plan, then apply it with the host's normal
 migration process, for example `node ace migration:run`. Follow [pruning and retention

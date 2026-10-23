@@ -1,7 +1,7 @@
 # Historical implementation handoff
 
 This is the original M0–M4 implementation brief. Those milestones are now recorded as complete
-in [M4-RESULT.md](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/7e0940e/M4-RESULT.md) and the [requirement ledger](requirement-ledger.md). The
+in [M4-RESULT.md](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/7e0940e/M4-RESULT.md) and the [requirement ledger](requirement-ledger.md). The
 instructions below preserve the original sequence and stop conditions; they are not a current
 backlog. For maintenance, use the [source map](source-map.md) and [conventions](conventions.md).
 
@@ -11,12 +11,12 @@ marked **STOP**.
 
 ## Read in this order
 
-1. [DEVELOPMENT-PLAN.md](../../DEVELOPMENT-PLAN.md): the accepted scope. Twenty agreed items and
+1. [DEVELOPMENT-PLAN.md](../design/DEVELOPMENT-PLAN.md): the accepted scope. Twenty agreed items and
    four owner decisions. This wins over the SPEC where they differ.
-2. [SPEC-impersonation.md](../../SPEC-impersonation.md): the technical contract. Sections 3
+2. [SPEC-masquerade.md](../design/SPEC-masquerade.md): the technical contract. Sections 3
    (invariants), 4 (contracts), 6.4 (transition table) and 11 (tests and milestones) are the ones
    you will keep open.
-3. [PRD-impersonation.md](../../PRD-impersonation.md): the product boundaries. Read "Settled
+3. [PRD-masquerade.md](../design/PRD-masquerade.md): the product boundaries. Read "Settled
    product boundaries" and the "v1 scope addendum"; the rest is background.
 4. [AGENTS.md](../../AGENTS.md) and [conventions.md](conventions.md): how code is laid out and
    checked.

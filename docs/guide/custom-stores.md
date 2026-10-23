@@ -19,6 +19,7 @@ Each mode row stores `access` as nullable `string(8)`: active rows use `'view'` 
 | `compareAndSet(input)`           | Compare `expected` with the current revision (`null` means no row), and atomically commit `next` plus its matching event. A failed comparison returns `conflict` and changes neither. |
 | `recordControlOutcome(event)`    | Append a required denial or no-op event without creating, replacing, or changing the revision of a mode row. A write failure rejects.                                                 |
 | `expiredBatch({ now, limit })`   | Return at most `limit` expired active row snapshots. Expiry cleanup re-reads each candidate and uses CAS, so a stale batch cannot clear a newer mode.                                 |
+| `activeBatch({ limit })`         | Return at most `limit` active row snapshots, oldest `updatedAt` first, regardless of expiry. Operator commands re-read each candidate and use CAS before ending it.                   |
 | `pruneEvents({ before, limit })` | Delete at most `limit` events strictly older than `before`; do not delete mode rows, including idle rows.                                                                             |
 
 For a successful CAS, `next.revision` and the event revision agree and advance exactly once from the expected revision (an absent owner starts at revision 1). The event must describe the same owner and the transition represented by the row: transition ID, mode ID, state, target and incarnation, access, outcome, and reason where applicable. An active row's reason is null, and its `started` event has no reason, when the host's reason policy is optional and none was given. Validate persisted rows and incoming transition/event pairs canonically, including revision progression and event projection. Malformed persisted state must fail closed; do not return a row that the service could interpret as valid.
@@ -53,6 +54,10 @@ export class DatabaseControlStore implements ControlStore {
 
   async expiredBatch({ now, limit }) {
     // Return at most limit detached expired-active snapshots.
+  }
+
+  async activeBatch({ limit }) {
+    // Return at most limit detached active snapshots, oldest update first.
   }
 
   async pruneEvents({ before, limit }) {

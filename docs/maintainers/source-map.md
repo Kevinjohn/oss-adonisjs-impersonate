@@ -1,7 +1,7 @@
 # Maintainer source map
 
 Start with the owning module and its focused test. Read the relevant technical contract section
-when changing behavior; the accepted [development plan](../../DEVELOPMENT-PLAN.md) controls v1
+when changing behavior; the accepted [development plan](../design/DEVELOPMENT-PLAN.md) controls v1
 scope. Historical milestone results establish prior evidence, not the current implementation map.
 
 ## Package tasks
@@ -34,7 +34,7 @@ remain one protocol; service control and admission ordering remain one lifecycle
 **Account Kit integration:** the [adapter](../../account_kit/main.ts),
 [blocker middleware](../../account_kit/middleware.ts), and [provider](../../account_kit/provider.ts)
 own identity inspection, actor checks and managed-route blocking. See
-[SPEC §15](../../SPEC-impersonation.md#15-v12-account-kit-integration) and the
+[SPEC §15](../design/SPEC-masquerade.md#15-v12-account-kit-integration) and the
 [integration guide](../guide/account-kit.md). Focused
 checks are [authority](../../tests/account_kit_authority.spec.ts),
 [blocker](../../tests/account_kit_blocker.spec.ts), and

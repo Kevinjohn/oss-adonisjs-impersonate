@@ -34,7 +34,7 @@ behavior.
 them. It is a migration aid, not stale-form protection. Inventory all Edge forms and other unsafe
 clients, capture the token with each original intent, and check that warnings stop before changing
 to `'enforce'`. See [Context tokens and browser clients](security.md#context-tokens-and-browser-clients)
-for the token contract and [Use a support mode](usage.md#recover-from-errors) for response details.
+for the token contract and [Recover from errors](errors.md) for response details.
 
 ## Host-owned responses and availability
 

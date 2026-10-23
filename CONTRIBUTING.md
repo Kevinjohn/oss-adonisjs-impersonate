@@ -6,8 +6,8 @@ Thanks for helping. Bug reports, documentation fixes and store adapters are all 
 
 - For a bug, open an issue with a reproduction first, unless the fix is a one-line change.
 - For a new feature or a behaviour change, open an issue to agree the shape before writing code.
-  Masquerade keeps a small public surface on purpose, and [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md)
-  records what v1 deliberately leaves out.
+  Masquerade keeps a small public surface on purpose, and the
+  [development plan](docs/design/DEVELOPMENT-PLAN.md) records what v1 deliberately leaves out.
 - Report security problems privately, as described in [SECURITY.md](SECURITY.md). Do not open a
   public issue.
 
@@ -21,8 +21,8 @@ Every change follows these.
 - **The application owns its language.** Errors carry stable codes and English messages. The host
   exception handler localises; the package ships no translations, loader or locale setting.
 - **The actor stays authenticated.** Masquerade never logs in as the target, mints a target
-  credential or unions actor and target permissions. [SPEC-impersonation.md](SPEC-impersonation.md)
-  section 3 lists the invariants; a pull request that weakens one is a product change, not a fix.
+  credential or unions actor and target permissions. Section 3 of
+  [SPEC-masquerade.md](docs/design/SPEC-masquerade.md) lists the invariants; a pull request that weakens one is a product change, not a fix.
 
 ## Local setup
 
@@ -41,26 +41,34 @@ pnpm and the dependencies; run `pnpm quick:test` once it is ready.
 ## Checks
 
 Run the repository scripts, not the bare tools. They carry the flags the release gate uses.
+`pnpm check` runs them in order and stops at the first failure:
 
-| Script                    | What it does                                                   |
-| ------------------------- | -------------------------------------------------------------- |
-| `pnpm lint`               | ESLint with the AdonisJS config                                |
-| `pnpm typecheck`          | TypeScript without emitting                                    |
-| `pnpm quick:test`         | Japa test suite against SQLite                                 |
-| `pnpm test:pg`            | The same suite against a throwaway local PostgreSQL 16 cluster |
-| `pnpm build`              | Compiles to `build/`                                           |
-| `pnpm test:built-exports` | Loads public exports and runs Ace configure from the build     |
+| Command                | What it adds                                                                                                     |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `pnpm check`           | Lint, typecheck, the SQLite test suite, build and the built-export test                                          |
+| `pnpm check --full`    | PostgreSQL suite, coverage, recipe, demo launcher, docs build, packed consumer and Account Kit consumer (SQLite) |
+| `pnpm check --browser` | Account Kit demo, native-session browser suite, Inertia React and Vue examples                                   |
+
+Run `pnpm check` before every pull request, and add `--full` for changes to the store, the
+packaging or the docs. `--browser` needs the native-session example's dependencies and Chromium
+(`pnpm install` and `pnpm dlx playwright install chromium` in `examples/native-session`). The flags combine. The `checks` and `consumer` workflows
+run the same scripts; CI also runs the consumer suites against PostgreSQL. `bin/check_profiles.ts`
+lists the steps, and a test fails if CI runs a script that no profile covers.
 
 `pnpm test:pg` needs PostgreSQL 16 binaries (`brew install postgresql@16` on macOS). To use your
 own server instead, set `DB_CLIENT=pg` plus `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and
 `DB_DATABASE`, then run `pnpm quick:test`.
+
+`pnpm test:mutation` runs Stryker against `src/` with `pnpm quick:test`. It edits the source files
+in place while it runs and restores them afterwards, so run it on a clean checkout. The `mutation`
+workflow runs it weekly and on demand and uploads the report; the score never fails a build.
 
 Changes to the control store or its migrations should pass on both SQLite and PostgreSQL. The
 `checks` workflow runs both on every pull request.
 
 ## Code layout
 
-The layout follows [SPEC-impersonation.md](SPEC-impersonation.md) section 2.
+The layout follows [SPEC-masquerade.md](docs/design/SPEC-masquerade.md) section 2.
 
 - `src/` holds the core: state machine, policy, context token, expiry, errors. One responsibility
   per file.

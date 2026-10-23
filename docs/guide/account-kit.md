@@ -24,7 +24,7 @@ covered by this integration.
 
 ## Run the local demo
 
-The [Account Kit support demo README](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/account-kit-demo/README.md)
+The [Account Kit support demo README](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/examples/account-kit-demo/README.md)
 walks through the fictional operator and customer workflow, including setup, support mode, and
 local data reset. It requires Node.js 24, pnpm, JavaScript in the browser, and network access on
 first run to fetch the pinned Account Kit release artifact. The demo is for local development.
@@ -72,9 +72,9 @@ export const managedGuard = createManagedGuard({
 ```
 
 Use that exact `accessTokenUserProvider` instance in the host's raw `api` guard and in the
-Masquerade adapter below. The [local fixture's Account Kit configuration](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/account-kit/config/account_kit.ts)
+Masquerade adapter below. The [local fixture's Account Kit configuration](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/examples/account-kit/config/account_kit.ts)
 shows how its Account Kit strategy selects the matching `web` or `api` name; its
-[admission configuration](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/account-kit/config/admission.ts)
+[admission configuration](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/examples/account-kit/config/admission.ts)
 shows the separate host-owned admission policy.
 
 Use one adapter instance for the native binding and Masquerade configuration. This complete session
@@ -135,7 +135,7 @@ export const nativeAdapter = accountKitAuthority<User>({
 })
 ```
 
-The fixture's [Masquerade configuration](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/account-kit/config/masquerade.ts)
+The fixture's [Masquerade configuration](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/examples/account-kit/config/masquerade.ts)
 shows both variants selected from one environment flag. It imports the host's two raw providers from
 `#services/web_guard`; adapt those imports to the exports in your Auth setup, keeping each provider
 instance identical between the raw guard and `accountKitAuthority`.
@@ -288,7 +288,7 @@ protection code, addressing the Core `7.0.0` Ace-startup failure documented in t
 The complete Masquerade matrix passed for both strategies, with session management on and off, on
 SQLite and PostgreSQL at the declared floor and latest compatible peers. The tested artifact hashes
 and matrix are recorded in the
-[maintainer ledger](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/docs/maintainers/requirement-ledger.md#v12-account-kit-acceptance-t-kit-and-t-kit-http).
+[maintainer ledger](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/docs/maintainers/requirement-ledger.md#v12-account-kit-acceptance-t-kit-and-t-kit-http).
 
 With an active mode, the global blocker prevents Account Kit's own password, identity, recovery,
 session and other managed account operations from changing the operator's account while the UI

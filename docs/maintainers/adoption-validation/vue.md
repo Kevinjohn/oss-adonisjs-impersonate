@@ -3,7 +3,7 @@
 ## Source and environment
 
 - Official starter: [`adonisjs/starter-kits`](https://github.com/adonisjs/starter-kits), `inertia-vue/`, commit `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`; `pnpm-lock.yaml` SHA-256 `e1c2d6e1d8143ea194d55cb2cc4b12a2d571921153d48db9827ce68034c68ad8`.
-- The [app-owned Vue integration](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/1f224c6f4f9695bdf566a6a96634f8b664c80464/examples/inertia-vue) and [Vue guide](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/1f224c6f4f9695bdf566a6a96634f8b664c80464/docs/guide/clients/vue.md) used for this run are candidate commit `1f224c6f4f9695bdf566a6a96634f8b664c80464`. They are separate from the official starter and from the package artifact below.
+- The [app-owned Vue integration](https://github.com/Kevinjohn/oss-adonisjs-masquerade/tree/1f224c6f4f9695bdf566a6a96634f8b664c80464/examples/inertia-vue) and [Vue guide](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/1f224c6f4f9695bdf566a6a96634f8b664c80464/docs/guide/clients/vue.md) used for this run are candidate commit `1f224c6f4f9695bdf566a6a96634f8b664c80464`. They are separate from the official starter and from the package artifact below.
 - Runtime: macOS, Node `v24.21.0`, pnpm `11.23.0`; host SQLite databases at `tmp/db.sqlite3` and `tmp/test.sqlite3`.
 - The clean starter copy initially had no Masquerade dependency, provider, config, routes, or migrations. It contained the starter's ordinary session auth and Lucid SQLite setup.
 - All browser accounts were fictional: `operator@example.test`, `customer-one@example.test`, and `customer-two@example.test`.

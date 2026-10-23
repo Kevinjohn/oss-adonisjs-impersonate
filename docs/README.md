@@ -8,11 +8,11 @@ stopped. Token adapters preserve Auth 10 bearer validation and require a configu
 ## Get started
 
 Start with [Getting started](guide/getting-started.md) to choose a runnable demo or integrate
-Masquerade into an existing application. The [native-session demo](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/README.md)
+Masquerade into an existing application. The [native-session demo](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/examples/native-session/README.md)
 shows the operator as the authenticated actor, the customer as the effective identity, the fixed
 deadline, and how to stop the mode.
 
-[Add user impersonation to AdonisJS](guide/walkthrough.md) follows the fictional support journey
+[Add masquerade to AdonisJS](guide/walkthrough.md) follows the fictional support journey
 with real application screenshots.
 
 ## Guides
@@ -21,8 +21,15 @@ with real application screenshots.
   session provider, and wire callbacks, middleware, and host-protected routes.
 - [Opaque access tokens](guide/access-tokens.md): configure token-only or mixed session/token
   transport, select guards explicitly, and gate integrated access with token abilities.
-- [Use a support mode](guide/usage.md): follow the complete status, start, customer-work, stop, and
-  Edge form recipes.
+- [Use a support mode](guide/usage.md): follow the complete status, start, customer-work and stop
+  journey.
+- [Edge forms](guide/clients/edge.md): adapt the service to host-rendered forms and redirects.
+- [Recover from errors](guide/errors.md) and [audit and history](guide/audit.md): error responses,
+  business audit fields, observers and the masquerade history page.
+- [Alert on masquerade activity](guide/alerts.md): listener recipes for chat alerts and a
+  dedicated log sink.
+- [Testing your routes](guide/testing.md): the Japa `masquerading()` request helper for host route
+  tests.
 - [Session JSON client](guide/clients/json.md): run same-origin fetch controls and customer
   actions with session cookies, CSRF, captured context, and deliberate recovery.
 - [Inertia React](guide/clients/react.md): run the React support workflow with captured form
@@ -41,15 +48,18 @@ with real application screenshots.
 - [Custom authorities](guide/custom-authorities.md): provide coherent account identity and
   security-stamp values.
 - [Custom stores](guide/custom-stores.md): implement and verify the control-store contract.
-- [Pruning and retention](guide/operations.md): schedule bounded cleanup and apply retention safely.
+- [Pruning and active modes](guide/operations.md): schedule bounded cleanup, apply retention
+  safely, and list or end active modes from the server.
 - [Route coverage review](guide/route-report.md): inspect the effective and raw routes in the host
   application.
+- [Notes for code agents](guide/agents.md): wiring rules for agents integrating Masquerade into a
+  host application.
 
 The package is an early alpha for local self-testing and has not been published to a package
 registry. Build the selected tagged baseline and install its local tarball as described in the
 [setup guide](guide/setup.md#generate-the-starter-files). The accepted v1 boundaries are
-in the [development plan](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/DEVELOPMENT-PLAN.md),
-the [technical specification](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/SPEC-impersonation.md),
-and the [product requirements](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/PRD-impersonation.md).
-See [maintainer records](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/main/docs/maintainers)
+in the [development plan](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/docs/design/DEVELOPMENT-PLAN.md),
+the [technical specification](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/docs/design/SPEC-masquerade.md),
+and the [product requirements](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/docs/design/PRD-masquerade.md).
+See [maintainer records](https://github.com/Kevinjohn/oss-adonisjs-masquerade/tree/main/docs/maintainers)
 for repository and verification guidance.

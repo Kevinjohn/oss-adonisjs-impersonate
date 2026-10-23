@@ -39,6 +39,8 @@ updates:
         update-types: ['version-update:semver-minor']
       - dependency-name: 'release-it'
         update-types: ['version-update:semver-minor']
+      - dependency-name: '@stryker-mutator/*'
+        update-types: ['version-update:semver-minor']
       - dependency-name: 'tsdown'
         update-types: ['version-update:semver-minor']
       - dependency-name: 'typedoc*'

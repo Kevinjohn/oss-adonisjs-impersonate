@@ -3,7 +3,7 @@
 **Status:** v1 development contract, reduced to the scope accepted in [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md) on 19 October 2026.
 **Version:** 0.3
 **Date:** 19 October 2026
-**Product requirements:** [PRD-impersonation.md](PRD-impersonation.md)
+**Product requirements:** [PRD-masquerade.md](PRD-masquerade.md)
 **Working package label:** `adonisjs-masquerade`; registry name, repository name, version and publication are undecided.
 
 ## 1. Reading contract and authority
@@ -225,7 +225,8 @@ Malformed rows fail closed. A reused ID with a different incarnation is a differ
 ### 6.2 Audit table `masquerade_events`
 
 - Columns: event ID, mode ID when known, namespace, actor ID and incarnation, target ID and incarnation when known, UTC time, kind, outcome code, owner revision, bounded reason for start.
-- Kinds: `started`, `stopped`, `expired`, `invalidated`, `start_denied`, `stop_denied`, `control_noop`. Invalidation codes distinguish actor stamp, target stamp, actor ineligible, target ineligible and policy denied; public responses stay generic.
+- Kinds: `started`, `stopped`, `expired`, `invalidated`, `start_denied`, `stop_denied`, `control_noop`. Invalidation codes distinguish actor stamp, target stamp, actor ineligible, target ineligible, policy denied and `operator_stopped`; public responses stay generic.
+- Operator commands (accepted 23 October 2026): `masquerade:status` lists active modes through `activeBatch` without reasons; `masquerade:stop --actor <id> [--incarnation <value>]` or `--all` (confirmed, or `--force`) re-reads each row and CASes it to idle with one `invalidated` event, outcome `operator_stopped`. Like stop and expiry, it never reads security stamps. A conflict re-reads; `--all` stops when a batch makes no progress.
 - Never persist credentials, cookies, stamps, user objects, request bodies, IP addresses or user agents.
 - Committed transitions write the row update and the event in one transaction. After native authentication, CSRF and the host limiter, each start or stop is inside the control-audit boundary: its denial, input failure, context conflict or idle-stop no-op is written through `recordControlOutcome` without changing revision. A failed outcome write is 503 with no state change.
 - Native authentication failures, limiter rejections, status denials and business or local denials use host diagnostics, not package events.
@@ -257,6 +258,8 @@ interface ControlStore {
   }): Promise<CasOutcome>
   recordControlOutcome(event: AuditEvent): Promise<void>
   expiredBatch(input: { now: Instant; limit: number }): Promise<ModeRow[]>
+  // At most limit active snapshots, oldest update first; operator commands re-read and use CAS.
+  activeBatch(input: { limit: number }): Promise<ModeRow[]>
   pruneEvents(input: { before: Instant; limit: number }): Promise<number>
 }
 ```
@@ -393,8 +396,8 @@ Commands are future repository scripts on Node 24 with pnpm: `pnpm lint`, `pnpm 
 - [Previously assessed package](https://github.com/devnymous/adonis-impersonate/tree/b86b3c82dcff91026473d861999a6afba9c42314): comparison only; its browser-login-switch architecture is not adopted.
 
 This document defines acceptance targets, not execution results. The original milestone gates
-are recorded as complete in [M4-RESULT.md](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/7e0940e/M4-RESULT.md) and the
-[requirement ledger](docs/maintainers/requirement-ledger.md). Those records distinguish verified
+are recorded as complete in [M4-RESULT.md](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/7e0940e/M4-RESULT.md) and the
+[requirement ledger](../maintainers/requirement-ledger.md). Those records distinguish verified
 behavior from publication; the technical contract remains authoritative for implementation.
 
 ## 13. V1.1 additive contract: opaque access tokens
@@ -520,7 +523,7 @@ T-TOKEN requires evidence for both token-only and mixed session/token integratio
 
 This family defines required acceptance evidence; it does not claim that a test or packed-consumer
 matrix has passed. Current evidence and any remaining gaps belong in the
-[requirement ledger](docs/maintainers/requirement-ledger.md).
+[requirement ledger](../maintainers/requirement-ledger.md).
 
 **Superseded for Account Kit managed routes only by [§15](#15-v12-account-kit-integration).**
 

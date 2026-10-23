@@ -57,6 +57,7 @@ if (Number(process.versions.node.split('.')[0]) !== 24) throw new Error('Use Nod
 
 const setup = await readFile(join(root, 'docs/guide/setup.md'), 'utf8')
 const usage = await readFile(join(root, 'docs/guide/usage.md'), 'utf8')
+const edge = await readFile(join(root, 'docs/guide/clients/edge.md'), 'utf8')
 
 function fence(markdown: string, name: string): string {
   const marker = `<!-- host-recipe:${name} -->`
@@ -82,8 +83,8 @@ const snippets = {
   controlRoutes: fence(usage, 'control-routes'),
   controlLimiters: fence(usage, 'control-limiters'),
   businessRoutes: fence(usage, 'business-routes'),
-  htmlRoutes: fence(usage, 'html-control-routes'),
-  htmlParser: fence(usage, 'demo-control-input'),
+  htmlRoutes: fence(edge, 'html-control-routes'),
+  htmlParser: fence(edge, 'demo-control-input'),
 }
 
 function requireRecipe(condition: boolean, detail: string): void {
@@ -97,9 +98,12 @@ function verifyRecipe(parts: typeof snippets): void {
   requireRecipe(parts.authConfig.includes('members: memberGuard'), 'second guard registration')
   requireRecipe(parts.authConfig.includes('InferAuthenticators<typeof authConfig>'), 'Auth types')
   requireRecipe(parts.authConfig.includes("default: 'web_effective'"), 'effective default')
-  requireRecipe(parts.controlRoutes.includes("guards: ['web']"), 'raw control guard')
-  requireRecipe(parts.controlRoutes.includes('.use(startMasqueradeLimiter)'), 'start limiter')
-  requireRecipe(parts.controlRoutes.includes('.use(stopMasqueradeLimiter)'), 'stop limiter')
+  requireRecipe(parts.controlRoutes.includes("guard: 'web',"), 'raw control guard')
+  requireRecipe(
+    parts.controlRoutes.includes('startLimiter: startMasqueradeLimiter'),
+    'start limiter'
+  )
+  requireRecipe(parts.controlRoutes.includes('stopLimiter: stopMasqueradeLimiter'), 'stop limiter')
   requireRecipe(
     parts.businessRoutes.match(/guards: \['web_effective'\]/g)?.length === 3,
     'effective business guards'
@@ -123,7 +127,7 @@ for (const [name, mutated] of [
     'raw guard',
     {
       ...snippets,
-      controlRoutes: snippets.controlRoutes.replace("guards: ['web']", "guards: ['web_effective']"),
+      controlRoutes: snippets.controlRoutes.replace("guard: 'web',", "guard: 'web_effective',"),
     },
   ],
   [
@@ -402,6 +406,7 @@ try {
           'adonisjs-masquerade',
           '--namespace=my_app',
           '--guard=web',
+          '--no-wire',
         ],
         `${engine} configure`,
         env

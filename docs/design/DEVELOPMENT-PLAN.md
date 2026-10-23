@@ -1,7 +1,7 @@
 # Development plan: consensus from design review
 
 **Date:** 19 October 2026
-**Inputs:** [PRD-impersonation.md](PRD-impersonation.md), [SPEC-impersonation.md](SPEC-impersonation.md)
+**Inputs:** [PRD-masquerade.md](PRD-masquerade.md), [SPEC-masquerade.md](SPEC-masquerade.md)
 **Review:** Two rounds: independent review, then a 20-item vote.
 **Status:** Accepted by the owner on 19 October 2026, including the four owner decisions at the end. This is the development contract for v1. The issue #86 D1–D10 access change was accepted by the owner on 22 October 2026 and is recorded in the PRD addendum and SPEC §14.
 
@@ -30,7 +30,7 @@ Unanimous unless noted.
 14. **Retention:** `retention: { days: n } | 'host-managed'`; `masquerade:prune --batch-size`. Owner erasure is a documented SQL recipe, not an API.
 15. **Durations and reason:** default 900 s, hard max 3600 s, host may only narrow. Reason: trim, normalise `\r\n` to `\n`, reject C0/C1 controls except `\n` and `\t`, then 1–500 code points and 2,000 UTF-8 bytes.
 16. **Cut from v1 text:** JSON:API negotiation, i18n lookup (stable codes with English messages; the host exception handler localises), the 4×2×2 consumer matrix (v1 is one native-session consumer on SQLite and PostgreSQL at floor and latest, plus store conformance on both).
-17. **Documents first:** before M1 the SPEC is rewritten to this reduced contract (target under 350 lines) and the PRD gets a short "v1 scope" addendum listing deferrals.
+17. **Documents first:** before M1 the SPEC is rewritten to this reduced contract (target under 350 lines) and the PRD gets a short "v1 scope" addendum listing deferrals. _Met:_ the rewrite in 7c53ef7 reduced the SPEC from 801 to 348 lines. The accepted v1.1, access and v1.2 addenda (SPEC sections 13–15) have grown it since; the target applied to the v1 rewrite only.
 
 ## Milestones
 
@@ -53,7 +53,7 @@ Unanimous unless noted.
 5. Sessions only in v1; opaque bearer in v1.1; JWT out.
 6. Yes with report mode for migration; 428 missing, 409 stale.
 7. Confirmed: core contract plus optional Lucid subpath, one row per namespace/actor/incarnation.
-8. Logout-all advances the stamp; a server-only `invalidate(actorId)` helper is optional, not a hook system.
+8. Logout-all advances the stamp; a server-only `invalidate(actorId)` helper is optional, not a hook system. _Owner decision, 23 October 2026 (issue #135):_ v1 ships it as the `masquerade:status` and `masquerade:stop` Ace commands, with a bounded `ControlStore.activeBatch` read that custom stores must implement.
 9. `pruneEvents(before, limit)` plus the prune command; retention policy and erasure stay with the host.
 
 ## Owner decisions (accepted 19 October 2026)
@@ -65,7 +65,7 @@ Unanimous unless noted.
 
 ## Accepted access change
 
-Issue #86 records the owner-accepted D1–D10 changes to active request policy, policy callbacks, persistence and audit projection. The decisions are part of the development contract as described in the PRD addendum. See [PRD-impersonation.md](PRD-impersonation.md#issue-86-access-decisions-accepted-22-october-2026) and [SPEC-impersonation.md](SPEC-impersonation.md#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
+Issue #86 records the owner-accepted D1–D10 changes to active request policy, policy callbacks, persistence and audit projection. The decisions are part of the development contract as described in the PRD addendum. See [PRD-masquerade.md](PRD-masquerade.md#issue-86-access-decisions-accepted-22-october-2026) and [SPEC-masquerade.md](SPEC-masquerade.md#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
 
 ## Accepted v1.2 change
 
@@ -74,8 +74,8 @@ October 2026. They add the optional `adonisjs-masquerade/account-kit` adapter an
 coherent Account Kit account/revision inspection, native actor revalidation, host-owned admission
 gates, managed-route blocking, and verified route-report classification. Core remains independent
 of Account Kit; v1.2 supports one matching transport and SQLite/PostgreSQL. The complete contract,
-including the narrowly superseded rules in items 3 and 4, is [SPEC §15](SPEC-impersonation.md#15-v12-account-kit-integration),
-with product boundaries in the [PRD v1.2 addendum](PRD-impersonation.md#v12-account-kit-integration-accepted-22-october-2026).
+including the narrowly superseded rules in items 3 and 4, is [SPEC §15](SPEC-masquerade.md#15-v12-account-kit-integration),
+with product boundaries in the [PRD v1.2 addendum](PRD-masquerade.md#v12-account-kit-integration-accepted-22-october-2026).
 
 Acceptance and release gates are T-KIT and T-KIT-HTTP on both strategies, SQLite/PostgreSQL, and
 peer floor/latest. The contract is accepted; adapter implementation and these verification gates

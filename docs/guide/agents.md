@@ -6,7 +6,7 @@ provider configuration and user-facing controls.
 
 ## Before editing the host application
 
-1. Read the [setup guide](docs/guide/setup.md) and [security guide](docs/guide/security.md).
+1. Read the [setup guide](./setup.md) and [security guide](./security.md).
 2. Read generated configure output and inspect every generated callback. Never replace a host's
    user provider or guard without checking its current Auth configuration.
 3. Keep the exact same session user-provider instance in raw session auth and `sessionAuthority`.
@@ -53,5 +53,5 @@ host worker where needed.
 
 Keep audit reasons bounded and free of secrets or unnecessary personal data. Successful start
 records the normalized reason; denied and invalid control attempts omit it. Never log credentials,
-stamps, request bodies or raw user objects. Review [retention and erasure guidance](docs/guide/security.md#jobs-external-effects-and-audit)
+stamps, request bodies or raw user objects. Review [retention and erasure guidance](./security.md#jobs-external-effects-and-audit)
 before changing audit retention.

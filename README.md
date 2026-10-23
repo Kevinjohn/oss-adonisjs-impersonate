@@ -1,6 +1,6 @@
 # Masquerade for AdonisJS
 
-[![checks](https://github.com/Kevinjohn/oss-adonisjs-impersonate/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/Kevinjohn/oss-adonisjs-impersonate/actions/workflows/checks.yml)
+[![checks](https://github.com/Kevinjohn/oss-adonisjs-masquerade/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/Kevinjohn/oss-adonisjs-masquerade/actions/workflows/checks.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.md)
 [![Node.js 24+](https://img.shields.io/badge/node-%3E%3D24-339933)](package.json)
 [![AdonisJS 7](https://img.shields.io/badge/AdonisJS-7-5a45ff)](https://adonisjs.com)
@@ -10,7 +10,7 @@
 A teammate says a page looks wrong, or a customer reports a problem you can't reproduce from your
 own account. Asking for their password is not an option. Masquerade lets an authorized user, such
 as an admin, open the application as that other user for a fixed time, while staying signed in as
-themselves.
+themselves. This is also known as user impersonation.
 
 ![The customer view with a support banner naming the operator, the customer, the access level and the deadline.](docs/assets/walkthrough/support_customer_active.png)
 
@@ -93,5 +93,6 @@ local build as described in the [setup guide](docs/guide/setup.md#generate-the-s
 - [Documentation index](docs/README.md) and [API reference](docs/api-reference.md).
 
 Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Scope and design
-contract: [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md), [SPEC-impersonation.md](SPEC-impersonation.md),
-[PRD-impersonation.md](PRD-impersonation.md).
+contract: the [design documents](docs/design/) ([development plan](docs/design/DEVELOPMENT-PLAN.md),
+[SPEC](docs/design/SPEC-masquerade.md), [PRD](docs/design/PRD-masquerade.md)). Agents integrating
+Masquerade into an application: [integration notes for agents](docs/guide/agents.md).

@@ -2,9 +2,39 @@
 
 ## Unreleased
 
+- The package tarball now contains only the build output, README, licence, changelog and security
+  policy. The guides are no longer packed; read them on the documentation site or GitHub.
 - Make `pnpm test:consumer` rebuild and repack the package before installing it, and stop when
   the build or pack fails, so a failed build can no longer leave an older tarball to be tested.
   `--package=<path>` still installs the given tarball as is.
+- Move the design documents to `docs/design/` and the integration notes for code agents to
+  `docs/guide/agents.md`, which is now part of the documentation site.
+- Rename the repository to `Kevinjohn/oss-adonisjs-masquerade` and move the documentation site to
+  <https://kevinjohn.github.io/oss-adonisjs-masquerade/>. Old repository links redirect; the old
+  documentation address does not. The design documents are now `PRD-masquerade.md` and
+  `SPEC-masquerade.md`.
+- Add `node ace masquerade:status` to list active modes and `node ace masquerade:stop --actor <id>`
+  (or `--all`) to end them from the server, audited as `invalidated` with the `operator_stopped`
+  outcome code. Adds `activeBatch({ limit })` to the `ControlStore` contract: custom stores must
+  implement it to pass the updated conformance suite.
+- `node ace configure adonisjs-masquerade` now wires starter-kit hosts: it rewrites a
+  starter-shaped `config/auth.ts` to reuse the generated user provider and default to the effective
+  guard, inserts the context middleware after `initialize_auth`, and, when `@adonisjs/limiter` is
+  configured, generates and preloads the control routes and limiters. Other shapes are left
+  unchanged with the manual step printed. `--no-wire` keeps the previous print-only behaviour.
+- Add `masqueradeRoutes(router, options)` to `adonisjs-masquerade/http`. It mounts status, start
+  and stop on `MasqueradeController` behind the raw guard's named `auth` middleware, with separate
+  start and stop limiters, and throws at registration when the guard, auth middleware or either
+  limiter is missing. The native-session example, the usage and setup guides and the configure
+  instructions use it.
+- Document listener recipes for chat alerts and a dedicated log sink on masquerade transition
+  events, checked against a listener module that the native-session example type-checks.
+- Add `adonisjs-masquerade/plugins/api_client` with `masqueradeApiClient()`, a Japa API client
+  plugin whose `request.loginAs(actor).masquerading(target, options)` starts a real mode through the
+  host's control routes, sends the context token on unsafe requests and stops the mode afterwards.
+  `@japa/api-client` is a new optional peer dependency.
+- Split the usage guide into the support journey, Edge forms, error recovery, and audit and history
+  pages.
 - Add `masqueradeAuditFields(ctx)` to `adonisjs-masquerade/http`, returning the safe actor and
   effective identity fields to spread into a host business audit record, and document a host-owned
   page for reviewing the `masquerade_events` ledger.
@@ -29,7 +59,7 @@
 - Add a runnable Inertia React support-workflow example with context-bound forms and recovery.
 - Add a same-origin session JSON client for the fictional support workflow and customer actions.
 - Add a one-command launcher for the fictional native-session demo, preserving existing local configuration and data.
-- Add an illustrated user-impersonation walkthrough captured from the fictional native-session demo.
+- Add an illustrated masquerade walkthrough captured from the fictional native-session demo.
 - Organize adoption guidance by integration task and add safe troubleshooting paths.
 
 Add documentation, native-session recipe, and browser checks to pull-request validation.
@@ -104,5 +134,5 @@ Add a native-session starter fixture that proves the effective guard, raw actor 
 lazy Bouncer resolution, silent authentication, native error rendering, Japa login and operator
 isolation before package implementation.
 
-Repository scaffold. No package behaviour yet; see [DEVELOPMENT-PLAN.md](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/DEVELOPMENT-PLAN.md) for
+Repository scaffold. No package behaviour yet; see [DEVELOPMENT-PLAN.md](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/docs/design/DEVELOPMENT-PLAN.md) for
 the milestones.

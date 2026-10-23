@@ -191,6 +191,18 @@ export class LucidControlStore implements ControlStore {
       .limit(input.limit)
     return rows.map((row: Record<string, unknown>) => decodeRow(row))
   }
+  async activeBatch(input: { limit: number }): Promise<ModeRow[]> {
+    this.#assertAvailable()
+    if (!Number.isSafeInteger(input.limit) || input.limit < 1) throw unavailable()
+    const rows = await this.#client
+      .knexQuery()
+      .from('masquerade_modes')
+      .where('state', 'active')
+      .orderBy('updated_at')
+      .orderBy(ownerColumns)
+      .limit(input.limit)
+    return rows.map((row: Record<string, unknown>) => decodeRow(row))
+  }
   async pruneEvents(input: { before: Instant; limit: number }): Promise<number> {
     this.#assertAvailable()
     batch(input, input.before)

@@ -20,6 +20,8 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     const accountKitMiddleware = await import(accountKitMiddlewarePath)
     const lucid = await import('adonisjs-masquerade/stores/lucid')
     const testing = await import('adonisjs-masquerade/testing')
+    const apiClientPlugin = await import('adonisjs-masquerade/plugins/api_client')
+    assert.isFunction(apiClientPlugin.masqueradeApiClient)
     assert.equal(typeof root, 'object')
     assert.isFunction(root.configure)
     assert.isFunction(root.MasqueradeSetupError)
@@ -37,6 +39,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     assert.isFunction(accountKitMiddleware.default)
     for (const name of [
       'MasqueradeController',
+      'masqueradeRoutes',
       'masqueradeContext',
       'renderMasqueradeError',
       'contextField',
