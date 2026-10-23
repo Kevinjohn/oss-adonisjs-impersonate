@@ -4,7 +4,7 @@ import { githubLinks, repository } from './github_links.mjs'
 export default defineConfig({
   title: 'Masquerade',
   description: 'Server-side account masquerade for AdonisJS',
-  base: '/oss-adonisjs-impersonate/',
+  base: '/oss-adonisjs-masquerade/',
   cleanUrls: true,
   lastUpdated: true,
   srcExclude: ['maintainers/**'],
@@ -28,7 +28,7 @@ export default defineConfig({
         text: 'Get started',
         items: [
           { text: 'Getting started', link: '/guide/getting-started' },
-          { text: 'Add user impersonation', link: '/guide/walkthrough' },
+          { text: 'Add masquerade', link: '/guide/walkthrough' },
           { text: 'Install and configure', link: '/guide/setup' },
           { text: 'Account Kit integration preview', link: '/guide/account-kit' },
           { text: 'Opaque access tokens', link: '/guide/access-tokens' },

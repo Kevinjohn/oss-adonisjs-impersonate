@@ -42,7 +42,7 @@ This creates `tmp/native-session-package.tgz`. In the AdonisJS application, inst
 before running its configure command (adjust the path to the package checkout):
 
 ```sh
-pnpm add file:/path/to/oss-adonisjs-impersonate/tmp/native-session-package.tgz
+pnpm add file:/path/to/oss-adonisjs-masquerade/tmp/native-session-package.tgz
 pnpm add -D @adonisjs/assembler
 pnpm add @adonisjs/lucid
 node ace configure adonisjs-masquerade --namespace=my_app --guard=web
@@ -190,7 +190,7 @@ This is a configuration fragment; retain the generated imports, store, and reten
 `contextEnforcement` to `enforce` when business forms carry a captured context token: the generated
 `report` setting logs stale tokens but allows the request to continue. Enforcement rejects every
 covered unsafe business request without the token with 428, including when no one is
-impersonating. An application with existing unsafe forms or clients on effective-guard routes keeps
+masquerading. An application with existing unsafe forms or clients on effective-guard routes keeps
 the generated `report` until each one sends the token, as described in
 [context tokens and browser clients](security.md#context-tokens-and-browser-clients). Replace the sample model fields and policy with your own. If you choose a store other than the generated Lucid store, see [custom stores](custom-stores.md).
 `incarnation` must be stable for one account's lifetime and different if a deleted ID can be

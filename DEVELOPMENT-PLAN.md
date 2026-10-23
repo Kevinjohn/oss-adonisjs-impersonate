@@ -1,7 +1,7 @@
 # Development plan: consensus from design review
 
 **Date:** 19 October 2026
-**Inputs:** [PRD-impersonation.md](PRD-impersonation.md), [SPEC-impersonation.md](SPEC-impersonation.md)
+**Inputs:** [PRD-masquerade.md](PRD-masquerade.md), [SPEC-masquerade.md](SPEC-masquerade.md)
 **Review:** Two rounds: independent review, then a 20-item vote.
 **Status:** Accepted by the owner on 19 October 2026, including the four owner decisions at the end. This is the development contract for v1. The issue #86 D1–D10 access change was accepted by the owner on 22 October 2026 and is recorded in the PRD addendum and SPEC §14.
 
@@ -65,7 +65,7 @@ Unanimous unless noted.
 
 ## Accepted access change
 
-Issue #86 records the owner-accepted D1–D10 changes to active request policy, policy callbacks, persistence and audit projection. The decisions are part of the development contract as described in the PRD addendum. See [PRD-impersonation.md](PRD-impersonation.md#issue-86-access-decisions-accepted-22-october-2026) and [SPEC-impersonation.md](SPEC-impersonation.md#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
+Issue #86 records the owner-accepted D1–D10 changes to active request policy, policy callbacks, persistence and audit projection. The decisions are part of the development contract as described in the PRD addendum. See [PRD-masquerade.md](PRD-masquerade.md#issue-86-access-decisions-accepted-22-october-2026) and [SPEC-masquerade.md](SPEC-masquerade.md#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
 
 ## Accepted v1.2 change
 
@@ -74,8 +74,8 @@ October 2026. They add the optional `adonisjs-masquerade/account-kit` adapter an
 coherent Account Kit account/revision inspection, native actor revalidation, host-owned admission
 gates, managed-route blocking, and verified route-report classification. Core remains independent
 of Account Kit; v1.2 supports one matching transport and SQLite/PostgreSQL. The complete contract,
-including the narrowly superseded rules in items 3 and 4, is [SPEC §15](SPEC-impersonation.md#15-v12-account-kit-integration),
-with product boundaries in the [PRD v1.2 addendum](PRD-impersonation.md#v12-account-kit-integration-accepted-22-october-2026).
+including the narrowly superseded rules in items 3 and 4, is [SPEC §15](SPEC-masquerade.md#15-v12-account-kit-integration),
+with product boundaries in the [PRD v1.2 addendum](PRD-masquerade.md#v12-account-kit-integration-accepted-22-october-2026).
 
 Acceptance and release gates are T-KIT and T-KIT-HTTP on both strategies, SQLite/PostgreSQL, and
 peer floor/latest. The contract is accepted; adapter implementation and these verification gates

@@ -113,7 +113,7 @@ like this:
 
 Omitting `access` selects view. Choose **Can edit** deliberately in the start form and send
 `access: 'edit'` when the host's `canEdit` policy permits it. The level stays fixed until stop;
-restart to choose another level. See the [access contract](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/SPEC-impersonation.md#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
+restart to choose another level. See the [access contract](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/SPEC-masquerade.md#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
 
 The default duration is 900 seconds and the default maximum is 3600 seconds. A host can configure
 a shorter duration and maximum. When duration is omitted, the configured default is used;
@@ -251,7 +251,7 @@ TypeScript.
 
 <!-- host-recipe:demo-control-input -->
 
-[`demo_control_input.ts`](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/app/services/demo_control_input.ts):
+[`demo_control_input.ts`](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/examples/native-session/app/services/demo_control_input.ts):
 
 ```ts
 import type { HttpContext } from '@adonisjs/core/http'
@@ -317,7 +317,7 @@ retain `Cache-Control: private, no-store` and `Vary: Accept, X-Masquerade-Contex
 
 <!-- host-recipe:demo-controller -->
 
-[`demo_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/app/controllers/demo_controller.ts):
+[`demo_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/examples/native-session/app/controllers/demo_controller.ts):
 
 ```ts
 import User from '#models/user'
@@ -449,7 +449,7 @@ handler, which can render the appropriate recovery page without replaying the fo
 The status action renders a start form only when the host query returned eligible customers. The
 form component supplies Shield CSRF, and the hidden field keeps the context token from that status
 response with this start intent. This excerpt is copied from the
-[demo workspace Edge template](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/resources/views/pages/demo_workspace.edge):
+[demo workspace Edge template](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/examples/native-session/resources/views/pages/demo_workspace.edge):
 
 <!-- host-recipe:start-form -->
 
@@ -522,7 +522,7 @@ For the effective business route, edit access and `allowMutation()` are both req
 controller's Bouncer ability still checks the effective customer's ordinary permission before the
 write. The `@form` component adds Shield's CSRF field, and the hidden field supplies the context
 token captured with this page. This is the form in the
-[customer workspace Edge template](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/resources/views/pages/demo_customer.edge):
+[customer workspace Edge template](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/examples/native-session/resources/views/pages/demo_customer.edge):
 
 <!-- host-recipe:business-preference-form -->
 
@@ -555,7 +555,7 @@ old selection.
 
 Use the active view's latest token on its stop form too. The demo renders the stop control on both
 the raw status page and the customer workspace; the forms are in the same
-[workspace templates](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/main/examples/native-session/resources/views/pages):
+[workspace templates](https://github.com/Kevinjohn/oss-adonisjs-masquerade/tree/main/examples/native-session/resources/views/pages):
 
 <!-- host-recipe:stop-form -->
 

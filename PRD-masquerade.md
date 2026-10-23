@@ -2,7 +2,7 @@
 
 **Status:** Revised review draft. Existing settled boundaries and the review decisions below constrain the companion technical design; the issue #86 D1–D10 addendum was accepted by the owner on 22 October 2026. This document does not authorize implementation.
 **Date:** 19 October 2026
-**Related technical design:** [SPEC-impersonation.md](SPEC-impersonation.md)
+**Related technical design:** [SPEC-masquerade.md](SPEC-masquerade.md)
 
 ## Product outcome
 
@@ -295,7 +295,7 @@ The default policy blocks unsafe methods but cannot prove a GET handler has no s
 
 ## Dependencies and handoff
 
-The technical design in [SPEC-impersonation.md](SPEC-impersonation.md) should map these requirements to package boundaries, identity resolution, actor/effective-principal contracts, transport adapters, revisioned mode storage, endpoints, context-token handling, and verification scenarios. Any proposal that changes a settled boundary should be called out for product review. Proposed defaults and review-sensitive transport/revocation choices should be resolved before implementation. This PRD and the companion design are review artifacts, not implementation authorization.
+The technical design in [SPEC-masquerade.md](SPEC-masquerade.md) should map these requirements to package boundaries, identity resolution, actor/effective-principal contracts, transport adapters, revisioned mode storage, endpoints, context-token handling, and verification scenarios. Any proposal that changes a settled boundary should be called out for product review. Proposed defaults and review-sensitive transport/revocation choices should be resolved before implementation. This PRD and the companion design are review artifacts, not implementation authorization.
 
 ## Issue #86 access decisions (accepted 22 October 2026)
 
@@ -318,7 +318,7 @@ The owner accepted all D1–D10 decisions from issue #85 on 22 October 2026. Thi
 
 The owner accepted decisions D1–D13 for the Account Kit integration in issue #94 on 22 October 2026. This addendum changes the
 v1.2 status from deferred proposal to accepted product scope; implementation and verification are
-not yet claimed. The complete technical contract is [SPEC §15](SPEC-impersonation.md#15-v12-account-kit-integration),
+not yet claimed. The complete technical contract is [SPEC §15](SPEC-masquerade.md#15-v12-account-kit-integration),
 and delivery sequencing is in the [development plan](DEVELOPMENT-PLAN.md#accepted-v12-change).
 
 - Ship the optional adapter as `adonisjs-masquerade/account-kit`, with its provider at

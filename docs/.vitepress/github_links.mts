@@ -1,6 +1,6 @@
 import { posix } from 'node:path'
 
-export const repository = 'https://github.com/Kevinjohn/oss-adonisjs-impersonate'
+export const repository = 'https://github.com/Kevinjohn/oss-adonisjs-masquerade'
 
 /**
  * Pages link to files outside docs/ (examples, source, changelog) and to maintainer records that
