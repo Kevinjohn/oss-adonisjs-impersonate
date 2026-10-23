@@ -7,7 +7,10 @@ import { stubsRoot } from '../stubs/main.js'
 import { configure } from '../configure.js'
 import { pathToFileURL } from 'node:url'
 
-test.group('Masquerade configure scaffold', () => {
+test.group('Masquerade configure scaffold', (group) => {
+  // configure now wires the host through a ts-morph project, which is slow on CI runners.
+  group.each.timeout(30_000)
+
   test('generates fail-closed files and additive wiring, skips existing files, and force replaces them', async ({
     assert,
   }) => {

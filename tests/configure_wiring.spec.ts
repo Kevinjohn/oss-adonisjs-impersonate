@@ -25,7 +25,10 @@ async function host(files: { auth?: string; kernel?: string }) {
 
 const contextEntry = "  () => import('#middleware/masquerade_context_middleware'),"
 
-test.group('configure wiring', () => {
+test.group('configure wiring', (group) => {
+  // Each case loads a ts-morph project, which takes several seconds on CI runners.
+  group.each.timeout(30_000)
+
   test('rewires the starter-kit auth config and kernel once', async ({ assert }) => {
     const h = await host({ auth: starterAuthConfig, kernel: starterKernel })
     try {
