@@ -65,11 +65,8 @@ test.group('masquerading() API client helper', (group) => {
     assert,
   }) => {
     const { actor, target } = await createUsers()
-    await assert.rejects(
-      async () => {
-        await client.get('/business').loginAs(target).masquerading(actor, { access: 'view' })
-      },
-      /masquerading\(\) start control returned 403/
-    )
+    await assert.rejects(async () => {
+      await client.get('/business').loginAs(target).masquerading(actor, { access: 'view' })
+    }, /masquerading\(\) start control returned 403/)
   })
 })
