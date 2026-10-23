@@ -91,6 +91,7 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: 'Control controller', link: '/api/http/main/classes/MasqueradeController' },
+              { text: 'Control routes helper', link: '/api/http/main/functions/masqueradeRoutes' },
               { text: 'Context middleware', link: '/api/http/main/functions/masqueradeContext' },
               { text: 'Sensitive route marker', link: '/api/http/main/functions/sensitive' },
               { text: 'Mutation route marker', link: '/api/http/main/functions/allowMutation' },

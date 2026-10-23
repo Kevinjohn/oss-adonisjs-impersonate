@@ -50,7 +50,9 @@ test.group('Masquerade configure scaffold', () => {
       ])
       assert.isTrue(first.messages.some((message) => message.includes('effectiveSessionGuard')))
       assert.isTrue(
-        first.messages.some((message) => message.includes('independent start/stop limiter budgets'))
+        first.messages.some((message) =>
+          message.includes('masqueradeRoutes(router, { auth: middleware.auth, guard: "web"')
+        )
       )
       assert.isTrue(first.messages.some((message) => message.includes('node ace migration:run')))
       assert.equal(await readFile(join(f.root, 'start/kernel.ts'), 'utf8'), 'host kernel')

@@ -37,6 +37,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
     assert.isFunction(accountKitMiddleware.default)
     for (const name of [
       'MasqueradeController',
+      'masqueradeRoutes',
       'masqueradeContext',
       'renderMasqueradeError',
       'contextField',

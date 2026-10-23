@@ -17,6 +17,11 @@
   (or `--all`) to end them from the server, audited as `invalidated` with the `operator_stopped`
   outcome code. Adds `activeBatch({ limit })` to the `ControlStore` contract: custom stores must
   implement it to pass the updated conformance suite.
+- Add `masqueradeRoutes(router, options)` to `adonisjs-masquerade/http`. It mounts status, start
+  and stop on `MasqueradeController` behind the raw guard's named `auth` middleware, with separate
+  start and stop limiters, and throws at registration when the guard, auth middleware or either
+  limiter is missing. The native-session example, the usage and setup guides and the configure
+  instructions use it.
 - Split the usage guide into the support journey, Edge forms, error recovery, and audit and history
   pages.
 - Add `masqueradeAuditFields(ctx)` to `adonisjs-masquerade/http`, returning the safe actor and
