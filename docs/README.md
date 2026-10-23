@@ -8,11 +8,11 @@ stopped. Token adapters preserve Auth 10 bearer validation and require a configu
 ## Get started
 
 Start with [Getting started](guide/getting-started.md) to choose a runnable demo or integrate
-Masquerade into an existing application. The [native-session demo](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/README.md)
+Masquerade into an existing application. The [native-session demo](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/examples/native-session/README.md)
 shows the operator as the authenticated actor, the customer as the effective identity, the fixed
 deadline, and how to stop the mode.
 
-[Add user impersonation to AdonisJS](guide/walkthrough.md) follows the fictional support journey
+[Add masquerade to AdonisJS](guide/walkthrough.md) follows the fictional support journey
 with real application screenshots.
 
 ## Guides
@@ -48,8 +48,8 @@ with real application screenshots.
 The package is an early alpha for local self-testing and has not been published to a package
 registry. Build the selected tagged baseline and install its local tarball as described in the
 [setup guide](guide/setup.md#generate-the-starter-files). The accepted v1 boundaries are
-in the [development plan](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/DEVELOPMENT-PLAN.md),
-the [technical specification](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/SPEC-impersonation.md),
-and the [product requirements](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/PRD-impersonation.md).
-See [maintainer records](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/main/docs/maintainers)
+in the [development plan](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/DEVELOPMENT-PLAN.md),
+the [technical specification](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/SPEC-masquerade.md),
+and the [product requirements](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/PRD-masquerade.md).
+See [maintainer records](https://github.com/Kevinjohn/oss-adonisjs-masquerade/tree/main/docs/maintainers)
 for repository and verification guidance.

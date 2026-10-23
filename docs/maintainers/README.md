@@ -4,11 +4,11 @@ These pages support development and release review; they are excluded from the u
 package archive. The M0–M4 milestone records were removed before the first alpha and are linked at
 their last revision.
 
-- [M0 proof](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/7e0940e/M0-RESULT.md): Auth facade and effective-guard seam.
-- [M1 result](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/7e0940e/M1-RESULT.md): core state and policy evidence.
-- [M2 result](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/7e0940e/M2-RESULT.md): Lucid persistence and conformance evidence.
-- [M3 result](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/7e0940e/M3-RESULT.md): real native-session HTTP gate.
-- [M4 result](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/7e0940e/M4-RESULT.md): completed release-candidate verification, including configure
+- [M0 proof](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/7e0940e/M0-RESULT.md): Auth facade and effective-guard seam.
+- [M1 result](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/7e0940e/M1-RESULT.md): core state and policy evidence.
+- [M2 result](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/7e0940e/M2-RESULT.md): Lucid persistence and conformance evidence.
+- [M3 result](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/7e0940e/M3-RESULT.md): real native-session HTTP gate.
+- [M4 result](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/7e0940e/M4-RESULT.md): completed release-candidate verification, including configure
   and packed-consumer gates; publication remains separate.
 - [Requirement ledger](requirement-ledger.md): retained FR/NFR/AC mapped to named evidence.
 - [Source map](source-map.md): task-oriented module and test navigation.

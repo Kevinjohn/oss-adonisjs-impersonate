@@ -15,7 +15,7 @@ configured ability. Issue deliberately restricted abilities for least privilege.
 provider, guard, expiration, revocation, and ability behavior.
 
 For a runnable local lifecycle against a seeded SQLite app, follow the
-[bearer API walkthrough in the existing example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/README.md#bearer-api-lifecycle).
+[bearer API walkthrough in the existing example](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/examples/native-session/README.md#bearer-api-lifecycle).
 
 ## Share account authority with sessions
 

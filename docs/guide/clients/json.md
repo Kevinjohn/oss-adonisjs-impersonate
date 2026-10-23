@@ -1,6 +1,6 @@
 # Same-origin JSON browser client
 
-The [native-session example](https://github.com/Kevinjohn/oss-adonisjs-impersonate/tree/main/examples/native-session) includes a runnable JSON client at `/support/json`. It uses the same fictional operator and customers as the Edge workflow. V1 remains session authenticated: the browser sends the host session cookie, Shield CSRF token, and a captured `X-Masquerade-Context` with every unsafe request. There is no bearer token or cross-origin setup.
+The [native-session example](https://github.com/Kevinjohn/oss-adonisjs-masquerade/tree/main/examples/native-session) includes a runnable JSON client at `/support/json`. It uses the same fictional operator and customers as the Edge workflow. V1 remains session authenticated: the browser sends the host session cookie, Shield CSRF token, and a captured `X-Masquerade-Context` with every unsafe request. There is no bearer token or cross-origin setup.
 
 With Node 24 and pnpm, build and pack the repository library, then run the example. The local SQLite fixture is only for development:
 
@@ -18,7 +18,7 @@ node ace demo:seed
 pnpm dev
 ```
 
-Sign in as `operator@example.test` with the demo password from `app/services/demo_accounts.ts`, then open `/support/json`. The page shell is served through raw `web` authentication. It embeds Shield's `csrfToken` and the eligible fictional customer choices. The [client source](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/main/examples/native-session/resources/js/demo_json.js) uses `fetch` with `credentials: 'same-origin'`, `Accept: application/json`, and `cache: 'no-store'`:
+Sign in as `operator@example.test` with the demo password from `app/services/demo_accounts.ts`, then open `/support/json`. The page shell is served through raw `web` authentication. It embeds Shield's `csrfToken` and the eligible fictional customer choices. The [client source](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/main/examples/native-session/resources/js/demo_json.js) uses `fetch` with `credentials: 'same-origin'`, `Accept: application/json`, and `cache: 'no-store'`:
 
 ```js
 const response = await fetch('/masquerade/start', {

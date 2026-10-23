@@ -3,7 +3,7 @@
 **Status:** v1 development contract, reduced to the scope accepted in [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md) on 19 October 2026.
 **Version:** 0.3
 **Date:** 19 October 2026
-**Product requirements:** [PRD-impersonation.md](PRD-impersonation.md)
+**Product requirements:** [PRD-masquerade.md](PRD-masquerade.md)
 **Working package label:** `adonisjs-masquerade`; registry name, repository name, version and publication are undecided.
 
 ## 1. Reading contract and authority
@@ -393,7 +393,7 @@ Commands are future repository scripts on Node 24 with pnpm: `pnpm lint`, `pnpm 
 - [Previously assessed package](https://github.com/devnymous/adonis-impersonate/tree/b86b3c82dcff91026473d861999a6afba9c42314): comparison only; its browser-login-switch architecture is not adopted.
 
 This document defines acceptance targets, not execution results. The original milestone gates
-are recorded as complete in [M4-RESULT.md](https://github.com/Kevinjohn/oss-adonisjs-impersonate/blob/7e0940e/M4-RESULT.md) and the
+are recorded as complete in [M4-RESULT.md](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/7e0940e/M4-RESULT.md) and the
 [requirement ledger](docs/maintainers/requirement-ledger.md). Those records distinguish verified
 behavior from publication; the technical contract remains authoritative for implementation.
 

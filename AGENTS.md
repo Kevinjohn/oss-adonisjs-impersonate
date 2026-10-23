@@ -18,7 +18,7 @@ The same rules as `CONTRIBUTING.md`; every change follows them.
 - **The application owns its language.** Errors carry stable codes and English messages. The host
   exception handler localises; the package ships no translations, loader or locale setting.
 - **The design documents are the contract.** `DEVELOPMENT-PLAN.md` is the accepted v1 scope,
-  `SPEC-impersonation.md` the technical contract and `PRD-impersonation.md` the product
+  `SPEC-masquerade.md` the technical contract and `PRD-masquerade.md` the product
   boundaries. A change that moves a settled boundary goes back to the owner, not into code.
 
 ## Checks

@@ -21,7 +21,7 @@ Every change follows these.
 - **The application owns its language.** Errors carry stable codes and English messages. The host
   exception handler localises; the package ships no translations, loader or locale setting.
 - **The actor stays authenticated.** Masquerade never logs in as the target, mints a target
-  credential or unions actor and target permissions. [SPEC-impersonation.md](SPEC-impersonation.md)
+  credential or unions actor and target permissions. [SPEC-masquerade.md](SPEC-masquerade.md)
   section 3 lists the invariants; a pull request that weakens one is a product change, not a fix.
 
 ## Local setup
@@ -68,7 +68,7 @@ Changes to the control store or its migrations should pass on both SQLite and Po
 
 ## Code layout
 
-The layout follows [SPEC-impersonation.md](SPEC-impersonation.md) section 2.
+The layout follows [SPEC-masquerade.md](SPEC-masquerade.md) section 2.
 
 - `src/` holds the core: state machine, policy, context token, expiry, errors. One responsibility
   per file.
