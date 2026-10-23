@@ -313,18 +313,19 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
         input,
         actor.id,
         this.config.durationSeconds!,
-        this.config.maxDurationSeconds!
+        this.config.maxDurationSeconds!,
+        this.config.reason!
       )
       const currentActor = await this.inspect(actor.id)
       const target = await this.inspect(targetId)
       if (target?.subject.id === actor.id) throw invalidInput()
       if (!this.eligibleActor(currentActor, actor) || !target?.active)
         throw new MasqueradeError('E_MASQUERADE_NOT_ALLOWED')
-      if (!(await this.allowed(currentActor.subject, target.subject, request, reason)))
+      if (!(await this.allowed(currentActor.subject, target.subject, request, reason ?? undefined)))
         throw new MasqueradeError('E_MASQUERADE_NOT_ALLOWED')
       if (
         access === 'edit' &&
-        !(await this.editable(currentActor.subject, target.subject, request, reason))
+        !(await this.editable(currentActor.subject, target.subject, request, reason ?? undefined))
       )
         throw new MasqueradeError('E_MASQUERADE_NOT_ALLOWED')
       await this.local(currentActor.subject, target.subject, request)
@@ -342,7 +343,7 @@ class CoreService<User, Request extends object> implements MasqueradeService<Req
         )
         throw unavailable()
       }
-      const event = this.event(owner, row, 'started', 'started', reason)
+      const event = this.event(owner, row, 'started', 'started', reason ?? undefined)
       const next: ActiveModeRow = {
         ...owner,
         state: 'active',

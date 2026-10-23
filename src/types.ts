@@ -82,7 +82,8 @@ export interface ActiveModeRow extends RowBase {
   targetIncarnation: string
   actorStampHash: string
   targetStampHash: string
-  reason: string
+  /** Null when the host's reason policy is optional and no reason was given. */
+  reason: string | null
   startedAt: Instant
   expiresAt: Instant
 }
@@ -164,10 +165,13 @@ export interface MasqueradeConfig<User, Request> {
   maxDurationSeconds?: number
   contextEnforcement: 'report' | 'enforce'
   retention: { days: number } | 'host-managed'
+  /** Defaults to optional; required rejects a start without a reason. */
+  reason?: 'optional' | 'required'
 }
 export interface StartInput {
   targetId: string | number
-  reason: string
+  /** Required only when the configured reason policy is required. */
+  reason?: string
   durationSeconds?: number
   expectedContext: ContextToken
   /** Defaults to view; edit requires explicit host policy permission. */

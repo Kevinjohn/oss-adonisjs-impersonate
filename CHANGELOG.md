@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Make the start reason optional by default with a `reason: 'optional' | 'required'` config
+  option. An optional start without a reason stores a null reason on the active row and omits it
+  from the audit event; `'required'` keeps the previous behaviour. Custom stores must accept a
+  null reason on active rows to pass the updated conformance suite.
 - Document setup, support workflow, persistent local data, and reset for the Account Kit demo.
 - Add a prerelease Account Kit integration preview pinned to GitHub release artifact `0.1.1`, with installation instructions, optional adapter, actor and target admission gates, managed-route blocker, route report, and floor/latest SQLite/PostgreSQL matrix evidence for both strategies. Public registry publication remains a separate release step.
 - Add view-only-by-default starts with optional per-start edit access gated by `canEdit`, include

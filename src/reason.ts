@@ -1,5 +1,7 @@
 import { invalidInput } from './errors.js'
 
+export type ReasonPolicy = 'optional' | 'required'
+
 export function normalizeReason(value: unknown): string {
   if (typeof value !== 'string') throw invalidInput()
   const reason = value.trim().replace(/\r\n/g, '\n')
@@ -13,4 +15,14 @@ export function normalizeReason(value: unknown): string {
   )
     throw invalidInput()
   return reason
+}
+
+/** An optional reason that is absent, null or blank is stored as null; any other value is normalised. */
+export function parseStartReason(value: unknown, policy: ReasonPolicy): string | null {
+  if (
+    policy === 'optional' &&
+    (value === undefined || value === null || (typeof value === 'string' && !value.trim()))
+  )
+    return null
+  return normalizeReason(value)
 }

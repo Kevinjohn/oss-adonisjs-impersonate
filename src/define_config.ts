@@ -22,6 +22,7 @@ export function defineConfig<User, Request>(
           'maxDurationSeconds',
           'contextEnforcement',
           'retention',
+          'reason',
         ].includes(key)
     )
   )
@@ -78,6 +79,8 @@ export function defineConfig<User, Request>(
     (!Number.isSafeInteger(config.retention.days) || config.retention.days < 1)
   )
     fail('retention.days')
+  const reason = config.reason === undefined ? 'optional' : config.reason
+  if (reason !== 'optional' && reason !== 'required') fail('reason')
   return Object.freeze({
     authority: Object.freeze({
       namespace: authority.namespace,
@@ -104,5 +107,6 @@ export function defineConfig<User, Request>(
         : config.retention,
     durationSeconds: duration,
     maxDurationSeconds: max,
+    reason,
   })
 }

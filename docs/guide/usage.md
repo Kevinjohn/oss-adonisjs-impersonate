@@ -96,7 +96,7 @@ Render that context token with the form and Shield's CSRF field. The token is bo
 and changes after committed transitions. It prevents stale/replayed context; it is not an
 authentication credential and does not replace CSRF.
 
-Submit `POST /masquerade/start` with `targetId`, a required `reason`, optional numeric
+Submit `POST /masquerade/start` with `targetId`, an optional `reason`, optional numeric
 `durationSeconds`, optional `access` (`'view'` or `'edit'`), and the token captured with this form. Send the token as
 `X-Masquerade-Context` or `_masqueradeContext`; if both are sent they must agree. For a
 cookie-authenticated request, also send the host's Shield CSRF token. A JSON request body can look
@@ -118,10 +118,15 @@ restart to choose another level. See the [access contract](https://github.com/Ke
 The default duration is 900 seconds and the default maximum is 3600 seconds. A host can configure
 a shorter duration and maximum. When duration is omitted, the configured default is used;
 otherwise it must be an integer from 60 seconds through the configured maximum. The package does
-not extend a deadline on later requests. The reason is trimmed and CRLF line endings are normalized to LF. LF and TAB
-are the only control characters permitted inside the normalized reason. It must contain 1–500
-Unicode code points and no more than 2,000 UTF-8 bytes. Invalid input is rejected, never
-truncated. Keep secrets and unnecessary personal information out of the reason.
+not extend a deadline on later requests.
+
+A reason is optional by default: an absent or blank reason starts the mode and the audit stores
+none, so a start form can be a single button. Set `reason: 'required'` in `config/masquerade.ts`
+when every start must be justified; a start without a reason is then rejected. A supplied reason
+is trimmed and CRLF line endings are normalized to LF. LF and TAB are the only control characters
+permitted inside the normalized reason. It must contain 1–500 Unicode code points and no more than
+2,000 UTF-8 bytes. Invalid input is rejected, never truncated. Keep secrets and unnecessary
+personal information out of the reason.
 
 A successful start returns an active `ModeView` with a fresh token:
 

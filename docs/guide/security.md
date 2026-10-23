@@ -197,7 +197,9 @@ Committed starts, stops, expiry and global invalidation have durable audit event
 authentication, CSRF and the control limiter succeed, admitted start/stop denials, invalid controls,
 context conflicts and idle-stop no-ops are also recorded when the store is available. Authentication
 failures, pre-boundary CSRF/limiter rejections, status/business denials and local tenant denials use
-host diagnostics instead. A successful start audit stores its normalized reason. Denied or invalid
+host diagnostics instead. A successful start audit stores its normalized reason, or none when the reason policy is optional
+and no reason was given. Set `reason: 'required'` when compliance needs a justification for every
+start. Denied or invalid
 control attempts omit the reason. Do not use reasons as case notes; avoid secrets and unnecessary
 personal data. Status, observer projections and operational logs never expose raw stamps,
 credentials, request bodies or user objects.
