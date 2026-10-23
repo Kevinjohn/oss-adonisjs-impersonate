@@ -406,6 +406,7 @@ try {
           'adonisjs-masquerade',
           '--namespace=my_app',
           '--guard=web',
+          '--no-wire',
         ],
         `${engine} configure`,
         env
