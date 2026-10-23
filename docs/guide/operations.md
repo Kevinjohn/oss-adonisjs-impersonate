@@ -107,7 +107,8 @@ node ace masquerade:stop --all
   until none are left or a batch makes no progress.
 - Each stop re-reads the row and uses a conditional transition, and writes one `invalidated`
   event with the outcome code `operator_stopped`. If the operator stops the mode at the same time,
-  one transition wins and one event is written. Security stamps are not read.
+  one transition wins and one event is written. A mode already past its deadline is recorded as
+  `expired`, as prune records it, and is not counted as stopped. Security stamps are not read.
 - The operator's next request sees no active mode and must use the new context token. The command
   does not sign anyone out; to revoke the operator's sessions, advance their security stamp and
   use the host's own session controls.

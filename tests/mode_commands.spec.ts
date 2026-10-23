@@ -49,6 +49,8 @@ test.group('masquerade:status and masquerade:stop Ace commands', () => {
   test('status lists and stop ends a mode through Ace', async ({ assert }) => {
     const f = fixture()
     Object.defineProperty(f.store, 'testOnly', { value: false })
+    // The command reads the real clock, so the mode must still be live now.
+    f.state.now = Date.now()
     const service = await f.create()
     await f.start(service)
     assert.notEqual(await ace(f.config, ['masquerade:status']), 1)

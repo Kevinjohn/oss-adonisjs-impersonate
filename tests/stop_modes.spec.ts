@@ -43,6 +43,25 @@ test.group('operator mode stop', () => {
     assert.lengthOf(f.store.events, 0)
   })
 
+  test('records a mode past its deadline as expired and does not count it', async ({ assert }) => {
+    const f = fixture()
+    const service = await f.create()
+    await f.start(service)
+    await f.start(service, { actorId: 'c' })
+    f.state.now += 24 * 60 * 60 * 1000
+    assert.deepEqual(await stopActiveModes(f.config, f.dependencies, { actorId: 'a' }), {
+      stopped: 0,
+    })
+    assert.deepEqual(await stopActiveModes(f.config, f.dependencies, { all: true }), {
+      stopped: 0,
+    })
+    const ended = f.store.events.slice(-2)
+    for (const event of ended) assert.include(event, { kind: 'expired', outcomeCode: 'expired' })
+    assert.deepEqual(ended.map((event) => event.actorId).sort(), ['a', 'c'])
+    const row = await f.store.read(f.owner)
+    assert.equal(row?.state, 'idle')
+  })
+
   test('resolves the incarnation through the authority or the explicit value', async ({
     assert,
   }) => {

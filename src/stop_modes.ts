@@ -41,13 +41,17 @@ function now(dependencies: StopModesDependencies): string {
   }
 }
 
-/** Clear one active snapshot through CAS; a conflict means another transition won. */
+/**
+ * Clear one active snapshot through CAS; a conflict means another transition won. A mode already
+ * past its deadline is recorded as `expired`, as admission and prune record it.
+ */
 async function invalidate(
   store: ControlStore,
   dependencies: StopModesDependencies,
   current: ActiveModeRow,
   at: string
-): Promise<'applied' | 'conflict'> {
+): Promise<'applied' | 'expired' | 'conflict'> {
+  const lapsed = at >= current.expiresAt
   const owner: OwnerKey = {
     namespace: current.namespace,
     actorId: current.actorId,
@@ -61,16 +65,17 @@ async function invalidate(
     targetIncarnation: current.targetIncarnation,
     access: current.access,
     at,
-    kind: 'invalidated',
-    outcomeCode: OPERATOR_STOP_OUTCOME,
+    kind: lapsed ? 'expired' : 'invalidated',
+    outcomeCode: lapsed ? 'expired' : OPERATOR_STOP_OUTCOME,
     revision: current.revision + 1,
   }
-  return commitTransition(store, dependencies, {
+  const outcome = await commitTransition(store, dependencies, {
     owner,
     expected: current.revision,
     next: idleAfterTransition(current, event),
     event,
   })
+  return outcome === 'applied' && lapsed ? 'expired' : outcome
 }
 
 async function read(store: ControlStore, owner: OwnerKey): Promise<ModeRow | null> {
@@ -130,8 +135,8 @@ export async function stopActiveModes<User, Request>(
     for (let attempt = 0; attempt < CONFLICT_RETRIES; attempt++) {
       const current = await read(store, owner)
       if (current?.state !== 'active') return { stopped: 0 }
-      if ((await invalidate(store, dependencies, current, now(dependencies))) === 'applied')
-        return { stopped: 1 }
+      const outcome = await invalidate(store, dependencies, current, now(dependencies))
+      if (outcome !== 'conflict') return { stopped: outcome === 'applied' ? 1 : 0 }
     }
     throw unavailable()
   }
@@ -152,10 +157,9 @@ export async function stopActiveModes<User, Request>(
       const row = activeCandidate(candidate)
       const current = await read(store, row)
       if (current?.state !== 'active' || current.revision !== row.revision) continue
-      if ((await invalidate(store, dependencies, current, now(dependencies))) === 'applied') {
-        stopped++
-        progressed = true
-      }
+      const outcome = await invalidate(store, dependencies, current, now(dependencies))
+      if (outcome === 'applied') stopped++
+      if (outcome !== 'conflict') progressed = true
     }
     // An empty batch is done; a batch that only conflicted is left for the next run.
     if (!progressed) return { stopped }
