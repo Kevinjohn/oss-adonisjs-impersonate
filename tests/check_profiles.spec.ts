@@ -18,7 +18,13 @@ test('every check step names an existing script', ({ assert }) => {
 test('the check profiles cover every pnpm script the CI workflows run', ({ assert }) => {
   const covered = new Set(allSteps.map((step) => step.script))
   const ignored = new Set(['install', 'dlx'])
-  const uncovered = ['checks.yml', 'consumer.yml'].flatMap((workflow) =>
+  const uncovered = [
+    'checks.yml',
+    'e2e.yml',
+    'account-kit.yml',
+    'consumer.yml',
+    'docs.yml',
+  ].flatMap((workflow) =>
     [
       ...readFileSync(join(root, '.github/workflows', workflow), 'utf8').matchAll(
         /\bpnpm ([a-z][\w:-]*)/g

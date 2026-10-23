@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Pull request CI now runs only lint, typecheck, the built-export test and coverage. The demo
+  launcher, recipe, Account Kit demo, browser suite and Inertia examples move to a new `e2e`
+  workflow that runs on pull requests touching `examples/`, `http/`, `stubs/` or `docs/guide/`,
+  nightly and before release, with Chromium cached. The Account Kit consumer matrix moves to a
+  nightly and release-only `account-kit` workflow, and the docs build runs only when `docs/`
+  changes. A new push cancels the stale pull request run.
 - The package tarball now contains only the build output, README, licence, changelog and security
   policy. The guides are no longer packed; read them on the documentation site or GitHub.
 - Make `pnpm test:consumer` rebuild and repack the package before installing it, and stop when

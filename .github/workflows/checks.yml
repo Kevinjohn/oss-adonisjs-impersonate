@@ -10,6 +10,12 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels its stale run. The workflow name is spelt out because
+# `github.workflow` is the caller's name when the release workflow calls this one.
+concurrency:
+  group: checks-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   checks:
     # Push and pull request runs start once the repository is public, where hosted minutes are
@@ -57,85 +63,10 @@ jobs:
       - name: Typecheck
         if: ${{ matrix.database == 'better-sqlite3' }}
         run: pnpm typecheck
-      - name: Test demo launcher
+      - name: Lint
         if: ${{ matrix.database == 'better-sqlite3' }}
-        run: pnpm test:demo
-      - name: Check documented native-session recipe
-        if: ${{ matrix.database == 'better-sqlite3' }}
-        run: pnpm test:recipe --database=sqlite
+        run: pnpm lint
       - name: Test built package exports
         if: ${{ matrix.database == 'better-sqlite3' }}
         run: pnpm test:built-exports
       - run: pnpm test:coverage
-      - name: Build documentation for pull requests
-        if: ${{ github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
-        run: pnpm docs:build
-      - name: Install native-session example
-        if: ${{ github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
-        working-directory: examples/native-session
-        run: pnpm install --no-frozen-lockfile
-      - name: Install Chromium
-        if: ${{ github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
-        working-directory: examples/native-session
-        run: pnpm dlx playwright@1.60.0 install --with-deps chromium
-      - name: Check runnable Account Kit demo
-        if: ${{ github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
-        env:
-          DB_CLIENT: sqlite
-          HOST: 127.0.0.1
-          PORT: 3398
-          SESSION_DRIVER: database
-        run: |
-          set -euo pipefail
-          mkdir -p tmp
-          pnpm test:account-kit-demo 2>&1 | tee tmp/account-kit-demo-check.log
-      - name: Upload Account Kit demo check evidence
-        if: ${{ always() && github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: account-kit-demo-check-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            tmp/account-kit-demo-check.log
-            tmp/account-kit-demo-check/check.log
-            tmp/account-kit-demo-check/app/tmp/browser/**
-          if-no-files-found: error
-      - name: Run browser suite
-        if: ${{ github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
-        working-directory: examples/native-session
-        env:
-          DB_CLIENT: sqlite
-          HOST: 127.0.0.1
-          PORT: 3391
-          SESSION_DRIVER: memory
-        run: |
-          pnpm test:browser
-          pnpm test:browser
-      - name: Check runnable Inertia React example
-        if: ${{ github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
-        env:
-          DB_CLIENT: sqlite
-          HOST: 127.0.0.1
-          PORT: 3393
-          SESSION_DRIVER: memory
-        run: pnpm test:inertia-react
-      - name: Check Inertia Vue example
-        if: ${{ github.event_name == 'pull_request' && matrix.database == 'better-sqlite3' }}
-        env:
-          DB_CLIENT: sqlite
-          HOST: 127.0.0.1
-          PORT: 3378
-          SESSION_DRIVER: memory
-        run: pnpm test:inertia-vue
-      - name: Exercise packed Account Kit consumer
-        env:
-          ACCOUNT_KIT_EVIDENCE_DIR: ${{ github.workspace }}/tmp/account-kit-evidence-${{ matrix.database }}
-        run: pnpm test:account-kit --profile=all --database=${{ matrix.database == 'pg' && 'pg' || 'sqlite' }} --strategy=all --session-management=all
-      - name: Upload Account Kit consumer evidence
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: account-kit-${{ matrix.database }}
-          path: |
-            tmp/account-kit-evidence-${{ matrix.database }}/evidence.json
-            tmp/account-kit-evidence-${{ matrix.database }}/logs/**
-          if-no-files-found: warn

@@ -1,0 +1,108 @@
+name: e2e
+
+on:
+  pull_request:
+    paths:
+      - 'examples/**'
+      - 'http/**'
+      - 'stubs/**'
+      - 'docs/guide/**'
+      - '.github/workflows/e2e.yml'
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  e2e:
+    # Pull request and scheduled runs start once the repository is public, where hosted minutes
+    # are free. Manual and release runs always start.
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    env:
+      DB_CLIENT: better-sqlite3
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            examples/native-session/pnpm-lock.yaml
+            examples/inertia-react/pnpm-lock.yaml
+            examples/inertia-vue/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Test demo launcher
+        run: pnpm test:demo
+      - name: Check documented native-session recipe
+        run: pnpm test:recipe --database=sqlite
+      - name: Install native-session example
+        working-directory: examples/native-session
+        run: pnpm install --no-frozen-lockfile
+      - name: Cache Chromium
+        id: chromium-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.60.0-chromium-${{ runner.os }}
+      - name: Install Chromium
+        if: ${{ steps.chromium-cache.outputs.cache-hit != 'true' }}
+        working-directory: examples/native-session
+        run: pnpm dlx playwright@1.60.0 install --with-deps chromium
+      - name: Install Chromium system dependencies
+        if: ${{ steps.chromium-cache.outputs.cache-hit == 'true' }}
+        working-directory: examples/native-session
+        run: pnpm dlx playwright@1.60.0 install-deps chromium
+      - name: Check runnable Account Kit demo
+        env:
+          DB_CLIENT: sqlite
+          HOST: 127.0.0.1
+          PORT: 3398
+          SESSION_DRIVER: database
+        run: |
+          set -euo pipefail
+          mkdir -p tmp
+          pnpm test:account-kit-demo 2>&1 | tee tmp/account-kit-demo-check.log
+      - name: Upload Account Kit demo check evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: account-kit-demo-check-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tmp/account-kit-demo-check.log
+            tmp/account-kit-demo-check/check.log
+            tmp/account-kit-demo-check/app/tmp/browser/**
+          if-no-files-found: error
+      - name: Run browser suite
+        working-directory: examples/native-session
+        env:
+          DB_CLIENT: sqlite
+          HOST: 127.0.0.1
+          PORT: 3391
+          SESSION_DRIVER: memory
+        run: |
+          pnpm test:browser
+          pnpm test:browser
+      - name: Check runnable Inertia React example
+        env:
+          DB_CLIENT: sqlite
+          HOST: 127.0.0.1
+          PORT: 3393
+          SESSION_DRIVER: memory
+        run: pnpm test:inertia-react
+      - name: Check Inertia Vue example
+        env:
+          DB_CLIENT: sqlite
+          HOST: 127.0.0.1
+          PORT: 3378
+          SESSION_DRIVER: memory
+        run: pnpm test:inertia-vue
