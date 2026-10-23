@@ -1,4 +1,4 @@
-# Add masquerade to AdonisJS
+# Add user impersonation to AdonisJS
 
 Masquerade lets an authorized support operator investigate a customer-visible issue through the
 customer's ordinary application view. The operator stays signed in, while the customer's normal
@@ -54,7 +54,7 @@ is 15 minutes, with a one-hour maximum; an application may choose shorter limits
 
 ## Explore the delivered clients
 
-For an existing application, start with [Install and configure](setup.md) and follow [Use a support mode](usage.md). Its [Edge form recipe](usage.md#edge-forms-and-host-redirects) matches the journey above; the [native-session demo](https://github.com/Kevinjohn/oss-adonisjs-masquerade/tree/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session) is runnable and includes the fictional accounts.
+For an existing application, start with [Install and configure](setup.md) and follow [Use a support mode](usage.md). Its [Edge form recipe](clients/edge.md) matches the journey above; the [native-session demo](https://github.com/Kevinjohn/oss-adonisjs-masquerade/tree/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session) is runnable and includes the fictional accounts.
 
 For a same-origin browser client, follow the [JSON client guide](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/docs/guide/clients/json.md) and try it in the same [native-session example](https://github.com/Kevinjohn/oss-adonisjs-masquerade/tree/736b5d9327b56dd90b1b506b07fa7bad0e7fbb9b/examples/native-session) at `/support/json`. For React and Inertia, follow the [React client guide](https://github.com/Kevinjohn/oss-adonisjs-masquerade/blob/235ce0e44bc74fb088960ba91ea13a9a70cc71e3/docs/guide/clients/react.md) and run its [Inertia example](https://github.com/Kevinjohn/oss-adonisjs-masquerade/tree/235ce0e44bc74fb088960ba91ea13a9a70cc71e3/examples/inertia-react). The [Security and operations guide](security.md) explains authorization, expiry, account-wide
 behavior, recovery and side effects.

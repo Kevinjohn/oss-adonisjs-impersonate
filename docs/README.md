@@ -21,8 +21,11 @@ with real application screenshots.
   session provider, and wire callbacks, middleware, and host-protected routes.
 - [Opaque access tokens](guide/access-tokens.md): configure token-only or mixed session/token
   transport, select guards explicitly, and gate integrated access with token abilities.
-- [Use a support mode](guide/usage.md): follow the complete status, start, customer-work, stop, and
-  Edge form recipes.
+- [Use a support mode](guide/usage.md): follow the complete status, start, customer-work and stop
+  journey.
+- [Edge forms](guide/clients/edge.md): adapt the service to host-rendered forms and redirects.
+- [Recover from errors](guide/errors.md) and [audit and history](guide/audit.md): error responses,
+  business audit fields, observers and the masquerade history page.
 - [Session JSON client](guide/clients/json.md): run same-origin fetch controls and customer
   actions with session cookies, CSRF, captured context, and deliberate recovery.
 - [Inertia React](guide/clients/react.md): run the React support workflow with captured form

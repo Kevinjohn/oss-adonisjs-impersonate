@@ -21,7 +21,7 @@ intent automatically.
   follow [Use a support mode](usage.md). Keep the current session provider and guard, review the
   generated files, and make the host-owned callback and route decisions below before enabling
   business routes.
-- **Choose a delivered client integration.** [Edge forms](usage.md#edge-forms-and-host-redirects)
+- **Choose a delivered client integration.** [Edge forms](clients/edge.md)
   capture the context token with the original form intent. For a same-origin browser client, see
   the [JSON client guide](clients/json.md)
   and its runnable [native-session example](https://github.com/Kevinjohn/oss-adonisjs-masquerade/tree/main/examples/native-session).

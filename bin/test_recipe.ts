@@ -57,6 +57,7 @@ if (Number(process.versions.node.split('.')[0]) !== 24) throw new Error('Use Nod
 
 const setup = await readFile(join(root, 'docs/guide/setup.md'), 'utf8')
 const usage = await readFile(join(root, 'docs/guide/usage.md'), 'utf8')
+const edge = await readFile(join(root, 'docs/guide/clients/edge.md'), 'utf8')
 
 function fence(markdown: string, name: string): string {
   const marker = `<!-- host-recipe:${name} -->`
@@ -82,8 +83,8 @@ const snippets = {
   controlRoutes: fence(usage, 'control-routes'),
   controlLimiters: fence(usage, 'control-limiters'),
   businessRoutes: fence(usage, 'business-routes'),
-  htmlRoutes: fence(usage, 'html-control-routes'),
-  htmlParser: fence(usage, 'demo-control-input'),
+  htmlRoutes: fence(edge, 'html-control-routes'),
+  htmlParser: fence(edge, 'demo-control-input'),
 }
 
 function requireRecipe(condition: boolean, detail: string): void {

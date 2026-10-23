@@ -32,7 +32,7 @@ are readable. That does not make their source modules importable. Import package
 
 - [Install and configure](guide/setup.md) wires the provider, native authority, effective guard, and optional Lucid store.
 - [Opaque access tokens](guide/access-tokens.md) wires native token and effective guards for token-only or mixed transport.
-- [Use a support mode](guide/usage.md) uses the HTTP controls, route markers, Edge helpers, and effective guard.
+- [Use a support mode](guide/usage.md) uses the HTTP controls, route markers, and effective guard; [Edge forms](guide/clients/edge.md) uses the Edge helpers.
 - [Custom authorities](guide/custom-authorities.md) implements the native authority contract.
 - [Custom stores](guide/custom-stores.md) implements `ControlStore` and runs the conformance helper.
 - [Route coverage report](guide/route-report.md) explains package control route recognition and host review.
