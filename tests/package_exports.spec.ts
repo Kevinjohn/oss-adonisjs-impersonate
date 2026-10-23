@@ -41,6 +41,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1') {
       'renderMasqueradeError',
       'contextField',
       'shareMasquerade',
+      'masqueradeAuditFields',
       'sensitive',
       'allowMutation',
     ] as const)

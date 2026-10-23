@@ -637,23 +637,75 @@ audit record. Include it in the host transaction when that audit must commit ato
 business change:
 
 ```ts
-const runtime = await ctx.containerResolver.make('masquerade.runtime')
-const identity = await runtime.service.resolve(ctx)
+import { masqueradeAuditFields } from 'adonisjs-masquerade/http'
+
 await businessAudit.record({
   action: 'customer.preference.updated',
-  actorId: identity.actorId,
-  effectiveId: identity.effectiveId,
-  actorIncarnation: identity.actorIncarnation,
-  effectiveIncarnation: identity.effectiveIncarnation,
-  modeId: identity.modeId,
-  isMasquerading: identity.isMasquerading,
   outcome: 'success',
+  ...(await masqueradeAuditFields(ctx)),
 })
 ```
 
-`businessAudit.record` is the host's own audit writer. Do not infer the actor from `ctx.auth.user`
-on an effective route or persist model objects, stamps, raw context tokens, or request bodies as
-identity metadata.
+`masqueradeAuditFields(ctx)` always returns the same keys: `actorId`, `actorIncarnation`,
+`effectiveId`, `effectiveIncarnation`, `isMasquerading`, `modeId` and `access`. While idle, the
+effective identity is the actor and `modeId` and `access` are `null`, so one audit table shape
+covers every request. `businessAudit.record` is the host's own audit writer. Do not infer the actor
+from `ctx.auth.user` on an effective route or persist model objects, stamps, raw context tokens, or
+request bodies as identity metadata.
+
+### Review masquerade history
+
+The package's control ledger is the `masquerade_events` table created by the generated migration.
+The package ships no history page; a host can list the ledger with its own query and its own admin
+authorization. Keep the route behind the raw `web` guard so an active mode never changes who is
+reviewing:
+
+```ts
+// app/controllers/masquerade_history_controller.ts
+import db from '@adonisjs/lucid/services/db'
+import type { HttpContext } from '@adonisjs/core/http'
+
+export default class MasqueradeHistoryController {
+  async index({ request, view, bouncer }: HttpContext) {
+    await bouncer.authorize('viewMasqueradeHistory')
+    const { actorId, targetId, from, to, page = 1 } = request.qs()
+    const events = await db
+      .from('masquerade_events')
+      .where('authority_namespace', 'my_app')
+      .if(actorId, (query) => query.where('actor_id', String(actorId)))
+      .if(targetId, (query) => query.where('target_id', String(targetId)))
+      // `at` is a UTC ISO 8601 string, so string comparison orders by time.
+      .if(from, (query) => query.where('at', '>=', new Date(from).toISOString()))
+      .if(to, (query) => query.where('at', '<', new Date(to).toISOString()))
+      .select('at', 'kind', 'outcome_code', 'actor_id', 'target_id', 'access', 'reason')
+      .orderBy([
+        { column: 'at', order: 'desc' },
+        { column: 'id', order: 'desc' },
+      ])
+      .paginate(Number(page) || 1, 50)
+    return view.render('admin/masquerade_history', { events })
+  }
+}
+```
+
+```ts
+// start/routes.ts
+router
+  .get('/admin/masquerade-history', [
+    () => import('#controllers/masquerade_history_controller'),
+    'index',
+  ])
+  .as('admin.masquerade_history')
+  .use(middleware.auth({ guards: ['web'] }))
+```
+
+Each row is one control event: `kind` is `started`, `stopped`, `expired`, `invalidated`,
+`start_denied`, `stop_denied` or `control_noop`, and `outcome_code` says why (for example
+`edit_denied` for an invalidation). `reason` is set only on `started` rows, and is null when the
+host's reason policy is optional and none was given. Join `actor_id` and `target_id` to the host's
+users table to show names; the ledger stores IDs only. The ledger keeps events for the configured
+[retention](operations.md#event-retention-and-store-scope); choose `retention: { days: n }` or
+`'host-managed'` to match the host's compliance period.
 
 For notifications or cache invalidation, a host may also subscribe to transition events through
 AdonisJS's emitter:

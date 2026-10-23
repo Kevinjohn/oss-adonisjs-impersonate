@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add `masqueradeAuditFields(ctx)` to `adonisjs-masquerade/http`, returning the safe actor and
+  effective identity fields to spread into a host business audit record, and document a host-owned
+  page for reviewing the `masquerade_events` ledger.
 - Make the start reason optional by default with a `reason: 'optional' | 'required'` config
   option. An optional start without a reason stores a null reason on the active row and omits it
   from the audit event; `'required'` keeps the previous behaviour. Custom stores must accept a
