@@ -38,8 +38,9 @@ Use Node 24 and pnpm. Run repository scripts rather than bare tools. The standar
 `pnpm test:pg`. `pnpm test:coverage` runs the same c8-wrapped root suite without the `pretest` lint
 hook; CI uses it in the SQLite/PostgreSQL matrix after lint is covered by the package build. The
 packed native-session fixture has its own lint, typecheck, test and report-mode commands.
-`pnpm test:consumer` records floor/latest dependency versions from actual package resolution and
-exercises SQLite/PostgreSQL consumers.
+`pnpm test:consumer` rebuilds and repacks the package before installing it, records floor/latest
+dependency versions from actual package resolution and exercises SQLite/PostgreSQL consumers;
+`--package=<path>` skips the rebuild and installs that tarball as given.
 
 `pnpm test:recipe --database=sqlite|pg|all` starts with the unwired
 `examples/recipe-host` template, installs the packed package in a disposable directory, runs

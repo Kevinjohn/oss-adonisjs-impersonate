@@ -220,8 +220,11 @@ on `@alert.root` to keep an alert visible until its dismiss action is called.
 
 ## Validate the packed consumer
 
-After building and packing the package from the repository root as shown above, the consumer
-harness installs that tarball into isolated applications outside the checkout. It runs the declared
+The consumer harness runs `pnpm build` and `pnpm pack:fixture` itself and stops if either fails, so
+it never tests a tarball left over from an earlier build. It installs that tarball into isolated
+applications outside the checkout. `--package=<path>` installs the given tarball as is, with no
+rebuild, for example to compare an earlier release; that tarball need not match the current
+source. It runs the declared
 peer floors and newest compatible versions against SQLite and PostgreSQL 16, and reports the
 package SHA-256, resolved dependencies and suite counts. It stops only a PostgreSQL server it
 started. To use an already managed server, set `CONSUMER_PG_EXTERNAL=1` and `DB_HOST`, `DB_PORT`,
