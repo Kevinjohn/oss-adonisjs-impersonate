@@ -105,4 +105,5 @@ emitter.on('masquerade:started', (event) => {
 Observers run after commit and are best effort. Their event omits the reason, and they do not
 report denied starts/stops. Do not use observer delivery as the durable control ledger or the
 host's business audit. The public payload type is added to the host's Adonis event list in the
-listener module so TypeScript can type these event names.
+listener module so TypeScript can type these event names. [Alert on masquerade
+activity](alerts.md) has listener recipes for chat alerts and a log sink.
