@@ -48,6 +48,7 @@ test('malformed store rows fail closed across status, controls and admission', a
     { targetIncarnation: 'x'.repeat(129) },
     { reason: 'x'.repeat(501) },
     { reason: ' untrimmed ' },
+    { reason: '' },
     { startedAt: 'yesterday' },
     { expiresAt: row.startedAt },
     { updatedAt: '2026-02-30T00:00:00.000Z' },

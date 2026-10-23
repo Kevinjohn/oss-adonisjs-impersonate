@@ -1,6 +1,7 @@
 import { boundedString } from './bounded_string.js'
 import { invalidInput } from './errors.js'
-import { normalizeReason } from './reason.js'
+import { parseStartReason } from './reason.js'
+import type { ReasonPolicy } from './reason.js'
 import type { ModeAccess, StartInput } from './types.js'
 
 export function validateStartInputShape(input: StartInput): void {
@@ -18,9 +19,10 @@ export function parseStartSelection(
   input: StartInput,
   actorId: string,
   defaultDuration: number,
-  maxDuration: number
-): { targetId: string; reason: string; duration: number; access: ModeAccess } {
-  const reason = normalizeReason(input.reason)
+  maxDuration: number,
+  reasonPolicy: ReasonPolicy
+): { targetId: string; reason: string | null; duration: number; access: ModeAccess } {
+  const reason = parseStartReason(input.reason, reasonPolicy)
   if (!(
     typeof input.targetId === 'string' ||
     (typeof input.targetId === 'number' && Number.isSafeInteger(input.targetId))

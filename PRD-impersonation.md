@@ -38,7 +38,7 @@ Success means an application can explicitly configure the package, deny masquera
 
 - Preserve ordinary native authentication behavior; compare credential effects with an equivalent request without masquerade.
 - Separate account-wide actor/target eligibility from request-local tenant access. Local denial rejects only that request and never clears a mode valid elsewhere.
-- Require a start reason, trimmed before validation, containing 1–500 Unicode code points and at most 2,000 UTF-8 bytes. Whitespace-only reasons are invalid.
+- Accept an optional start reason by default; a host may require one. A supplied reason is trimmed before validation and contains 1–500 Unicode code points and at most 2,000 UTF-8 bytes.
 - Durably audit committed transitions and admitted start/stop control outcomes. Native authentication failures, status/business denials and requests rejected before the control audit boundary use host diagnostics, not mandatory package audit writes.
 - Bound post-commit observer/reporting work, include namespace and account incarnations in business audit context, and explicitly block billing mutations while active.
 
@@ -83,14 +83,14 @@ Success means an application can explicitly configure the package, deny masquera
 
 ## Decisions and remaining review proposals
 
-Durations, storage and credential policies below remain review proposals. The reason rule is a settled review decision; other proposals must not be presented as approved requirements.
+Durations, storage and credential policies below remain review proposals. The reason rule is a settled decision (made optional by default on 23 October 2026); other proposals must not be presented as approved requirements.
 
 | Decision                  | Rule / proposal                                                                                                                                      | Review status                                                                                                                                                        |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Initial duration          | 15 minutes                                                                                                                                           | Confirm support workflow fit.                                                                                                                                        |
 | Maximum duration          | 60 minutes                                                                                                                                           | Confirm whether per-app configuration may reduce, but never exceed, this maximum.                                                                                    |
 | Duration behavior         | Fixed expiry; requests do not extend it                                                                                                              | Prevent activity from silently extending account-level mode.                                                                                                         |
-| Start reason              | Required; trim, then require 1–500 Unicode code points and at most 2,000 UTF-8 bytes                                                                 | Settled in document review. Reject whitespace-only input and instruct operators to redact sensitive details.                                                         |
+| Start reason              | Optional by default, host may require; trim, then require 1–500 Unicode code points and at most 2,000 UTF-8 bytes                                  | Settled; made optional by default on 23 October 2026. Required mode rejects whitespace-only input. Instruct operators to redact sensitive details.                   |
 | Mode storage              | One current row per authority namespace and actor account, with idle/active state and revision; SQL subpath proposed via Lucid for SQLite/PostgreSQL | Unlike the prior browser-session proposal, this is one row per actor account, not one per session/device. Confirm migration ownership, cleanup, and DB requirements. |
 | Per-credential revocation | A revoked credential denies that credential; mode may remain for other valid actor credentials                                                       | Review whether only an account-wide epoch revocation ends the global mode.                                                                                           |
 | Account-wide revocation   | A changed actor security epoch ends mode; invalid actor cannot continue                                                                              | Define the app callback/stamp used to recognize global revocation.                                                                                                   |
@@ -104,7 +104,7 @@ The exact native access-validation contract, target security-stamp policy, and s
 ### Start masquerade
 
 1. An operator authenticates as themselves using an application-supported native credential.
-2. From the host application’s own support workflow, they select a target, choose view (the default) or request edit, and supply the required reason. A cookie-based endpoint uses application CSRF protection.
+2. From the host application’s own support workflow, they select a target, choose view (the default) or request edit, and supply a reason when the host requires one. A cookie-based endpoint uses application CSRF protection.
 3. The package confirms the actor credential is valid, loads the actor’s current account-level mode and revision, and rejects a start if any target mode is already active.
 4. `canMasquerade` decides whether this actor may masquerade as this target. For an edit start only, `canEdit({ actor, target, reason, request })` runs after `canMasquerade` and before request-local policy; absent or non-`true` denies without changing mode, while a throw fails closed. View starts do not call `canEdit`.
 5. The package durably records the transition, atomically changes the actor’s mode to the target with the selected access, advances revision, and records the actor security epoch used by the selected policy.
@@ -193,7 +193,7 @@ The default policy blocks unsafe methods but cannot prove a GET handler has no s
 - **FR-26 — Durable audit record:** Every committed start, stop, expiry, and invalidation MUST atomically create a durable control record. After native actor authentication/ordinary access, CSRF and the applicable control limiter succeed, start/stop denials, validation failures, revision conflicts, and idle-stop no-ops MUST also be recorded when the store is available. Native authentication failures, pre-boundary rejections, status/business denials, and local credential/tenant denials on business requests use host diagnostics; they do not require package audit writes. Required record failure returns an operational error without permitting an action; uncertain commits retain their outcome-unknown contract.
 - **FR-27 — Record contents:** Each control record MUST identify actor account and incarnation, target account and incarnation when applicable, authority namespace, time, event, outcome, and reason where required. It MUST distinguish requested and completed transitions.
 - **FR-28 — Data minimization:** Audit data and logs MUST NOT contain credentials, bearer tokens, raw user objects, request bodies, or personal data beyond the IDs and bounded reason needed for accountability.
-- **FR-29 — Reason policy:** Start requires a reason trimmed before validation, with 1–500 Unicode code points and at most 2,000 UTF-8 bytes after trimming. Empty and whitespace-only input MUST be rejected. Operator guidance MUST require redaction of secrets and unnecessary personal data.
+- **FR-29 — Reason policy:** The host configures `reason: 'optional' | 'required'`, defaulting to `'optional'`. In optional mode an absent, empty or whitespace-only reason starts the mode and the audit records no reason. In required mode empty and whitespace-only input MUST be rejected. A supplied reason is trimmed before validation and MUST have 1–500 Unicode code points and at most 2,000 UTF-8 bytes after trimming. Operator guidance MUST require redaction of secrets and unnecessary personal data.
 - **FR-30 — Observer errors:** Failure or timeout of a non-authoritative observer/listener MUST be operationally visible but MUST NOT turn a completed mode transition into a reported failed transition or trigger a duplicate switch. Observer and diagnostic reporter waits MUST share a finite post-commit budget; pending callbacks and late rejections MUST be bounded/handled.
 - **FR-31 — Optional store integration:** Core MUST define a persistence contract. Proposed SQL support is an optional Lucid subpath for SQLite and PostgreSQL. Importing the core package MUST NOT automatically import Lucid. Memory storage is for tests only.
 
@@ -230,7 +230,7 @@ The default policy blocks unsafe methods but cannot prove a GET handler has no s
 ## Operational and privacy requirements
 
 - The host application should show an obvious indication that effective target behavior is active and offer a stop action. This remains application-owned UI.
-- Every start should be attributable to the authenticated actor account and a bounded reason. The reason is not a case-notes field; operators must redact secrets and unnecessary personal details.
+- Every start is attributable to the authenticated actor account, and to a bounded reason when one is given or the host requires it. The reason is not a case-notes field; operators must redact secrets and unnecessary personal details.
 - Durable audit records follow the host application’s access and retention policy. The design must define the minimum fields and a deletion/retention integration point without selecting a legal retention period for the host.
 - Operational logs should diagnose authorization denial, stale context, expiry, invalidation, and persistence failure without recording credentials, tokens, request bodies, or raw account objects.
 - The safe business audit projection MUST include authority namespace, actor/effective IDs and their immutable incarnations, including idle requests. Applications must decide how jobs and downstream systems capture actor and effective target. The package cannot guarantee queued work later executes with the correct context unless the application propagates and validates that context.
@@ -274,7 +274,7 @@ The default policy blocks unsafe methods but cannot prove a GET handler has no s
 ## Review questions
 
 1. Are 15-minute initial and 60-minute maximum durations appropriate, and may applications only reduce those limits?
-2. Does operator guidance adequately explain the settled mandatory, trimmed reason rule and the prohibition on secrets or unnecessary personal data?
+2. Does operator guidance adequately explain the settled reason rule (optional by default, host may require; trimmed) and the prohibition on secrets or unnecessary personal data?
 3. Confirm the account-level revocation rule: should revoking one actor credential reject only that credential while mode persists for another valid credential, with account-epoch revocation clearing mode?
 4. What explicit native callback/stamp should establish current actor account security epoch and account-wide target eligibility? Request-local access remains a separate check under FR-20. Must target security stamp be checked on every request?
 5. Should v1 support native session and opaque native bearer credentials, or sessions only? Is a JWT adapter explicitly deferred?

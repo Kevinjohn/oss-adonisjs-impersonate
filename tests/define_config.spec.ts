@@ -22,6 +22,8 @@ test('validates config synchronously and freezes copied configuration', ({ asser
   const config = defineConfig(f.config)
   assert.equal(config.durationSeconds, 900)
   assert.equal(config.maxDurationSeconds, 3600)
+  assert.equal(config.reason, 'optional')
+  assert.equal(defineConfig({ ...f.config, reason: 'required' }).reason, 'required')
   assert.isTrue(Object.isFrozen(config))
   assert.isTrue(Object.isFrozen(config.authority))
   assert.isTrue(Object.isFrozen(config.policy))
@@ -57,6 +59,7 @@ for (const [name, patch] of Object.entries({
   narrow: { maxDurationSeconds: 600 },
   retention: { retention: { days: 0 } },
   context: { contextEnforcement: 'ignore' },
+  reason: { reason: 'sometimes' },
   unknownPolicy: { policy: { ...fixture().config.policy, onEvent: () => {} } },
   unknownAuthority: { authority: { ...fixture().config.authority, extra: true } },
   unknownRetention: { retention: { days: 7, extra: true } },

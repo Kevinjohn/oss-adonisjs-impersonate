@@ -12,7 +12,7 @@
 - The PRD's settled boundaries and document-review decisions are requirements. The development plan's twenty agreed items and four owner decisions are the v1 contract; where the plan narrows an earlier proposal, the plan wins.
 - Masquerade is an account-level setting: an authenticated operator selects "masquerade as this user" and the server resolves that operator's effective identity on later requests. Start and stop never log in as the target, change the authenticated actor, replace a session or mint target credentials. Native remember-me and cookie maintenance keep their ordinary behaviour.
 - This document authorises the milestones in section 11.2. It does not authorise publication, repository naming or merging.
-- v1 decisions in one line each: one mode per actor per namespace, visible to all of that actor's sessions (D01); native session transport only, opaque tokens v1.1, JWT out (D02); 15-minute default, 60-minute ceiling, hosts may only narrow (D03); mandatory normalised reason (D04); one `ControlStore` contract with a Lucid SQLite/PostgreSQL subpath (D05); owner-bound context token on every covered unsafe request with report and enforce modes (D06); one revoked credential never clears the mode, an advanced stamp does (D07); hashed stamps captured at start and rechecked on every active admission (D08); active mode defaults to view-only; edit mode plus `allowMutation()` permits ordinary mutations and `sensitive()` always denies (D09; superseded by [§14](#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026)); an invalidated request never continues as the actor (D10); Account Kit integration is v1.2 (D11).
+- v1 decisions in one line each: one mode per actor per namespace, visible to all of that actor's sessions (D01); native session transport only, opaque tokens v1.1, JWT out (D02); 15-minute default, 60-minute ceiling, hosts may only narrow (D03); normalised reason, optional by default and host-configurable as required (D04, amended 23 October 2026); one `ControlStore` contract with a Lucid SQLite/PostgreSQL subpath (D05); owner-bound context token on every covered unsafe request with report and enforce modes (D06); one revoked credential never clears the mode, an advanced stamp does (D07); hashed stamps captured at start and rechecked on every active admission (D08); active mode defaults to view-only; edit mode plus `allowMutation()` permits ordinary mutations and `sensitive()` always denies (D09; superseded by [§14](#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026)); an invalidated request never continues as the actor (D10); Account Kit integration is v1.2 (D11).
 
 ## 2. Architecture and ownership
 
@@ -152,7 +152,7 @@ Boot fails on unknown fields, non-finite or out-of-range durations, a maximum ab
 ```ts
 interface StartInput {
   targetId: string | number
-  reason: string
+  reason?: string
   durationSeconds?: number
   expectedContext: ContextToken
 }
@@ -285,7 +285,7 @@ interface ControlStore {
 
 1. Authenticate the raw actor guard; Shield CSRF and the host limiter have already run. Validate input shape and the expected context against the current row. Resolve an expired active row to idle first, then return 409; never start from an old token in the same request.
 2. Reject an active mode and self-targeting. Resolve the target through `inspectAccount` with generic denial for missing or ineligible targets.
-3. Evaluate `canMasquerade` with reason and request, then `canUseRequest` when configured. Capture both stamp hashes and the fixed deadline from the injectable clock.
+3. Apply the configured reason policy: in `'optional'` (default) an absent or blank reason becomes `null` on the row and is omitted from the event; in `'required'` it is invalid input. Evaluate `canMasquerade` with request and any supplied reason, then `canUseRequest` when configured. Capture both stamp hashes and the fixed deadline from the injectable clock.
 4. CAS the active row and `started` event against the observed idle revision, or insert if absent. Only the winner succeeds. Return the committed view with the new token, then emit without awaiting. No login, logout or cookie change occurs.
 
 ### 7.2 Business request admission
@@ -311,13 +311,13 @@ interface ControlStore {
 | Method/path              | Operation | Input                                                        | Success               |
 | ------------------------ | --------- | ------------------------------------------------------------ | --------------------- |
 | `GET /masquerade`        | Status    | Raw actor credential                                         | 200 `ModeView`        |
-| `POST /masquerade/start` | Start     | `{ targetId, reason, durationSeconds?, access? }` plus token | 200 active `ModeView` |
+| `POST /masquerade/start` | Start     | `{ targetId, reason?, durationSeconds?, access? }` plus token | 200 active `ModeView` |
 | `POST /masquerade/stop`  | Stop      | `{}` plus token                                              | 200 idle `ModeView`   |
 
 - Routes are opt-in and mounted by the host under a prefix behind Shield CSRF and the host limiter. Server-rendered controllers may redirect to fixed same-origin paths.
 - Control, status and effective-user responses send `Cache-Control: no-store` and appropriate `Vary`.
 - Input: reject unknown fields, oversized bodies (8 KiB), fractional or out-of-range durations, and client-supplied expiry. The optional `access` field is specified in §14; this start-body clause is superseded by [§14](#14-view-only-default-and-per-start-edit-access-accepted-22-october-2026).
-- Reason normalisation order: trim with `String.prototype.trim()`, replace `\r\n` with `\n`, reject any C0 or C1 control except `\n` and `\t`, then require 1–500 Unicode code points and at most 2,000 UTF-8 bytes. Persist the normalised value; never truncate. Acceptable: `Ticket 4821: cannot see invoices`. Unacceptable: a tab-only string, or text containing `\u0007`.
+- Reason normalisation order (for a supplied reason, or any reason in required mode): trim with `String.prototype.trim()`, replace `\r\n` with `\n`, reject any C0 or C1 control except `\n` and `\t`, then require 1–500 Unicode code points and at most 2,000 UTF-8 bytes. Persist the normalised value; never truncate. Acceptable: `Ticket 4821: cannot see invoices`. Unacceptable: a tab-only string, or text containing `\u0007`.
 - JSON errors are `{ errors: [{ code, message }] }` with stable codes and English messages, except §14 defines the `blockedBy` field for `E_MASQUERADE_ACTION_BLOCKED`. The host exception handler localises; the package ships no translations, i18n lookup or JSON:API negotiation.
 
 | HTTP | Code                            | Meaning                                                                           |

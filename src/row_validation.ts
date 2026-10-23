@@ -59,7 +59,7 @@ export function validateRow(row: ModeRow | null, owner: OwnerKey): ModeRow | nul
     )
       throw unavailable()
     try {
-      if (normalizeReason(row.reason) !== row.reason) throw unavailable()
+      if (row.reason !== null && normalizeReason(row.reason) !== row.reason) throw unavailable()
     } catch {
       throw unavailable()
     }
