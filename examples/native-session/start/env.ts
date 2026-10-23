@@ -29,4 +29,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   LIMITER_STORE: Env.schema.enum(['memory'] as const),
   MASQUERADE_START_REQUESTS: Env.schema.number.optional(),
   MASQUERADE_STOP_REQUESTS: Env.schema.number.optional(),
+
+  // Masquerade alerts
+  MASQUERADE_ALERT_WEBHOOK_URL: Env.schema.string.optional({ format: 'url', tld: false }),
 })

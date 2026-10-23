@@ -26,6 +26,8 @@ with real application screenshots.
 - [Edge forms](guide/clients/edge.md): adapt the service to host-rendered forms and redirects.
 - [Recover from errors](guide/errors.md) and [audit and history](guide/audit.md): error responses,
   business audit fields, observers and the masquerade history page.
+- [Alert on masquerade activity](guide/alerts.md): listener recipes for chat alerts and a
+  dedicated log sink.
 - [Session JSON client](guide/clients/json.md): run same-origin fetch controls and customer
   actions with session cookies, CSRF, captured context, and deliberate recovery.
 - [Inertia React](guide/clients/react.md): run the React support workflow with captured form

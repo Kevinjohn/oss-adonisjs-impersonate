@@ -35,6 +35,7 @@ export default defineConfig({
           { text: 'Use a support mode', link: '/guide/usage' },
           { text: 'Recover from errors', link: '/guide/errors' },
           { text: 'Audit and history', link: '/guide/audit' },
+          { text: 'Alert on activity', link: '/guide/alerts' },
         ],
       },
       {
