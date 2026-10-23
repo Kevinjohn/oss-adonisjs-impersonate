@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The package tarball now contains only the build output, README, licence, changelog and security
+  policy. The guides are no longer packed; read them on the documentation site or GitHub.
 - Add `masqueradeAuditFields(ctx)` to `adonisjs-masquerade/http`, returning the safe actor and
   effective identity fields to spread into a host business audit record, and document a host-owned
   page for reviewing the `masquerade_events` ledger.
