@@ -298,7 +298,11 @@ test.group('support operator browser journey', (group) => {
     assert.include(unavailable.text(), 'Check current status')
     setMasqueradeStoreUnavailable(false)
 
-    for (const fields of [{ reason: '' }, { reason: 'Valid reason', unexpected: 'extra field' }]) {
+    // A start reason is optional, so an empty one is accepted; a control character is not.
+    for (const fields of [
+      { reason: 'Invalid\u0001reason' },
+      { reason: 'Valid reason', unexpected: 'extra field' },
+    ]) {
       const denied = await client
         .post('/support/start')
         .withCsrfToken()
