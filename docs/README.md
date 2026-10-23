@@ -41,7 +41,8 @@ with real application screenshots.
 - [Custom authorities](guide/custom-authorities.md): provide coherent account identity and
   security-stamp values.
 - [Custom stores](guide/custom-stores.md): implement and verify the control-store contract.
-- [Pruning and retention](guide/operations.md): schedule bounded cleanup and apply retention safely.
+- [Pruning and active modes](guide/operations.md): schedule bounded cleanup, apply retention
+  safely, and list or end active modes from the server.
 - [Route coverage review](guide/route-report.md): inspect the effective and raw routes in the host
   application.
 - [Notes for code agents](guide/agents.md): wiring rules for agents integrating Masquerade into a

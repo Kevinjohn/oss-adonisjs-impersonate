@@ -154,6 +154,8 @@ export interface ControlStore {
   recordControlOutcome(event: AuditEvent): Promise<void>
   /** At most limit expired active snapshots; pruning re-reads and uses CAS before clearing each. */
   expiredBatch(input: { now: Instant; limit: number }): Promise<ModeRow[]>
+  /** At most limit active snapshots, oldest update first; operator commands re-read and use CAS. */
+  activeBatch(input: { limit: number }): Promise<ModeRow[]>
   /** Delete at most limit events older than before. Never delete mode rows, including idle rows. */
   pruneEvents(input: { before: Instant; limit: number }): Promise<number>
 }

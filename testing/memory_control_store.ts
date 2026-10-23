@@ -44,6 +44,14 @@ export class MemoryControlStore implements ControlStore {
         .slice(0, input.limit)
     )
   }
+  async activeBatch(input: { limit: number }): Promise<ModeRow[]> {
+    return structuredClone(
+      [...this.#rows.values()]
+        .filter((row) => row.state === 'active')
+        .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))
+        .slice(0, input.limit)
+    )
+  }
   async pruneEvents(input: { before: Instant; limit: number }): Promise<number> {
     let count = 0
     this.#events = this.#events.filter(

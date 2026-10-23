@@ -1,8 +1,10 @@
 import PruneCommand from './prune.js'
 import RoutesCommand from './routes.js'
+import StatusCommand from './status.js'
+import StopCommand from './stop.js'
 
 type CommandMetadata = ReturnType<typeof PruneCommand.serialize>
-const commands = [PruneCommand, RoutesCommand]
+const commands = [PruneCommand, RoutesCommand, StatusCommand, StopCommand]
 
 /** Metadata consumed by AdonisJS Ace command discovery. */
 export async function getMetaData(): Promise<CommandMetadata[]> {

@@ -55,7 +55,7 @@ export default defineConfig({
           { text: 'Route coverage review', link: '/guide/route-report' },
           { text: 'Custom authorities', link: '/guide/custom-authorities' },
           { text: 'Custom stores', link: '/guide/custom-stores' },
-          { text: 'Pruning and retention', link: '/guide/operations' },
+          { text: 'Pruning and active modes', link: '/guide/operations' },
           { text: 'Notes for code agents', link: '/guide/agents' },
         ],
       },

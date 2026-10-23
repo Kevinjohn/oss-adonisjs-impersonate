@@ -53,7 +53,7 @@ Unanimous unless noted.
 5. Sessions only in v1; opaque bearer in v1.1; JWT out.
 6. Yes with report mode for migration; 428 missing, 409 stale.
 7. Confirmed: core contract plus optional Lucid subpath, one row per namespace/actor/incarnation.
-8. Logout-all advances the stamp; a server-only `invalidate(actorId)` helper is optional, not a hook system.
+8. Logout-all advances the stamp; a server-only `invalidate(actorId)` helper is optional, not a hook system. _Owner decision, 23 October 2026 (issue #135):_ v1 ships it as the `masquerade:status` and `masquerade:stop` Ace commands, with a bounded `ControlStore.activeBatch` read that custom stores must implement.
 9. `pruneEvents(before, limit)` plus the prune command; retention policy and erasure stay with the host.
 
 ## Owner decisions (accepted 19 October 2026)
