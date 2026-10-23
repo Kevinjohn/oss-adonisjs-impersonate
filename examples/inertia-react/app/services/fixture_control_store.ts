@@ -28,6 +28,11 @@ export class FixtureControlStore implements ControlStore {
     return this.store.expiredBatch(input)
   }
 
+  async activeBatch(input: Parameters<ControlStore['activeBatch']>[0]) {
+    if (storeUnavailable) throw new Error('fixture store unavailable')
+    return this.store.activeBatch(input)
+  }
+
   async pruneEvents(input: Parameters<ControlStore['pruneEvents']>[0]) {
     if (storeUnavailable) throw new Error('fixture store unavailable')
     return this.store.pruneEvents(input)

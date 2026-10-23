@@ -93,6 +93,7 @@ export async function assertControlStoreConformance(
   assert.equal(await store.pruneEvents({ before: '2027-01-01T00:00:00.000Z', limit: 2 }), 1)
   assert.deepEqual(await store.read(owner), update)
   assert.deepEqual(await store.expiredBatch({ now: '2027-01-01T00:00:00.000Z', limit: 2 }), [])
+  assert.deepEqual(await store.activeBatch({ limit: 2 }), [])
   // Exercise all owner-key dimensions through writes, not only absent reads.
   const owners = [
     owner,
@@ -303,6 +304,11 @@ export async function assertControlStoreConformance(
     await store.expiredBatch({ now: '2026-01-01T00:30:00.000Z', limit: 10 }),
     activeRows
   )
+  // Active rows regardless of expiry, oldest update first, as independent snapshots.
+  const activeSnapshots = await store.activeBatch({ limit: 2 })
+  assert.deepEqual(activeSnapshots, activeRows.slice(0, 2))
+  activeSnapshots[0].revision = 999
+  assert.deepEqual(await store.activeBatch({ limit: 10 }), activeRows)
   assert.equal(await store.pruneEvents({ before: '2026-01-01T00:00:00.000Z', limit: 10 }), 0)
   assert.equal(await store.pruneEvents({ before: '2026-01-01T00:00:02.000Z', limit: 1 }), 1)
   assert.equal(await store.pruneEvents({ before: '2026-01-01T00:00:02.000Z', limit: 10 }), 1)

@@ -35,6 +35,7 @@ export type MasqueradeSetupErrorField =
   | 'store.compareAndSet'
   | 'store.recordControlOutcome'
   | 'store.expiredBatch'
+  | 'store.activeBatch'
   | 'store.pruneEvents'
   | 'durationSeconds'
   | 'maxDurationSeconds'

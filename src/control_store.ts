@@ -8,6 +8,7 @@ const storeErrorFields: Record<keyof ControlStore, MasqueradeSetupErrorField> = 
   compareAndSet: 'store.compareAndSet',
   recordControlOutcome: 'store.recordControlOutcome',
   expiredBatch: 'store.expiredBatch',
+  activeBatch: 'store.activeBatch',
   pruneEvents: 'store.pruneEvents',
 }
 
