@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Document listener recipes for chat alerts and a dedicated log sink on masquerade transition
+  events, checked against a listener module that the native-session example type-checks.
 - Split the usage guide into the support journey, Edge forms, error recovery, and audit and history
   pages.
 - Add `masqueradeAuditFields(ctx)` to `adonisjs-masquerade/http`, returning the safe actor and
