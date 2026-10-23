@@ -254,21 +254,21 @@ Keep the supported named `auth` middleware on route groups. Package control rout
 with the raw guard so an active effective identity cannot replace the actor used to stop a mode:
 
 ```ts
-// Route-group fragment; keep your existing router, controller, and kernel imports.
-router
-  .group(() => {
-    router.get('/', [MasqueradeController, 'status'])
-    router.post('/start', [MasqueradeController, 'start'])
-    router.post('/stop', [MasqueradeController, 'stop'])
-  })
-  .prefix('/masquerade')
-  .use(middleware.auth({ guards: ['web'] }))
+// Fragment; keep your existing router and kernel imports and define the two limiters.
+import { masqueradeRoutes } from 'adonisjs-masquerade/http'
+
+masqueradeRoutes(router, {
+  auth: middleware.auth,
+  guard: 'web',
+  startLimiter: startMasqueradeLimiter,
+  stopLimiter: stopMasqueradeLimiter,
+})
 ```
 
 Apply your host's CSRF protection and separate start and stop rate limits. Put business route
 groups behind `middleware.auth({ guards: ['web_effective'] })`. See [route coverage review](route-report.md)
-for report labels and release checks. The package's controls, routes, CSRF, and rate limits remain
-host-wired.
+for report labels and release checks. The host still owns CSRF, the limiter budgets and where the
+routes are mounted.
 
 Review the generated migration and your database backup plan, then apply it with the host's normal
 migration process, for example `node ace migration:run`. Follow [pruning and retention

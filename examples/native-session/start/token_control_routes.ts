@@ -1,5 +1,6 @@
 import { Bouncer } from '@adonisjs/bouncer'
 import { MasqueradeError } from 'adonisjs-masquerade'
+import { masqueradeRoutes } from 'adonisjs-masquerade/http'
 import { middleware } from '#start/kernel'
 import {
   startTokenMasqueradeLimiter,
@@ -9,22 +10,14 @@ import db from '@adonisjs/lucid/services/db'
 import router from '@adonisjs/core/services/router'
 import type User from '#models/user'
 
-router
-  .group(() => {
-    router
-      .get('/', [() => import('#controllers/masquerade_controller'), 'status'])
-      .as('token.masquerade.status')
-    router
-      .post('/start', [() => import('#controllers/masquerade_controller'), 'start'])
-      .as('token.masquerade.start')
-      .use(startTokenMasqueradeLimiter)
-    router
-      .post('/stop', [() => import('#controllers/masquerade_controller'), 'stop'])
-      .as('token.masquerade.stop')
-      .use(stopTokenMasqueradeLimiter)
-  })
-  .prefix('/api/masquerade')
-  .use(middleware.auth({ guards: ['api'] }))
+masqueradeRoutes(router, {
+  auth: middleware.auth,
+  guard: 'api',
+  startLimiter: startTokenMasqueradeLimiter,
+  stopLimiter: stopTokenMasqueradeLimiter,
+  prefix: '/api/masquerade',
+  as: 'token.masquerade',
+})
 
 router
   .post('/api/logout', async ({ auth }) => {

@@ -15,8 +15,8 @@ actor guard. Keep customer business routes on the effective guard. See the
 
 `MasqueradeController` implements JSON status, start, and stop responses. The package controller
 does not render Edge or redirect. Its control responses are `no-store` and vary on `Accept` and
-`X-Masquerade-Context`. The native-session example mounts the controls with raw session
-authentication and independent host-owned start and stop limiters. Keep Shield's CSRF middleware
+`X-Masquerade-Context`. The native-session example mounts the controls with `masqueradeRoutes`,
+raw session authentication and independent host-owned start and stop limiters. Keep Shield's CSRF middleware
 enabled for cookie-authenticated POST requests.
 
 <!-- host-recipe:control-routes -->
@@ -25,24 +25,24 @@ enabled for cookie-authenticated POST requests.
 import { middleware } from '#start/kernel'
 import { startMasqueradeLimiter, stopMasqueradeLimiter } from '#start/masquerade_control_limiter'
 import router from '@adonisjs/core/services/router'
+import { masqueradeRoutes } from 'adonisjs-masquerade/http'
 
-router
-  .group(() => {
-    router
-      .get('/', [() => import('#controllers/masquerade_controller'), 'status'])
-      .as('masquerade.status')
-    router
-      .post('/start', [() => import('#controllers/masquerade_controller'), 'start'])
-      .as('masquerade.start')
-      .use(startMasqueradeLimiter)
-    router
-      .post('/stop', [() => import('#controllers/masquerade_controller'), 'stop'])
-      .as('masquerade.stop')
-      .use(stopMasqueradeLimiter)
-  })
-  .prefix('/masquerade')
-  .use(middleware.auth({ guards: ['web'] }))
+masqueradeRoutes(router, {
+  auth: middleware.auth,
+  guard: 'web',
+  startLimiter: startMasqueradeLimiter,
+  stopLimiter: stopMasqueradeLimiter,
+})
 ```
+
+`masqueradeRoutes` mounts `GET /masquerade`, `POST /masquerade/start` and `POST /masquerade/stop`
+on `MasqueradeController`, named `masquerade.status`, `masquerade.start` and `masquerade.stop`. It
+applies `auth({ guards: [guard] })` to the group and each limiter to its own route. It throws at
+registration when the guard, the auth middleware or either limiter is missing, or when both
+limiters are the same middleware. `prefix` and `as` change the path and name prefixes, for example
+`prefix: '/api/masquerade', as: 'token.masquerade'` for an access-token guard. It returns the route
+group, so the host can add middleware or a domain. Mount the routes by hand only when the controls
+need a different shape; [route coverage review](route-report.md) reports both as `CONTROL`.
 
 Define separate budgets keyed by the authenticated raw actor. Tune these limits to the host's
 support workflow and infrastructure; the package does not install or configure a limiter.

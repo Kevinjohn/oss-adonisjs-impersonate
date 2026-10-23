@@ -98,9 +98,12 @@ function verifyRecipe(parts: typeof snippets): void {
   requireRecipe(parts.authConfig.includes('members: memberGuard'), 'second guard registration')
   requireRecipe(parts.authConfig.includes('InferAuthenticators<typeof authConfig>'), 'Auth types')
   requireRecipe(parts.authConfig.includes("default: 'web_effective'"), 'effective default')
-  requireRecipe(parts.controlRoutes.includes("guards: ['web']"), 'raw control guard')
-  requireRecipe(parts.controlRoutes.includes('.use(startMasqueradeLimiter)'), 'start limiter')
-  requireRecipe(parts.controlRoutes.includes('.use(stopMasqueradeLimiter)'), 'stop limiter')
+  requireRecipe(parts.controlRoutes.includes("guard: 'web',"), 'raw control guard')
+  requireRecipe(
+    parts.controlRoutes.includes('startLimiter: startMasqueradeLimiter'),
+    'start limiter'
+  )
+  requireRecipe(parts.controlRoutes.includes('stopLimiter: stopMasqueradeLimiter'), 'stop limiter')
   requireRecipe(
     parts.businessRoutes.match(/guards: \['web_effective'\]/g)?.length === 3,
     'effective business guards'
@@ -124,7 +127,7 @@ for (const [name, mutated] of [
     'raw guard',
     {
       ...snippets,
-      controlRoutes: snippets.controlRoutes.replace("guards: ['web']", "guards: ['web_effective']"),
+      controlRoutes: snippets.controlRoutes.replace("guard: 'web',", "guard: 'web_effective',"),
     },
   ],
   [

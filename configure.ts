@@ -147,7 +147,7 @@ export async function configure(command: Configure): Promise<void> {
     `5. Review the migration ${migrationDestination}, back up the database, then run: node ace migration:run`
   )
   command.logger.info(
-    `6. Mount only explicit control routes, for example router.post("/masquerade/start", [MasqueradeController, "start"]).use(middleware.auth({ guards: ["${guard}"] })); keep Shield CSRF enabled and apply independent start/stop limiter budgets. Do not mount routes before those controls are in place.`
+    `6. Define separate start and stop limiters, then mount the controls with masqueradeRoutes(router, { auth: middleware.auth, guard: "${guard}", startLimiter, stopLimiter }) from adonisjs-masquerade/http; keep Shield CSRF enabled. Do not mount routes before those controls are in place.`
   )
   command.logger.info(
     '7. Keep context enforcement in report mode during form rollout; switch to enforce after clients submit the current context token. Host-managed retention never prunes idle rows.'
