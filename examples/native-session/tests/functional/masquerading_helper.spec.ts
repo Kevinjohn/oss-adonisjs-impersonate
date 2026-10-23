@@ -26,6 +26,7 @@ test.group('masquerading() API client helper', (group) => {
     const allowed = await client
       .post('/business/mutate')
       .json({})
+      .withCsrfToken()
       .loginAs(actor)
       .masquerading(target, { access: 'edit', reason: 'Ticket 42' })
     allowed.assertStatus(200)
@@ -37,6 +38,7 @@ test.group('masquerading() API client helper', (group) => {
     const denied = await client
       .post('/business/mutate')
       .json({})
+      .withCsrfToken()
       .loginAs(actor)
       .masquerading(target, { access: 'view' })
     denied.assertStatus(403)
@@ -51,6 +53,7 @@ test.group('masquerading() API client helper', (group) => {
     const denied = await client
       .post('/business/billing')
       .json({})
+      .withCsrfToken()
       .loginAs(actor)
       .masquerading(target, { access: 'edit', reason: 'Ticket 42' })
     denied.assertStatus(403)

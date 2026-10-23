@@ -16,13 +16,15 @@ export const plugins: Config['plugins'] = [
 ]
 ```
 
-Chain it after `loginAs()` with the operator:
+Chain it after `loginAs()` with the operator. Unsafe session requests still need Shield's
+`withCsrfToken()`, as without masquerade:
 
 ```ts
 test('a support agent viewing a customer cannot change billing', async ({ client }) => {
   const response = await client
     .post('/billing/card')
     .json({})
+    .withCsrfToken()
     .loginAs(agent)
     .masquerading(customer, { access: 'view' })
 
