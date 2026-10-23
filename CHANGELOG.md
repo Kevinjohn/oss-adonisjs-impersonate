@@ -29,6 +29,10 @@
   instructions use it.
 - Document listener recipes for chat alerts and a dedicated log sink on masquerade transition
   events, checked against a listener module that the native-session example type-checks.
+- Add `adonisjs-masquerade/plugins/api_client` with `masqueradeApiClient()`, a Japa API client
+  plugin whose `request.loginAs(actor).masquerading(target, options)` starts a real mode through the
+  host's control routes, sends the context token on unsafe requests and stops the mode afterwards.
+  `@japa/api-client` is a new optional peer dependency.
 - Split the usage guide into the support journey, Edge forms, error recovery, and audit and history
   pages.
 - Add `masqueradeAuditFields(ctx)` to `adonisjs-masquerade/http`, returning the safe actor and

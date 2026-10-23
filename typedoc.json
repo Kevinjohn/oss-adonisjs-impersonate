@@ -9,7 +9,8 @@
     "stores/lucid.ts",
     "providers/masquerade_provider.ts",
     "commands/main.ts",
-    "testing/main.ts"
+    "testing/main.ts",
+    "plugins/api_client.ts"
   ],
   "out": "docs/api",
   "plugin": ["typedoc-plugin-markdown"],

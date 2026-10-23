@@ -28,6 +28,8 @@ with real application screenshots.
   business audit fields, observers and the masquerade history page.
 - [Alert on masquerade activity](guide/alerts.md): listener recipes for chat alerts and a
   dedicated log sink.
+- [Testing your routes](guide/testing.md): the Japa `masquerading()` request helper for host route
+  tests.
 - [Session JSON client](guide/clients/json.md): run same-origin fetch controls and customer
   actions with session cookies, CSRF, captured context, and deliberate recovery.
 - [Inertia React](guide/clients/react.md): run the React support workflow with captured form
