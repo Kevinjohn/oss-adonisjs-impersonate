@@ -4,6 +4,9 @@
 
 - The package tarball now contains only the build output, README, licence, changelog and security
   policy. The guides are no longer packed; read them on the documentation site or GitHub.
+- Make `pnpm test:consumer` rebuild and repack the package before installing it, and stop when
+  the build or pack fails, so a failed build can no longer leave an older tarball to be tested.
+  `--package=<path>` still installs the given tarball as is.
 - Add `masqueradeAuditFields(ctx)` to `adonisjs-masquerade/http`, returning the safe actor and
   effective identity fields to spread into a host business audit record, and document a host-owned
   page for reviewing the `masquerade_events` ledger.

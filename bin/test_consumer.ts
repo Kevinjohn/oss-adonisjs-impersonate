@@ -3,8 +3,9 @@ import { createHash, randomUUID } from 'node:crypto'
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
-import { basename, join, relative, resolve } from 'node:path'
+import { basename, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { consumerArtifact } from './helpers/consumer_artifact.js'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const args = new Map(
@@ -18,7 +19,7 @@ const database = args.get('database') ?? 'all'
 if (!['all', 'floor', 'latest'].includes(profile) || !['all', 'sqlite', 'pg'].includes(database))
   throw new Error('Use --profile=floor|latest|all --database=sqlite|pg|all')
 if (Number(process.versions.node.split('.')[0]) !== 24) throw new Error('Use Node 24')
-const artifact = resolve(root, args.get('package') ?? 'tmp/native-session-package.tgz')
+const artifact = consumerArtifact(root, args.get('package'))
 const digest = createHash('sha256')
   .update(await readFile(artifact))
   .digest('hex')
