@@ -33,12 +33,14 @@ export default defineConfig({
           { text: 'Account Kit integration preview', link: '/guide/account-kit' },
           { text: 'Opaque access tokens', link: '/guide/access-tokens' },
           { text: 'Use a support mode', link: '/guide/usage' },
+          { text: 'Recover from errors', link: '/guide/errors' },
+          { text: 'Audit and history', link: '/guide/audit' },
         ],
       },
       {
         text: 'Delivered clients',
         items: [
-          { text: 'Edge forms', link: '/guide/usage#edge-forms-and-host-redirects' },
+          { text: 'Edge forms', link: '/guide/clients/edge' },
           { text: 'Session JSON client', link: '/guide/clients/json' },
           { text: 'Inertia React', link: '/guide/clients/react' },
           { text: 'Inertia Vue', link: '/guide/clients/vue' },

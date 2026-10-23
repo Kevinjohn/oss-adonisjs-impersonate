@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Split the usage guide into the support journey, Edge forms, error recovery, and audit and history
+  pages.
 - Add `masqueradeAuditFields(ctx)` to `adonisjs-masquerade/http`, returning the safe actor and
   effective identity fields to spread into a host business audit record, and document a host-owned
   page for reviewing the `masquerade_events` ledger.

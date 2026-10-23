@@ -86,7 +86,7 @@ test('guide navigation points to existing guide pages and sections', async ({ as
   assert.include(guideLinks, '/guide/custom-authorities')
   assert.include(guideLinks, '/guide/custom-stores')
   assert.include(guideLinks, '/guide/operations')
-  assert.include(guideLinks, '/guide/usage#edge-forms-and-host-redirects')
+  assert.include(guideLinks, '/guide/clients/edge')
   assert.deepEqual(missing, [])
 })
 
